@@ -38,14 +38,14 @@ Assign a role as `science-ultrapowers:<agent>`.
 | **Question** | The question document is approved by the researcher, then by the Academic Supervisor. It is the hypothesis record: research question (RQ) link, falsifiable prediction, prior-work evidence records, contribution relative to prior work, and the fields for background, H0, H1, population and unit of analysis, operationalized variables, what counts as an answer, scope and exclusions, open questions for the survey. No outcome is loaded, computed, fitted or plotted before the framing is approved. When runnability is unknown, a pilot and feasibility study is offered (`science-ultrapowers:establishing-feasibility-first`); only the researcher enters and leaves it | Methods (+ Literature) | Citation & Reference Auditor cleared; Academic Reviewer | Supervisor |
 | **Literature** | Search plan, search logs, Preferred Reporting Items for Systematic reviews and Meta-Analyses (PRISMA) 2020 counts, evidence records and source table rows exist; the evidence records hold methods, confounds, prior effect sizes and the relation to prior work (replication, extension, new population or novel) | Literature | Citation & Reference Auditor cleared; Academic Reviewer | Supervisor |
 | **Preregistration** | The protocol holds items 1 to 15 of the template (hypothesis, design, metrics, seeds, test, stopping rules, splits, compute budget and the design-validation items). Every configuration has run once or is within about ten times a measured point; otherwise a pilot and feasibility study comes first. After the three approvals (test-hygiene review, design review, Supervisor) the lead session registers the protocol at commit in `research_lab/experiments/preregistrations/` (`science-ultrapowers:preregistering-the-protocol`) and logs its hash in `DECISION_LOG.md` | Experiments + Data & Evaluation + Methods | Data & Evaluation test-hygiene review; Scientific Peer Reviewer design review; Citation & Reference Auditor cleared where the artifact cites sources | Supervisor |
-| **Execution** | Every run is registered with commit, config hash, seeds, environment, artifacts and deviations. The environment is pinned, one seed is recorded, raw inputs are read-only with their checksums in the register's `Input checksums` field, and the baseline reproduces before new work. Each task report carries its `Status:` line | Experiments (+ Engineer) | Reproducibility checklist; code review by a non-author; protocol-adherence review (`PROTOCOL_ADHERENCE_REVIEW.md`) by the Data & Evaluation Researcher, never the author | Research Project Manager |
+| **Execution** | Every run is registered with commit, config hash, seeds, environment, artifacts and deviations. The environment is pinned, one seed is recorded, raw inputs are read-only with their checksums in the register's `Input checksums` field, and the baseline reproduces before new work | Experiments (+ Engineer) | Reproducibility checklist; code review by a non-author; protocol-adherence review (`PROTOCOL_ADHERENCE_REVIEW.md`) by the Data & Evaluation Researcher, never the author | Research Project Manager |
 | **Results** | The registration check is clear and saved as an artifact. The analysis against the registered protocol (effect sizes, confidence intervals, tests) is recorded in findings log rows, each with its basis. The claim rows of `science-ultrapowers:recording-findings` hold: a null needs an interval; a model needs a held-out metric used once; "reproduces" means re-run from raw inputs with the seed; confirmatory needs a clear registration check. An anomaly goes through `science-ultrapowers:investigating-anomalous-results` (binding rule `NO ADJUSTMENT WITHOUT ROOT CAUSE FIRST`) | Data & Evaluation | Curator re-verification; Scientific Peer Reviewer adversarial review over the ten critical-appraisal domains; Citation & Reference Auditor cleared where the artifact cites sources | Supervisor |
 | **Reporting** | Docs, model cards and datasheets are updated from the findings log and the source table, and the archive manifest (`ARCHIVE_MANIFEST.md`) is started | Documentation Writer | Curator (numbers); Citation & Reference Auditor (citations); Academic Reviewer | Research Project Manager |
 | **Publication** | A manuscript or thesis chapter is ready to leave the lab: confirmatory and exploratory results are labeled, every deviation is listed, intervals are reported, no causal wording comes from observational data, nothing generalizes past the sample, and `ARCHIVE_MANIFEST.md` is complete | Paper Author | Citation & Reference Auditor full audit + retraction check; Academic Reviewer; Scientific Peer Reviewer referee report + author response; adversarial review | Supervisor, then the researcher |
 
 Independent checks run in parallel; log each stage approval in `DECISION_LOG.md`. Order of reviews: the protocol-adherence review runs before the rigor review (the code review of Execution, the adversarial review of Results).
 
-**Tracks.** A track enters this lifecycle at the stage that fits what the researcher holds; the study track is this skill. `science-ultrapowers:framing-a-research-question` starts from an idea and exits at the Question approval, to the study track or to a pilot and feasibility study. `science-ultrapowers:synthesizing-the-literature` starts from a topic and runs the Literature stage. `science-ultrapowers:reviewing-a-manuscript` starts from a manuscript and exits with a report in `reviews/reports/`. `science-ultrapowers:writing-for-publication` starts from the records and exits at the Publication approval. `science-ultrapowers:presenting-research` starts from findings and exits with a deck or a figure as an artifact.
+**Tracks.** A track enters this lifecycle at the stage that fits what the researcher holds; the study track is this skill. `science-ultrapowers:framing-a-research-question` starts from an idea and exits at the Question approval, to the study track or to a pilot and feasibility study. `science-ultrapowers:synthesizing-the-literature` starts from a topic and runs the Literature stage. `science-ultrapowers:reviewing-a-manuscript` starts from a manuscript and exits with a report in `reviews/reports/`. `science-ultrapowers:writing-for-publication` starts from the records and exits at the Publication approval. `science-ultrapowers:presenting-research` starts from findings and exits with a deck or a figure.
 
 ## Review toolkit and the adversarial review
 
@@ -96,7 +96,7 @@ The blocking step adapts an idea (no text) from imbad0202/academic-research-skil
 
 ## Task assignment
 
-Every assignment uses this block, quoted in full. A free-form paragraph is not a task assignment.
+Every assignment uses this block, quoted in full.
 
 ```
 TASK <TASK-id> | Stage <name> | Owner <role> | Reviewer <role> | Due <date>
@@ -110,7 +110,7 @@ Constraints: evidence rule (science-ultrapowers:verifying-evidence-by-doi); no t
 
 ## Task report
 
-Every role ends every task with this; a role that returns without a task report block has not delivered, and the project manager says so.
+Every role ends every task with this; a return without this block has not delivered.
 
 ```
 TASK REPORT <TASK-id> -> <next role>
@@ -132,12 +132,12 @@ Next: <next role and action>
 | Situation | Escalate to |
 |---|---|
 | Scientific direction, scope or claim strength | Academic Supervisor |
-| Anomalous results, leakage, protocol deviation | Experiments Lead, then Data & Evaluation, then Supervisor; an anomaly runs through `science-ultrapowers:investigating-anomalous-results` |
+| Anomalous results, leakage, protocol deviation | Lab & Experiments Lead, then Data & Evaluation, then Academic Supervisor; an anomaly runs through `science-ultrapowers:investigating-anomalous-results` |
 | Conflicting numbers across documents | Findings & Records Curator |
 
 ## Record map
 
-`research_lab/`: `project/` brief; `literature/` SOURCES.csv, evidence_records/, search_logs/, citation_audits/; `findings/` FINDINGS_LOG.md, KEY_RESULTS.md; `experiments/` EXPERIMENT_REGISTER.md, preregistrations/; `reviews/` REVIEW_LOG.md, reports/; `requests/` ACCESS_REQUESTS.md; `decisions/` DECISION_LOG.md, lab_meetings/; `planning/` WORK_PLAN.md; `automation/` Jev calls; `tool_vetting/`; `migration/` import digests and checklists; `templates/`; `artifacts/` the archive: `science-ultrapowers:saving-artifacts` answers what a deliverable was based on and what is still not yet addressed (`search <name>`, then `provenance <version id>` and `findings list`; the archive's tables are keyed by version id, so a grep of them proves nothing); `memory/`; `lab.json`; `.working/`. Full texts: `references/` at the project root.
+`research_lab/`: `project/` brief and hypothesis records (`project/HYP-xxxx.md`); `literature/` SOURCES.csv, evidence_records/, search_logs/, citation_audits/; `findings/` FINDINGS_LOG.md, KEY_RESULTS.md; `experiments/` EXPERIMENT_REGISTER.md, preregistrations/; `reviews/` REVIEW_LOG.md, reports/; `requests/` ACCESS_REQUESTS.md; `decisions/` DECISION_LOG.md, lab_meetings/; `planning/` WORK_PLAN.md; `automation/` Jev calls; `tool_vetting/`; `migration/` import digests and checklists; `templates/`; `artifacts/` the archive: `science-ultrapowers:saving-artifacts` answers what a deliverable was based on and what is not yet addressed (`search <name>`, then `provenance <version id>` and `findings list`; the tables are keyed by version id, so grep proves nothing); `memory/`; `lab.json`; `.working/`. Full texts: `references/` at the project root.
 
 ## Every role
 
@@ -178,3 +178,5 @@ Add `Memory-Ref` only when a memory was written.
 | "The role can ask the researcher itself" | It cannot. It files a request; the lead session relays it. |
 
 Each means stop and restore the rule.
+
+Credit: the nine phases used as stage criteria, the four binding rules and the parallel guard are reworded from K-Dense-AI/science-superpowers (MIT, Copyright (c) 2026 K-Dense, Inc.).

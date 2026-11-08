@@ -66,7 +66,7 @@ Restricted folders: none
 Constraints: evidence rule (science-ultrapowers:verifying-evidence-by-doi); confidentiality of the manuscript; no demand for citations the work does not need
 ```
 
-For an external manuscript write `Stage review track`. The roles run in parallel.
+For an external manuscript the stage field reads `Stage none (external manuscript)`, because the seven stages are the lab's own study. The roles run in parallel.
 
 | Need | Role | Writes |
 |---|---|---|
@@ -114,7 +114,7 @@ Write no praise and no thanks. The change and its new evidence show that the poi
 
 Each product is saved with `science-ultrapowers:saving-artifacts`, by the lead session, with its inputs. Link the external manuscript and never save a copy into the archive, because the archive is committed.
 
-- `research_lab/reviews/reports/REV-NNNN_<artifact>.md`: the referee report, and a row in `research_lab/reviews/REVIEW_LOG.md`.
+- `research_lab/reviews/reports/REV-NNNN_<artifact>.md`: the referee report, and a row in `research_lab/reviews/REVIEW_LOG.md`. The report file carries the id of its review log row.
 - `research_lab/literature/citation_audits/AUDIT-<date>-<artifact>.md`: the citation audit.
 - `research_lab/reviews/reports/ADV-NNNN_<claim>.md`: each adversarial review, logged.
 - The response matrix, in `research_lab/reviews/reports/`.

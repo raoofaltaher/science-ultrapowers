@@ -148,3 +148,5 @@ Change findings log files with the file tools. Recompute with a short `python -c
 - [ ] Every "verified" I wrote names files, method and reference
 - [ ] Every row has a basis; `confirmatory` only with the two clear files
 - [ ] The key results table and the notebook entry are updated
+
+Credit: the basis rule and the claim rows are reworded from the verifying-results-before-claiming and preregistering-analysis skills of K-Dense-AI/science-superpowers (MIT, Copyright (c) 2026 K-Dense, Inc.).

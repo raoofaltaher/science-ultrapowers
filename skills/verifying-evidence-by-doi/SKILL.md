@@ -7,7 +7,7 @@ description: Use whenever a source is cited, a literature claim is written, extr
 
 ## Overview
 
-A fact enters a lab artifact only from a peer-reviewed work whose digital object identifier (DOI) resolves in Crossref, matches the PDF in hand, is not retracted, was read in full text at the cited passage, and is recorded in an evidence record. Every role follows this at every level, with no exceptions and no skipped steps.
+A fact enters a lab artifact only from a peer-reviewed work whose DOI resolves in Crossref, matches the PDF in hand, is not retracted, was read in full text at the cited passage, and is recorded in an evidence record. Every role follows this at every level, with no exceptions and no skipped steps.
 
 **Core principle:** A source is evidence only after you have checked it yourself; nobody else's label counts.
 

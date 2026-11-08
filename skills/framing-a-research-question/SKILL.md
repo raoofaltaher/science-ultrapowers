@@ -88,7 +88,7 @@ Every assignment uses the task assignment block of `science-ultrapowers:running-
 The researcher chooses among the framings. A role never chooses for the researcher.
 
 ```
-TASK HYP-survey-01 | Stage Question | Owner Literature Researcher | Reviewer Citation & Reference Auditor | Due <date>
+TASK <TASK-id> | Stage Question | Owner Literature Researcher | Reviewer Citation & Reference Auditor | Due <date>
 Objective: Ground the four survey items for the approved framing.
 Inputs: research_lab/project/HYP-0001.md (open questions for the survey)
 Deliverables: research_lab/literature/search_logs/<date>_<topic>_search.md; evidence records; source table rows

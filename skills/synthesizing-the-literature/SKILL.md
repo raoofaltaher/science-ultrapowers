@@ -84,7 +84,7 @@ Each product is saved with `science-ultrapowers:saving-artifacts`, the task repo
    python "${CLAUDE_PLUGIN_ROOT}/skills/synthesizing-the-literature/scripts/flow_diagram.py" <counts.json> --style prisma2020|consort --out <file.svg>
    ```
 
-   The style `prisma2020` draws the flow of a search. The style `consort` draws the flow of participants in a trial the researcher reports. The script checks the sums and exits 1 with the name of the box that fails. Fix the search log, never the count. The counts keys are in the script's header.
+   The style `prisma2020` draws the flow of a search. The style `consort` draws the flow of participants in a trial the researcher reports. The script checks the sums and exits 1 with the name of the box that fails. Fix the search log, never the count. The counts keys are in the script's header. The `prisma2020` diagram draws the PRISMA 2020 identification column for databases and registers and folds records from other sources into the identified count; a review that needs the two-column form edits the SVG by hand.
 6. **Meta-analysis only:** the registered protocol, the extraction table, the risk-of-bias appraisal and the forest plot (planned through `science-ultrapowers:planning-paper-figures`). Its findings carry their basis.
 
 The task report of each role lists these as deliverables, with the matched DOIs and the evidence record ids as checks performed.

@@ -54,7 +54,7 @@ Before assigning a role or recomputing: `MEMORY.md`, then search `research_lab/m
 Prune at milestones: re-check entries older than six months and every `inferred` one, merge near-duplicates. Consistency check (it prints one line per finding; exit 0 is clean):
 
 ```
-node "${CLAUDE_PLUGIN_ROOT}/skills/remembering-for-the-lab/scripts/memory-lint.mjs" research_lab/memory  # legacy
+node "${CLAUDE_PLUGIN_ROOT}/skills/remembering-for-the-lab/scripts/memory-lint.mjs" research_lab/memory
 ```
 
 | Code | Fix |

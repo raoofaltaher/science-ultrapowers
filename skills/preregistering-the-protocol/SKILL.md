@@ -40,7 +40,7 @@ Use this skill at the Preregistration stage, and at every later point where the 
 
 Exploratory work is allowed. Label it exploratory. It is a hypothesis for the next protocol.
 
-Decide with the researcher, and log the decision, for descriptive reporting with no inferential claim, method development on simulated data, re-analysis of public results and a pilot and feasibility study (`science-ultrapowers:establishing-feasibility-first`). In a pilot and feasibility study the registration waits for the exit of the study. It is not cancelled. Nothing produced before it is confirmatory.
+Decide with the researcher, and log the decision, for descriptive reporting with no inferential claim, method development on simulated data, re-analysis of public results and a pilot and feasibility study (`science-ultrapowers:establishing-feasibility-first`). In a pilot and feasibility study the registration waits for the exit of the study. Nothing produced before it is confirmatory.
 
 ## Do not register over runs that have never happened
 
@@ -52,11 +52,9 @@ A registration over configurations that never ran is rework, not protection. Bef
 
 The last item matters most. If a run that costs seconds could disconfirm the prediction, run it first. That run is a pilot run, recorded as a pilot and feasibility study. It cannot confirm the hypothesis, so it cannot contaminate the confirmatory test.
 
-Where feasibility is unknown, offer the pilot and feasibility study to the researcher. The researcher decides its entry and its exit.
+Where feasibility is unknown, offer the pilot and feasibility study to the researcher.
 
 Seeds, folds and samples that already ran and were seen are exploratory. The registered protocol lists only unused ones. When the protocol changes for this reason, the three approvers approve the changed protocol before it is registered.
-
-Thinking "I will check the result first, then register"? Stop.
 
 ## Lock, register, execute, separate
 
@@ -70,7 +68,7 @@ Thinking "I will check the result first, then register"? Stop.
 
 Keep the draft protocol uncommitted until it is registered. The script refuses a file that already has history, because a registration is the first commit of the file.
 
-The lead session runs the registration. A role never runs it, and nobody writes the registration by hand.
+The lead session runs the registration. A role never runs it.
 
 ```
 python "${CLAUDE_PLUGIN_ROOT}/skills/preregistering-the-protocol/scripts/preregister.py" register research_lab/experiments/preregistrations/<EXP-id>.md --input <raw input file> --task <TASK-id>
@@ -79,16 +77,16 @@ python "${CLAUDE_PLUGIN_ROOT}/skills/preregistering-the-protocol/scripts/preregi
 Repeat `--input` for each raw input. The command makes two commits that hold only the protocol file.
 
 1. The registration commit carries the protocol alone, with the trailer `Preregistration: <protocol id>`, and the block `## Registered inputs` with one line `- <path> <blob hash>` for each input.
-2. The time-stamp commit writes the line `Registered at commit: <registration hash>` into the file. It carries the trailer `Preregistration-Timestamp: <registration hash>`.
+2. The time-stamp commit writes the line `Registered at commit: <registration hash>` into the file. It carries the trailer `Preregistration-Timestamp: <registration hash>`. The line goes after the YAML frontmatter when the file opens with one, else after the title.
 3. The command prints JSON: the two commit hashes and the input checksums.
 
-If the time-stamp commit fails, for example through a hook, fix the cause and run the command again with `--timestamp-only`. A failed commit exits with code 1 and shows git's output.
+If the time-stamp commit fails, fix the cause and run the command again with `--timestamp-only`. A failed commit exits with code 1 and shows git's output.
 
 After the command, in this order:
 
 1. Save the registered protocol with `science-ultrapowers:saving-artifacts`: `python "${CLAUDE_PLUGIN_ROOT}/skills/saving-artifacts/scripts/artifacts.py" save research_lab/experiments/preregistrations/<EXP-id>.md --role <role> --task <TASK-id>`.
 2. Write the Preregistration approval row in `research_lab/decisions/DECISION_LOG.md`. Put the registration hash in the Evidence column.
-3. Give the registration hash and the input checksums to the Lab & Experiments Lead. The lead copies them into the `Preregistration` and `Input checksums` fields of the experiment register row when the run is entered.
+3. Give the registration hash and the input checksums to the Lab & Experiments Lead. The lead copies them into the register row's `Preregistration` and `Input checksums` fields.
 
 A registered protocol is never edited. A change goes in a protocol deviation, below.
 

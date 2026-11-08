@@ -48,7 +48,7 @@ OpenAlex's `type` and `venue` are leads, not peer-review proof. A connector's fu
 2. Then full text for everything that survives.
 3. `science-ultrapowers:deciding-with-jev` may order the queue (Literature-stage screening). It never excludes a paper.
 
-A preprint (`is_preprint`, an arXiv `10.48550/` digital object identifier (DOI), SSRN, TechRxiv) is not peer-reviewed. It never gets an evidence record. Search for the published version and screen that DOI instead. If none exists, the preprint may be cited only for attribution, under the rules of `science-ultrapowers:verifying-evidence-by-doi`.
+A preprint (`is_preprint`, an arXiv `10.48550/` DOI, SSRN, TechRxiv) is not peer-reviewed. It never gets an evidence record. Search for the published version and screen that DOI instead. If none exists, the preprint may be cited only for attribution, under the rules of `science-ultrapowers:verifying-evidence-by-doi`.
 
 ## Next step
 
