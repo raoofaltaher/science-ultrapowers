@@ -170,7 +170,7 @@ class ArtifactIdTest(IdTestCase):
         self.assertEqual(report.artifacts, 3)
         self.assertEqual(self.outside_the_lab(), before)
 
-    def test_an_artifact_id_that_climbs_out_copies_nothing_outside_the_store(self):
+    def test_an_artifact_id_that_climbs_out_copies_nothing_outside_the_archive(self):
         self.build(edit=lambda conn: self.rename_artifact(conn, self.info.artifacts["a1"], HOSTILE))
         before = self.outside_the_lab()
         report, lines, store = self.export(self.open_conn())
@@ -191,7 +191,7 @@ class ArtifactIdTest(IdTestCase):
             set(self.info.versions.values()) - {self.info.versions["a1v2"]},
         )
         self.assertEqual(self.outside_the_lab(), before)
-        self.assertFalse((self.lab / "artifacts" / "store" / self.info.artifacts["a1"] / "v002_results.csv").exists())
+        self.assertFalse((self.lab / "artifacts" / "archive" / self.info.artifacts["a1"] / "v002_results.csv").exists())
 
     def test_a_check_with_a_bad_id_is_skipped_and_counted(self):
         self.build(edit=lambda conn: conn.execute(
@@ -209,7 +209,7 @@ class ArtifactIdTest(IdTestCase):
         report = mcs.export_artifacts(conn, self.project_of(conn), self.info.org_dir, store, lines, write=False)
         self.assertEqual(report.versions_invalid, 1)
         self.assertIn(warning("artifact_versions", ".."), lines)
-        self.assertFalse(any((self.lab / "artifacts" / "store").rglob("v0*")))
+        self.assertFalse(any((self.lab / "artifacts" / "archive").rglob("v0*")))
 
 
 class TranscriptAndProfileIdTest(IdTestCase):
@@ -269,7 +269,7 @@ class CliIdTest(IdTestCase):
         self.assertIn("invalid id", self.report_row("profiles")[4])
         self.assertIn("invalid id", self.report_row("artifacts")[4])
         self.assertIn("invalid id", self.report_row("versions")[4])
-        self.assertIn("invalid id", self.report_row("verification checks")[4])
+        self.assertIn("invalid id", self.report_row("reviewer findings")[4])
 
 
 if __name__ == "__main__":

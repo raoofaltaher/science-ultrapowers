@@ -19,7 +19,7 @@ import migrate_claude_science as mcs  # noqa: E402
 
 STUB_AGENT = (
     "---\n"
-    "name: lab-project-manager\n"
+    "name: research-project-manager\n"
     'description: "Stub agent."\n'
     "model: inherit\n"
     "skills:\n"
@@ -68,11 +68,11 @@ class ProfileTestCase(unittest.TestCase):
 
         self.plugin = self.tmp / "plugin"
         (self.plugin / "agents").mkdir(parents=True)
-        self.agent_file = self.plugin / "agents" / "lab-project-manager.md"
+        self.agent_file = self.plugin / "agents" / "research-project-manager.md"
         self.agent_file.write_text(STUB_AGENT, encoding="utf-8", newline="\n")
         for name in ("running-the-lab", "verifying-evidence-by-doi", "peer-review"):
             (self.plugin / "skills" / name).mkdir(parents=True)
-        (self.plugin / "skills" / "peer-review" / "PROVENANCE.md").write_text("vendored\n", encoding="utf-8")
+        (self.plugin / "skills" / "peer-review" / "PROVENANCE.md").write_text("adopted\n", encoding="utf-8")
 
         self.synced = self.tmp / "synced"
         (self.synced / "org-fixture-0001" / "deep-research").mkdir(parents=True)
@@ -116,7 +116,7 @@ class ClassifierTest(ProfileTestCase):
         c = self.classifier()
         self.assertEqual(c.classify("running-the-lab"), "lab")
         self.assertEqual(c.classify("doi-verified-evidence"), "lab")
-        self.assertEqual(c.classify("peer-review"), "vendored")
+        self.assertEqual(c.classify("peer-review"), "adopted")
         self.assertEqual(c.classify("pdf-explore"), "bundled")
         self.assertEqual(c.classify("skill-creator"), "bundled")
         self.assertEqual(c.classify("deep-research"), "account")
@@ -190,10 +190,10 @@ class ExportProfilesTest(ProfileTestCase):
     def test_diff_matches_profile_to_agent(self):
         report = self.export()
         self.assertEqual((report.matched, report.unmatched), (1, 1))
-        section = self.section("## `LAB_PROJECT_MANAGER` -> `lab-project-manager.md`")
+        section = self.section("## `LAB_PROJECT_MANAGER` -> `research-project-manager.md`")
         self.assertIn("```diff", section)
         self.assertIn("--- claude-science/LAB_PROJECT_MANAGER", section)
-        self.assertIn("+++ agents/lab-project-manager.md", section)
+        self.assertIn("+++ agents/research-project-manager.md", section)
         self.assertIn("\n-You keep the task board.", section)
         self.assertIn("\n+You keep the gates.", section)
         self.assertNotIn("Not part of the first paragraph", section)
@@ -212,10 +212,10 @@ class ExportProfilesTest(ProfileTestCase):
 
     def test_missing_skills_classified(self):
         self.export()
-        found = groups(self.section("## `LAB_PROJECT_MANAGER` -> `lab-project-manager.md`"))
+        found = groups(self.section("## `LAB_PROJECT_MANAGER` -> `research-project-manager.md`"))
         by_class = {key.split(" ")[0]: value for key, value in found.items()}
-        self.assertEqual(set(by_class), {"vendored", "bundled", "account", "example", "unknown"})
-        self.assertEqual(by_class["vendored"], ["`peer-review`"])
+        self.assertEqual(set(by_class), {"adopted", "bundled", "account", "example", "unknown"})
+        self.assertEqual(by_class["adopted"], ["`peer-review`"])
         self.assertEqual(by_class["bundled"], ["`pdf-explore`"])
         self.assertEqual(by_class["account"], ["`deep-research`"])
         self.assertEqual(by_class["example"], ["`theme-factory`"])

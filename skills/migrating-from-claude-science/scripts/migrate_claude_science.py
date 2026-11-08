@@ -19,7 +19,9 @@ Steps (one function each; later steps are added below `pick_project`):
   4. list or pick the project
   5. memories: route every memory row, write the files, index lines and listings
   6. profiles: one file per profile and PROFILE_DIFF.md against the plugin agents
-  7. artifacts: versions copied or linked, dependency edges, verification checks
+  7. artifacts: versions copied or linked into the archive, dependency edges, reviewer findings
+
+A lab in the 0.1 layout (a numbered folder whose replacement is absent) is refused, exit 2.
 
 Exit codes: 0 success, 2 usage or not found, 3 schema mismatch.
 """
@@ -103,7 +105,23 @@ class MigrationError(Exception):
         self.exit_code = exit_code
 
 
+OLD_LAYOUT_MESSAGE = "this lab uses the 0.1 layout; run science-ultrapowers:initializing-a-research-lab to migrate it"
+# The 0.1 numbered folders and the folders that replaced them.
+OLD_FOLDERS = (
+    ("00_project_knowledge", "project"), ("01_reference_registry", "literature"),
+    ("02_findings_ledger", "findings"), ("03_experiments", "experiments"), ("04_reviews", "reviews"),
+    ("05_access_requests", "requests"), ("06_decisions", "decisions"),
+    ("07_project_management", "planning"), ("08_decision_log", "automation"),
+    ("09_skill_vetting", "tool_vetting"),
+)
+
 ID_RE = re.compile(r"[A-Za-z0-9_-]+")
+
+
+def old_layout(lab):
+    """True for a lab in the 0.1 layout: an old numbered folder under `lab` whose replacement does not exist."""
+    lab = Path(lab)
+    return any((lab / old).is_dir() and not (lab / new).is_dir() for old, new in OLD_FOLDERS)
 
 
 def _valid_id(value):
@@ -387,16 +405,16 @@ PROFILE_TO_AGENT = {
     "DATA_EVAL_RESEARCHER": "data-evaluation-researcher",
     "DOC_WRITER": "documentation-writer",
     "DECISION_SYSTEMS": "decision-systems-specialist",
-    "LAB_PROJECT_MANAGER": "lab-project-manager",
-    "OPERON": "main-session",
+    "LAB_PROJECT_MANAGER": "research-project-manager",
+    "OPERON": "lead-session",
 }
 
 DEFAULT_INDEX_BUDGET = 150
-EVIDENCE_VALUES = ("stated", "observed", "inferred")
+BASIS_VALUES = ("stated", "observed", "inferred")
 
 # Checked in this order; word-start matching, case-insensitive.
 _TYPE_KEYWORDS = (
-    ("gotcha", "bug|upcast|fails|breaks|workaround|gotcha|mismatch"),
+    ("pitfall", "bug|upcast|fails|breaks|workaround|pitfall|gotcha|mismatch"),  # legacy
     ("decision", "decid|approv|ruling|ratif"),
     ("directive", "standing rule|directive|must never|no agent may|always"),
     ("vocabulary", "is defined as|means|stands for|refers to"),
@@ -405,9 +423,9 @@ _TYPE_RES = tuple(
     (kind, re.compile(r"\b(?:" + words + ")", re.IGNORECASE)) for kind, words in _TYPE_KEYWORDS
 )
 
-# The lab memory lint's RECORD_LINE_RE (memory-lint.mjs), ported exactly: a line that is
-# nothing but one or more lab record ids, optionally introduced and joined.
-_RECORD_ID = r"(?:F|D|EC|RV|T|REQ|EXP|H)-\d+"
+# The memory consistency check's RECORD_LINE_RE (memory-lint.mjs): a line that is
+# nothing but one or more lab record ids (the new prefixes and the legacy ones), optionally introduced and joined.
+_RECORD_ID = r"(?:FND|F|DEC|D|EVR|EC|REV|RV|ADV|DA|TASK|T|REQ|EXP|HYP|H|MTH|MP|RSK|R|ADH|PC)-\d+"
 RECORD_ONLY_RE = re.compile(
     r"^(?:(?:see|cf\.?|per)\s+)?"
     r"(?:(?:the\s+)?(?:decision|finding|record|review|exception|request|task|experiment|hypothesis)s?\s+)?"
@@ -461,7 +479,7 @@ def first_sentence(body):
 
 
 def normalize_slug(slug):
-    """The memory lint's normalizeName: NFKD, lower case, letters and digits, one trailing s off."""
+    """The memory consistency check's normalizeName: NFKD, lower case, letters and digits, one trailing s off."""
     text = unicodedata.normalize("NFKD", slug).lower()
     text = "".join(c for c in text if not unicodedata.category(c).startswith("M") and c.isalnum())
     return text[:-1] if text.endswith("s") else text
@@ -656,7 +674,7 @@ def _write_new_text(path, text):
     return True
 
 
-def _entry_text(slug, description, kind, entity, evidence, learned_by, date, note, memory_id, body):
+def _entry_text(slug, description, kind, entity, basis, learned_by, date, note, memory_id, body):
     head = [
         "---",
         "name: " + slug,
@@ -664,7 +682,7 @@ def _entry_text(slug, description, kind, entity, evidence, learned_by, date, not
         "metadata:",
         "  type: " + kind,
         "  entity: " + entity,
-        "  evidence: " + evidence,
+        "  basis: " + basis,
         "  learned_by: " + learned_by,
         "  origin: import",
         "date: " + date,
@@ -710,12 +728,12 @@ def _scan_imported(store):
 
 def _learned_by(conn, frame_id):
     """The lab role of the frame that taught a memory: its agent, else its parent's, else its
-    root's, else main-session (never unknown)."""
+    root's, else lead-session (never unknown)."""
     frame = conn.execute(
         "SELECT agent_name, parent_frame_id, root_frame_id FROM frames WHERE id = ?", (frame_id,)
     ).fetchone() if frame_id else None
     if frame is None:
-        return "main-session"
+        return "lead-session"
     role = agent_role(frame[0])
     for relative in (frame[1], frame[2]):
         if role != "unknown":
@@ -724,7 +742,7 @@ def _learned_by(conn, frame_id):
             "SELECT agent_name FROM frames WHERE id = ?", (relative,)
         ).fetchone() if relative else None
         role = agent_role(found[0]) if found is not None else "unknown"
-    return role if role != "unknown" else "main-session"
+    return role if role != "unknown" else "lead-session"
 
 
 def export_memories(conn, project, artifact_ids, lab, *, write=True):
@@ -771,7 +789,7 @@ def export_memories(conn, project, artifact_ids, lab, *, write=True):
     new_files = {}  # store-relative path -> text
     planned = {}  # store-relative path -> (report counter, memory id, index line)
     superseded, profile, record_only = [], [], []
-    imported = []  # (created_at, id, evidence, rel path, date, body) of every row now in the store
+    imported = []  # (created_at, id, basis, rel path, date, body) of every row now in the memory folder
 
     for row in rows:
         memory_id = row["id"]
@@ -801,25 +819,25 @@ def export_memories(conn, project, artifact_ids, lab, *, write=True):
             continue
         if scope == "profile":
             report.profile += 1
-            profile.append((memory_id, ["date: " + date, "evidence: " + _codespan(row["evidence"])], body))
+            profile.append((memory_id, ["date: " + date, "basis: " + _codespan(row["evidence"])], body))
             continue
         if is_record_only(body):
             report.record_only += 1
             record_only.append((memory_id, ["date: " + date, "only cites a lab record"], body))
             continue
 
-        evidence = row["evidence"]
+        basis = row["evidence"]  # the source column is `evidence`; the lab entry records it as `basis`
         mapped = mapping.get(memory_id)
         if isinstance(mapped, str) and mapped and _inside(store / mapped, store) and (store / mapped).is_file():
             report.already_present += 1
-            imported.append((row["created_at"], memory_id, evidence, mapped, date, body))
+            imported.append((row["created_at"], memory_id, basis, mapped, date, body))
             continue
 
-        if evidence not in EVIDENCE_VALUES:
+        if basis not in BASIS_VALUES:
             report.lines.append(
-                "memory " + memory_id + ": evidence " + repr(evidence) + " is not stated, observed or inferred; imported as stated"
+                "memory " + memory_id + ": basis " + repr(basis) + " is not stated, observed or inferred; imported as stated"
             )
-            evidence = "stated"
+            basis = "stated"
         learned_by = _learned_by(conn, row["source_frame_id"])
 
         base = slugify(first_sentence(body))
@@ -844,7 +862,7 @@ def export_memories(conn, project, artifact_ids, lab, *, write=True):
 
         description = _description(body)
         new_files[rel] = _entry_text(
-            slug, description, classify_type(body), entity, evidence, learned_by, date, note,
+            slug, description, classify_type(body), entity, basis, learned_by, date, note,
             memory_id, body,
         )
         # The title is the slug, never text of the body: the index is read as instructions.
@@ -862,12 +880,12 @@ def export_memories(conn, project, artifact_ids, lab, *, write=True):
         excess = total_lines - budget
         inferred = sorted((r for r in imported if r[2] == "inferred"), key=lambda r: (r[0], r[1]))
         for _, memory_id, _, rel, date, body in inferred[:excess]:
-            over_budget.append((memory_id, ["date: " + date, "evidence: inferred", "file: " + rel], body))
+            over_budget.append((memory_id, ["date: " + date, "basis: inferred", "file: " + rel], body))
         report.over_budget = len(over_budget)
         message = (
             "memory index has " + str(total_lines) + " lines, over the budget of " + str(budget)
             + "; " + str(len(over_budget)) + " oldest inferred imported rows are listed in "
-            "migration/PRUNE_CANDIDATES.md for your human partner's prune; nothing was dropped"
+            "migration/PRUNE_CANDIDATES.md for the researcher's prune; nothing was dropped"
         )
         if len(over_budget) < excess:
             message += "; " + str(excess - len(over_budget)) + " more lines must go by hand"
@@ -892,7 +910,7 @@ def export_memories(conn, project, artifact_ids, lab, *, write=True):
     if profile:
         _write_text(migration / "PROFILE_MEMORIES.md", _listing(
             "Profile memories",
-            "These are facts about your human partner, not about the project, so they are not in the lab. "
+            "These are facts about the researcher, not about the project, so they are not in the lab. "
             "Carry them by hand into Claude Code's user memory.",
             profile,
         ))
@@ -904,7 +922,7 @@ def export_memories(conn, project, artifact_ids, lab, *, write=True):
         ))
     if record_only or over_budget:
         sections = ["# Prune candidates", "",
-                    "Nothing listed here was dropped. Each row is for your human partner's prune.", ""]
+                    "Nothing listed here was dropped. Each row is for the researcher's prune.", ""]
         if record_only:
             sections += ["## Record-only memories", "",
                          "These rows only cite a lab record, so they were not imported.", ""]
@@ -913,7 +931,7 @@ def export_memories(conn, project, artifact_ids, lab, *, write=True):
         if over_budget:
             sections += ["## Over the index budget", "",
                          "The index is over its line budget. These are the oldest imported rows with "
-                         "inferred evidence.", ""]
+                         "an inferred basis.", ""]
             for memory_id, facts, body in over_budget:
                 sections += ["### " + memory_id, ""] + ["- " + f for f in facts] + ["", _fenced(body), ""]
         _write_text(migration / "PRUNE_CANDIDATES.md", "\n".join(sections))
@@ -952,7 +970,7 @@ DEFAULT_SYNCED_SKILLS = Path.home() / ".claude" / "skills" / "synced"
 
 SKILL_CLASS_HEADINGS = (
     ("lab", "lab"),
-    ("vendored", "vendored"),
+    ("adopted", "adopted (third-party skills the plugin carries)"),
     ("bundled", "bundled (Claude Science only; not portable)"),
     ("account", "account (reachable in Claude Code through the claude.ai sign-in)"),
     ("example", "example"),
@@ -969,13 +987,13 @@ def _child_dirs(path):
 
 
 class SkillClassifier:
-    """Sorts a Claude Science skill name into lab, vendored, bundled, account, example or unknown."""
+    """Sorts a Claude Science skill name into lab, adopted, bundled, account, example or unknown."""
 
     def __init__(self, plugin_skills, data_dir, synced_dir):
         plugin_skills = Path(plugin_skills)
         folders = _child_dirs(plugin_skills)
-        self.vendored = {n for n in folders if (plugin_skills / n / "PROVENANCE.md").is_file()}
-        self.lab = (folders - self.vendored) | set(OLD_SKILL_NAMES)
+        self.adopted = {n for n in folders if (plugin_skills / n / "PROVENANCE.md").is_file()}
+        self.lab = (folders - self.adopted) | set(OLD_SKILL_NAMES)
         self.bundled = set(BUNDLED_SKILLS)
         if data_dir is not None:
             runtime = Path(data_dir) / "runtime"
@@ -988,16 +1006,16 @@ class SkillClassifier:
         self.example = set(EXAMPLE_SKILLS)
 
     def classify(self, name):
-        for kind in ("lab", "vendored", "bundled", "account", "example"):
+        for kind in ("lab", "adopted", "bundled", "account", "example"):
             if name in getattr(self, kind):
                 return kind
         return "unknown"
 
     def plugin_name(self, name):
-        """The plugin skill a lab or vendored name maps to, else None."""
+        """The plugin skill a lab or adopted name maps to, else None."""
         if name in OLD_SKILL_NAMES:
             return OLD_SKILL_NAMES[name]
-        if name in self.lab or name in self.vendored:
+        if name in self.lab or name in self.adopted:
             return name
         return None
 
@@ -1005,13 +1023,13 @@ class SkillClassifier:
 def group_skills(names, classifier, preloaded=frozenset()):
     """Class -> sorted unique display tuples of the skills not in `preloaded`.
 
-    A tuple is (name,), or (old, new) for a lab or vendored skill the plugin renamed; each
+    A tuple is (name,), or (old, new) for a lab or adopted skill the plugin renamed; each
     part is shown as its own code span."""
     grouped = {}
     for name in names:
         kind = classifier.classify(name)
         shown = (name,)
-        if kind in ("lab", "vendored"):
+        if kind in ("lab", "adopted"):
             mapped = classifier.plugin_name(name)
             if mapped in preloaded:
                 continue
@@ -1077,7 +1095,7 @@ def _profile_file_name(name):
 def export_profiles(conn, plugin_agents_dir, lab, classifier, *, write=True):
     """Write one file per Claude Science profile and PROFILE_DIFF.md against the plugin agents.
 
-    No agent file is ever changed (spec D1); the diff is for your human partner to read."""
+    No agent file is ever changed (spec D1); the diff is for the researcher to read."""
     plugin_agents_dir, lab = Path(plugin_agents_dir), Path(lab)
     migration = lab / "migration"
     report = ProfileReport()
@@ -1158,7 +1176,7 @@ def export_profiles(conn, plugin_agents_dir, lab, classifier, *, write=True):
         "# Profile differences", "",
         "This compares each Claude Science profile with the matching science-ultrapowers agent file: "
         "the skills the profile lists that the agent does not preload, and the profile's system prompt "
-        "against the agent's first paragraph. It decides nothing by itself: your human partner reads it "
+        "against the agent's first paragraph. It decides nothing by itself: the researcher reads it "
         "and edits an agent file by hand if wanted. No agent file was changed.", "",
     ]
     text = "\n".join(header) + "\n" + "\n".join(matched_sections)
@@ -1193,7 +1211,7 @@ _DRIVE_RE = re.compile(r"^[A-Za-z]:")
 
 
 def load_artifacts():
-    """PLAN-02's store module (artifacts.py), imported by path once, as init_lab.py does."""
+    """The artifact archive module (artifacts.py), imported by path once, as init_lab.py does."""
     global _store_module
     if _store_module is not None:
         return _store_module
@@ -1202,20 +1220,20 @@ def load_artifacts():
         path = STORE_SCRIPTS / "artifacts.py"
         spec = importlib.util.spec_from_file_location(_STORE_MODULE_NAME, path)
         if spec is None or spec.loader is None:
-            raise MigrationError("cannot load the artifact store script: " + str(path))
+            raise MigrationError("cannot load the artifact archive script: " + str(path))
         module = importlib.util.module_from_spec(spec)
         sys.modules[_STORE_MODULE_NAME] = module
         try:
             spec.loader.exec_module(module)
         except (OSError, SyntaxError, ImportError) as exc:
             del sys.modules[_STORE_MODULE_NAME]
-            raise MigrationError("cannot load the artifact store script " + str(path) + ": " + str(exc))
+            raise MigrationError("cannot load the artifact archive script " + str(path) + ": " + str(exc))
     _store_module = module
     return module
 
 
 def ms_to_iso(ms):
-    """Epoch milliseconds as UTC ISO 8601 with Z and milliseconds (the store's now_iso format)."""
+    """Epoch milliseconds as UTC ISO 8601 with Z and milliseconds (the archive's now_iso format)."""
     if ms is None:
         return None
     try:
@@ -1228,7 +1246,7 @@ def ms_to_iso(ms):
 @dataclass
 class ArtifactReport:
     """Counts of the artifact step. artifacts, dependencies and checks count the rows this run
-    writes (or would write); a row already in a ledger is skipped and not counted again.
+    writes (or would write); a row already in a table is skipped and not counted again.
     Every source version is counted once in exactly one of already_present, versions_copied,
     versions_linked, versions_missing or versions_invalid (versions_changed is a subset of the
     first two kinds). A row whose id is not a safe name is skipped with a warning line and counted
@@ -1256,7 +1274,7 @@ _ILLEGAL_LEAF_RE = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
 
 
 def safe_leaf(filename):
-    """A file name as one store leaf that is legal on Windows: each of <>:"/\\|?* and every
+    """A file name as one archive leaf that is legal on Windows: each of <>:"/\\|?* and every
     control character becomes `_`, trailing dots and spaces go, an empty result is `file`."""
     leaf = _ILLEGAL_LEAF_RE.sub("_", str(filename)).rstrip(". ")
     return leaf or "file"
@@ -1320,17 +1338,30 @@ def _frame_role(conn, cache, frame_id):
 
 
 def _path_too_long(exc, dest):
-    """True when an OSError from a copy into the store is a path-length failure."""
+    """True when an OSError from a copy into the archive is a path-length failure."""
     if exc.errno == errno.ENAMETOOLONG or getattr(exc, "winerror", None) in (3, 206):
         return True
     return isinstance(exc, FileNotFoundError) and len(str(dest)) > 259
 
 
-def export_artifacts(conn, project, org_dir, store, report_lines, *, write=True, new_rows=None):
-    """Import the project's artifacts, versions, dependency edges and verification checks.
+ARCHIVE_REL = "artifacts/archive/"
 
-    Copies each version's file into the store (or records a link to a host file), checks the
-    sha256 against Claude Science's checksum, and writes each ledger once through
+# The reviewer-finding words: the old statuses are read as legacy and written in the new word.
+FINDING_STATUS_WORDS = {"unaddressed": "open", "claimed": "author-responded", "resolved": "closed"}  # legacy
+
+
+def finding_status(status):
+    """A reviewer finding's status in the archive's words (open, author-responded, re-opened, closed).
+    The three 0.1 status words are read and reported with the new word; any other
+    value is kept as it is."""
+    return FINDING_STATUS_WORDS.get(status, status)
+
+
+def export_artifacts(conn, project, org_dir, store, report_lines, *, write=True, new_rows=None):
+    """Import the project's artifacts, versions, dependency edges and reviewer findings.
+
+    Copies each version's file into the archive (or records a link to a host file), checks the
+    sha256 against Claude Science's checksum, and writes each table once through
     LabStore.rewrite (ruling R21). A missing or changed file is a row with that status and a
     line in report_lines; it never stops the run. write=False counts and writes nothing. A list
     given as new_rows receives the version rows of this run (written or not)."""
@@ -1340,12 +1371,12 @@ def export_artifacts(conn, project, org_dir, store, report_lines, *, write=True,
     report = ArtifactReport()
     artifact_base = org_dir / "artifacts"
 
-    ledgers = {name: store.rows(name) for name in ("artifacts", "versions", "dependencies", "verification_checks")}
-    known_artifacts = {r.get("id") for r in ledgers["artifacts"]}
-    known_versions = {r.get("id") for r in ledgers["versions"]}
-    known_checks = {r.get("id") for r in ledgers["verification_checks"]}
-    known_edges = {(r.get("version_id"), r.get("depends_on_version_id")) for r in ledgers["dependencies"]}
-    new = {name: [] for name in ledgers}
+    tables = {name: store.rows(name) for name in ("artifacts", "versions", "dependencies", "verification_checks")}
+    known_artifacts = {r.get("id") for r in tables["artifacts"]}
+    known_versions = {r.get("id") for r in tables["versions"]}
+    known_checks = {r.get("id") for r in tables["verification_checks"]}
+    known_edges = {(r.get("version_id"), r.get("depends_on_version_id")) for r in tables["dependencies"]}
+    new = {name: [] for name in tables}
 
     folders = {r[0]: r[1] for r in conn.execute("SELECT id, name FROM artifact_folders")}
     frame_cache, command_cache = {}, {}
@@ -1385,7 +1416,7 @@ def export_artifacts(conn, project, org_dir, store, report_lines, *, write=True,
                 "is_ephemeral": bool(art["is_ephemeral"]),
                 "superseded_by": art["superseded_by_artifact_id"],
                 "retention": art["retention"],
-                "destination": "snapshot",
+                "destination": "milestone",
                 "created_at": ms_to_iso(art["created_at"]),
                 "source": "claude-science",
             })
@@ -1424,8 +1455,8 @@ def export_artifacts(conn, project, org_dir, store, report_lines, *, write=True,
             else:
                 source = artifact_base / storage_path.replace("\\", "/")
                 kind = "copy"
-                stored_path = "artifacts/store/" + aid + "/v%03d_%s" % (ver["version_number"], leaf)
-                if not _inside(store.lab / stored_path, store.lab / "artifacts" / "store"):
+                stored_path = ARCHIVE_REL + aid + "/v%03d_%s" % (ver["version_number"], leaf)
+                if not _inside(store.lab / stored_path, store.lab / "artifacts" / "archive"):
                     project_versions.discard(vid)
                     report.versions_invalid += 1
                     report_lines.append(_invalid_id_line("artifact_versions", vid))
@@ -1469,7 +1500,7 @@ def export_artifacts(conn, project, org_dir, store, report_lines, *, write=True,
                             digest = sha256_file(dest)
                         except OSError as exc:
                             if not _path_too_long(exc, dest):
-                                raise MigrationError("cannot copy " + shown + " into the store: " + str(exc))
+                                raise MigrationError("cannot copy " + shown + " into the archive: " + str(exc))
                             too_long = True
                         if too_long:  # a per-file warning: the version is recorded as missing
                             report.versions_copied -= 1
@@ -1503,7 +1534,7 @@ def export_artifacts(conn, project, org_dir, store, report_lines, *, write=True,
                 "code_description": ver["code_description"],
                 "is_intermediate": bool(ver["is_intermediate"]),
                 "is_checkpoint": bool(ver["is_checkpoint"]),
-                "destination": "snapshot",
+                "destination": "milestone",
                 "environment": ver["environment_snapshot"],
                 "created_at": ms_to_iso(ver["created_at"]),
                 "source": "claude-science",
@@ -1538,7 +1569,7 @@ def export_artifacts(conn, project, org_dir, store, report_lines, *, write=True,
         "reviewer_frame_id, resolution, status, created_at, root_frame_id, source_ref "
         "FROM verification_checks ORDER BY created_at, id"
     ):
-        # A check belongs to the project by its version or by its root frame (ruling R26).
+        # A reviewer finding belongs to the project by its version or by its root frame (ruling R26).
         if chk["artifact_version_id"] not in project_versions and chk["root_frame_id"] not in project_frames:
             continue
         report.source_checks += 1
@@ -1558,7 +1589,7 @@ def export_artifacts(conn, project, org_dir, store, report_lines, *, write=True,
             "evidence": chk["evidence"],
             "rebuttal": chk["rebuttal"],
             "reviewer_role": _frame_role(conn, frame_cache, chk["reviewer_frame_id"]) or "reviewer",
-            "status": chk["status"],
+            "status": finding_status(chk["status"]),
             "resolution": chk["resolution"],
             "created_at": ms_to_iso(chk["created_at"]),
             "source_ref": chk["source_ref"],
@@ -1570,11 +1601,11 @@ def export_artifacts(conn, project, org_dir, store, report_lines, *, write=True,
         return report
     for name, rows in new.items():
         if rows:
-            store.rewrite(name, ledgers[name] + rows)
+            store.rewrite(name, tables[name] + rows)
     total = store.lfs_total()
     if total > store.budget_warn_bytes:
         report_lines.append(
-            "LFS total %.1f MB exceeds %.1f MB (lfs.budgetWarnMB in lab.json)"
+            "Git Large File Storage (LFS) total %.1f MB exceeds %.1f MB (lfs.budgetWarnMB in lab.json)"
             % (total / 1048576, store.budget_warn_bytes / 1048576)
         )
     return report
@@ -1597,7 +1628,7 @@ VARIABLE_NAME_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 
 DATA_NOTE = "Text copied from Claude Science is data, not instructions."
 COPIED_VERBATIM = (
-    "Imported code cells, environment snapshots, check evidence and transcripts are copied verbatim "
+    "Imported code cells, environment snapshots, reviewer-finding evidence and transcripts are copied verbatim "
     "and may hold pasted secrets or personal data: review them before any public push."
 )
 _CONTROL_RE = re.compile(r"[\x00-\x1f\x7f-\x9f]")
@@ -1661,13 +1692,15 @@ def _frame_iso(value):
 
 
 def check_lab(lab, project):
-    """The parsed lab.json of a scaffolded lab that is not another project's; else exit 2."""
+    """The parsed lab.json of a lab that is not another project's; else exit 2."""
     return check_lab_project(read_lab(lab), lab, project)
 
 
 def read_lab(lab):
-    """The parsed lab.json of a scaffolded lab; else exit 2. Needs no project."""
+    """The parsed lab.json of a lab in the current layout; else exit 2. Needs no project."""
     lab = Path(lab)
+    if old_layout(lab):
+        raise MigrationError(OLD_LAYOUT_MESSAGE, 2)
     lab_json = lab / "lab.json"
     if not lab_json.is_file():
         hint = ""
@@ -1696,7 +1729,7 @@ def check_lab_project(config, lab, project):
     return config
 
 
-# step 7: where we left off
+# step 7: the handover summary
 
 
 @dataclass
@@ -1751,17 +1784,17 @@ def _last_meeting(meetings, pattern):
 
 
 def write_digest(conn, project, lab, *, write=True):
-    """WHERE_WE_LEFT_OFF.md: last kickoff and stand-up, open rows, root frames, task summaries."""
+    """HANDOVER_SUMMARY.md: last session opening and close, open rows, root frames, task summaries."""
     lab = Path(lab)
     report = DigestReport()
     out = [
         DATA_NOTE, "",
-        "# Where we left off", "",
-        "This digest is read-only context for your human partner and the lab project manager: "
-        "the last kickoff and stand-up, the open work, and what Claude Science was doing.", "",
+        "# Handover summary", "",
+        "This summary is read-only context for the researcher and the research project manager: "
+        "the last session opening and close, the open work, and what Claude Science was doing.", "",
     ]
-    meetings = lab / "06_decisions" / "lab_meetings"
-    for title, pattern in (("Last kickoff", "*kickoff*.md"), ("Last stand-up", "*standup*.md")):
+    meetings = lab / "decisions" / "lab_meetings"
+    for title, pattern in (("Last session opening", "*opening*.md"), ("Last session close", "*close*.md")):
         found = _last_meeting(meetings, pattern)
         out += ["## " + title, ""]
         if found is None:
@@ -1769,8 +1802,8 @@ def write_digest(conn, project, lab, *, write=True):
         else:
             out += [_codespan(found.name), "", _fenced(_clean_body(_read_text(found))), ""]
     for title, path in (
-        ("Open tasks", lab / "07_project_management" / "TASK_BOARD.md"),
-        ("Open access requests", lab / "05_access_requests" / "ACCESS_REQUESTS.md"),
+        ("Open tasks", lab / "planning" / "WORK_PLAN.md"),
+        ("Open access requests", lab / "requests" / "ACCESS_REQUESTS.md"),
     ):
         rows = _open_rows(path)
         out += ["## " + title, ""]
@@ -1813,7 +1846,7 @@ def write_digest(conn, project, lab, *, write=True):
     ) if summaries else ["none"]
     out.append("")
     if write:
-        _write_text(lab / "migration" / "WHERE_WE_LEFT_OFF.md", "\n".join(out))
+        _write_text(lab / "migration" / "HANDOVER_SUMMARY.md", "\n".join(out))
     return report
 
 
@@ -1844,7 +1877,7 @@ def _read_json(path):
 
 
 def write_connectors(conn, data_dir, project, lab, *, write=True):
-    """CONNECTORS.md: every attached directory server, resolved and mapped to the catalogue."""
+    """CONNECTORS.md: every attached directory server, resolved and mapped to the catalog."""
     lab = Path(lab)
     report = ConnectorReport()
     attached = {}
@@ -1906,13 +1939,13 @@ def write_connectors(conn, data_dir, project, lab, *, write=True):
         command += " --connectors " + ",".join(sorted(mcp_ids))
         tail = ["Run this to add the mapped servers to the lab project:", "", _fenced(command), ""]
     else:
-        tail = ["No attached server maps to a catalogue entry that init can add, so there is no "
+        tail = ["No attached server maps to a catalog entry that init can add, so there is no "
                 "init command to run.", ""]
     out = [
         DATA_NOTE, "",
         "# Connectors", "",
         "Each directory server attached to a Claude Science profile, resolved against its directory "
-        "cache and mapped to the connector catalogue of the plugin.", "",
+        "cache and mapped to the connector catalog of the plugin.", "",
     ]
     out += (_table(["server", "name", "backend url", "auth", "agents", "Claude Code"], rows) if rows
             else ["No directory server is attached."]) + [""] + tail
@@ -2127,14 +2160,14 @@ def write_skills(conn, classifier, lab, *, write=True):
         flag = "yes" if enabled else "no"
         if kind == "skill":
             skill_class = classifier.classify(key)
-            plugin = classifier.plugin_name(key) if skill_class in ("lab", "vendored") else None
+            plugin = classifier.plugin_name(key) if skill_class in ("lab", "adopted") else None
             skills.append((_data(key), flag, skill_class, plugin or "-"))
         else:
             other.append((_data(kind), _data(key), flag))
     out = [
         DATA_NOTE, "",
         "# Skill state", "",
-        "The skill settings Claude Science held, each with its class: lab and vendored skills map to "
+        "The skill settings Claude Science held, each with its class: lab and adopted skills map to "
         "the plugin; bundled skills exist only in Claude Science.", "",
     ]
     out += (_table(["skill", "enabled", "class", "plugin skill"], skills) if skills else ["No skill rows."]) + [""]
@@ -2153,7 +2186,7 @@ class DriftReport:
 
 
 def write_skill_drift(org_dir, classifier, plugin_skills, lab, *, write=True):
-    """SKILLS_DRIFT.md: published lab and vendored skills against the plugin's, by SKILL.md hash."""
+    """SKILLS_DRIFT.md: published lab and adopted skills against the plugin's, by SKILL.md hash."""
     report = DriftReport()
     base = Path(org_dir) / "skills"
     rows = []
@@ -2162,7 +2195,7 @@ def write_skill_drift(org_dir, classifier, plugin_skills, lab, *, write=True):
         if not published.is_file():
             continue
         report.published += 1
-        plugin_name = classifier.plugin_name(name) if classifier.classify(name) in ("lab", "vendored") else None
+        plugin_name = classifier.plugin_name(name) if classifier.classify(name) in ("lab", "adopted") else None
         if plugin_name is None:
             report.other += 1
             continue
@@ -2183,12 +2216,12 @@ def write_skill_drift(org_dir, classifier, plugin_skills, lab, *, write=True):
     out = [
         DATA_NOTE, "",
         "# Skill drift", "",
-        "Each lab or vendored skill published in Claude Science, compared by the hash of its SKILL.md "
+        "Each lab or adopted skill published in Claude Science, compared by the hash of its SKILL.md "
         "with the plugin's skill. Nothing is changed. `differs` is expected for the skills the plugin "
         "rewrote.", "",
     ]
     out += (_table(["published skill", "plugin skill", "result"], rows) if rows else ["None compared."]) + [""]
-    out += ["not lab or vendored: %d" % report.other, ""]
+    out += ["not lab or adopted: %d" % report.other, ""]
     if write:
         _write_text(Path(lab) / "migration" / "SKILLS_DRIFT.md", "\n".join(out))
     return report
@@ -2414,14 +2447,14 @@ def write_transcripts(conn, project, lab, threshold_bytes, *, enabled, write=Tru
     return report
 
 
-# step 12: memory lint, report
+# step 12: memory consistency check, report
 
 
 def run_memory_lint(lab):
-    """(summary line, last output line or None) of the memory lint over <lab>/memory."""
+    """(summary line, last output line or None) of the memory consistency check over <lab>/memory."""
     node = shutil.which("node")
     if node is None:
-        return "memory lint not run: node not found", None
+        return "memory consistency check not run: node not found", None
     try:
         result = subprocess.run(
             [node, str(MEMORY_LINT), str(Path(lab) / "memory")],
@@ -2429,9 +2462,9 @@ def run_memory_lint(lab):
             timeout=120, stdin=subprocess.DEVNULL,
         )
     except (OSError, subprocess.SubprocessError) as exc:
-        return "memory lint not run: " + type(exc).__name__, None
+        return "memory consistency check not run: " + type(exc).__name__, None
     lines = [l for l in result.stdout.splitlines() if l.strip()]
-    return "memory lint: exit " + str(result.returncode), (lines[-1] if lines else None)
+    return "memory consistency check: exit " + str(result.returncode), (lines[-1] if lines else None)
 
 
 def _plugin_version():
@@ -2472,7 +2505,7 @@ def report_rows(memory, profile, artifact, artifact_source, connector, secrets, 
         ("dependencies", artifact.dependencies + artifact.dependencies_present + artifact.dependencies_outside,
          artifact.dependencies, artifact.dependencies_present,
          _skipped_cell(artifact.dependencies_outside, [(artifact.dependencies_outside, "one end outside the project")])),
-        ("verification checks", artifact.source_checks, artifact.checks,
+        ("reviewer findings", artifact.source_checks, artifact.checks,
          artifact.source_checks - artifact.checks - artifact.invalid_checks,
          _skipped_cell(artifact.invalid_checks, [(artifact.invalid_checks, "invalid id")])),
         ("connectors", connector.servers, connector.mapped, 0, _skipped_cell(
@@ -2486,7 +2519,7 @@ def report_rows(memory, profile, artifact, artifact_source, connector, secrets, 
                 (permissions.other_projects, "other projects")])),
         ("skill settings", skills, skills, 0, "0"),
         ("published lab skills", drift.published, drift.compared, 0, _skipped_cell(
-            drift.other, [(drift.other, "not lab or vendored")])),
+            drift.other, [(drift.other, "not lab or adopted")])),
     ]
     if transcripts.enabled:
         rows.append(("transcripts", transcripts.messages, transcripts.written, 0, _skipped_cell(
@@ -2553,7 +2586,7 @@ MAX_OTHER_WARNINGS = 10
 def collect_warnings(version_rows, lines):
     """(groups, other) of a run. A group is (heading, one, many, rows) for a kind that has rows.
 
-    The changed and missing kinds are rebuilt from the version rows (the ledger, plus this run's
+    The changed and missing kinds are rebuilt from the version rows (the table, plus this run's
     rows on a dry run), so a re-run still reports them; the other kinds come from this run's
     lines. `other` holds the lines that belong to no kind."""
     found = {key: [] for key, *_ in WARNING_KINDS}
@@ -2603,7 +2636,7 @@ def write_warnings_file(lab, groups, other, *, write=True):
     """migration/WARNINGS.md: every warning row, grouped by kind; rewritten on every real run."""
     out = [
         DATA_NOTE, "", "# Warnings", "",
-        "One section per kind of warning. This file is rewritten on every run from the ledgers and "
+        "One section per kind of warning. This file is rewritten on every run from the tables and "
         "from the lines of the run.", "",
     ]
     if not groups and not other:
@@ -2628,8 +2661,8 @@ def planned_files(memory, transcripts_enabled):
         ("migration/memory-map.json", "which memory row went to which file"),
         ("migration/profiles/", "one file per Claude Science profile"),
         ("migration/PROFILE_DIFF.md", "each profile against the lab's agents"),
-        ("artifacts/", "the ledgers and the copied files"),
-        ("migration/WHERE_WE_LEFT_OFF.md", "the last kickoff, the open work, the last task summaries"),
+        ("artifacts/", "the tables and the copied files of the archive"),
+        ("migration/HANDOVER_SUMMARY.md", "the last session opening and close, the open work, the last task summaries"),
         ("migration/CONNECTORS.md", "the servers to add"),
         ("migration/ENV_CHECKLIST.md", "the secret names to set"),
         ("migration/PERMISSIONS.md", "the grants to carry over"),
@@ -2637,11 +2670,11 @@ def planned_files(memory, transcripts_enabled):
         ("migration/SKILLS_DRIFT.md", "published skills against the plugin's"),
     ]
     if memory.profile:
-        files.append(("migration/PROFILE_MEMORIES.md", "facts about your human partner"))
+        files.append(("migration/PROFILE_MEMORIES.md", "facts about the researcher"))
     if memory.superseded:
         files.append(("migration/SUPERSEDED_MEMORIES.md", "memories Claude Science replaced"))
     if memory.record_only or memory.over_budget:
-        files.append(("migration/PRUNE_CANDIDATES.md", "memories for your human partner's prune"))
+        files.append(("migration/PRUNE_CANDIDATES.md", "memories for the researcher's prune"))
     if transcripts_enabled:
         files.append(("migration/transcripts/", "one JSON file per chat session"))
     files += [
@@ -2668,9 +2701,9 @@ def write_report(lab, *, dry_run, data_dir, org_dir, project, warning_lines, row
     out += table_lines(rows) + [""]
     out += [
         "Profiles, checklists and reports are rewritten on every run, so they count as imported "
-        "each time; ledger rows and memory files count as already present on a re-run.", "",
+        "each time; table rows and memory files count as already present on a re-run.", "",
     ]
-    out += ["## Memory lint", ""]
+    out += ["## Memory consistency check", ""]
     out += [lint[0]] + (["", _fenced(lint[1])] if lint[1] else []) + [""]
     out += ["## Warnings", ""]
     out += warning_lines + [""]
@@ -2686,7 +2719,7 @@ def write_report(lab, *, dry_run, data_dir, org_dir, project, warning_lines, row
         out += [
             "## Next", "",
             _fenced('git add research_lab/ && git commit -m "lab: import Claude Science project ' + name + '"'), "",
-            "Pushing the large files with `git lfs push` is your human partner's call.", "",
+            "Pushing the large files with `git lfs push` is the researcher's call.", "",
             COPIED_VERBATIM, "",
             "Read CONNECTORS.md for the servers to add and PERMISSIONS.md for the grants to carry over.", "",
         ]
@@ -2787,7 +2820,7 @@ def _migrate(args, data_dir, org_dir, warnings):
                 r[0] for r in conn.execute("SELECT id FROM artifacts WHERE project_id = ?", (project["id"],))
             }
             memory_report = export_memories(conn, project, artifact_ids, lab, write=write)
-            lint = ("memory lint not run: dry run", None)
+            lint = ("memory consistency check not run: dry run", None)
             if write:
                 lint = run_memory_lint(lab)
             classifier = SkillClassifier(PLUGIN_ROOT / "skills", data_dir, args.synced_skills_dir)
@@ -2800,7 +2833,7 @@ def _migrate(args, data_dir, org_dir, warnings):
                     conn, project, org_dir, store, artifact_lines, write=write, new_rows=new_version_rows
                 )
             except store_module.StoreError as exc:
-                raise MigrationError("artifact store: " + str(exc))
+                raise MigrationError("artifact archive: " + str(exc))
             digest_report = write_digest(conn, project, lab, write=write)
             connector_report = write_connectors(conn, data_dir, project, lab, write=write)
             secret_count = write_env_checklist(conn, lab, write=write)

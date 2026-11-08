@@ -25,7 +25,7 @@ REPO = Path(__file__).resolve().parents[4]
 INIT_LAB = REPO / "skills" / "initializing-a-research-lab" / "scripts" / "init_lab.py"
 DUMMY_SECRET_VALUE = "dummy-encrypted-value"
 STEPS = (
-    "memories", "profiles", "artifacts", "versions", "dependencies", "verification checks",
+    "memories", "profiles", "artifacts", "versions", "dependencies", "reviewer findings",
     "connectors", "secret names", "permissions", "skill settings", "published lab skills",
     "transcripts",
 )
@@ -129,45 +129,64 @@ class ReportTestCase(unittest.TestCase):
         return find_row(self.text("MIGRATION_REPORT.md"), step)
 
 
+class OldLayoutTest(ReportTestCase):
+    """A lab in the 0.1 layout is refused with one exact message (exit 2) before anything is written."""
+    MESSAGE = "this lab uses the 0.1 layout; run science-ultrapowers:initializing-a-research-lab to migrate it"
+
+    def test_a_numbered_folder_without_its_replacement_exits_2(self):
+        self.build()
+        (self.lab / "findings").rename(self.lab / "02_findings_ledger")
+        before = tree_snapshot(self.proj)
+        code = self.cli()
+        self.assertEqual(code, 2, self.err + self.out)
+        self.assertEqual(self.err.strip(), self.MESSAGE)
+        self.assertEqual(before, tree_snapshot(self.proj))
+
+    def test_a_numbered_folder_beside_its_replacement_is_not_the_old_layout(self):
+        self.build()
+        (self.lab / "07_project_management").mkdir()  # planning/ exists, so this one is not the old layout
+        self.run_ok()
+
+
 class DigestTest(ReportTestCase):
     def test_digest_lists_frames_and_task_summaries(self):
         self.build()
-        meetings = self.lab / "06_decisions" / "lab_meetings"
-        (meetings / "2026-10-01_kickoff.md").write_text("OLD KICKOFF\n", encoding="utf-8")
-        (meetings / "2026-11-01_kickoff.md").write_text("# Kickoff\nGoal: screen papers.\n", encoding="utf-8")
-        (meetings / "2026-11-05_standup.md").write_text("# Standup\nNext: review.\n", encoding="utf-8")
-        board = self.lab / "07_project_management" / "TASK_BOARD.md"
+        meetings = self.lab / "decisions" / "lab_meetings"
+        (meetings / "2026-10-01_opening.md").write_text("OLD OPENING\n", encoding="utf-8")
+        (meetings / "2026-11-01_opening.md").write_text("# Session opening\nGoal: screen papers.\n", encoding="utf-8")
+        (meetings / "2026-11-05_close.md").write_text("# Session close\nNext: review.\n", encoding="utf-8")
+        board = self.lab / "planning" / "WORK_PLAN.md"
         board.write_text(
             board.read_text(encoding="utf-8")
-            + "| T-001 | G1 | lab-project-manager | scientific-reviewer | Open | draft the protocol |\n"
-            + "| T-002 | G0 | lab-project-manager | scientific-reviewer | DONE | already finished |\n",
+            + "| TASK-0001 | Literature | research-project-manager | scientific-peer-reviewer | open | draft the protocol |\n"
+            + "| TASK-0002 | Question | research-project-manager | scientific-peer-reviewer | done | already finished |\n",
             encoding="utf-8",
         )
-        requests = self.lab / "05_access_requests" / "ACCESS_REQUESTS.md"
+        requests = self.lab / "requests" / "ACCESS_REQUESTS.md"
         requests.write_text(
             requests.read_text(encoding="utf-8")
-            + "| REQ-001 | FULLTEXT | 10.1/x | cite | pm | G1 | P1 | OPEN | |\n"
-            + "| REQ-002 | FULLTEXT | 10.1/y | cite | pm | G1 | P2 | FULFILLED | y.pdf |\n",
+            + "| REQ-0001 | full-text request | blocks a stage | open | pm | 2026-11-01 | |\n"
+            + "| REQ-0002 | full-text request | this cycle | fulfilled | pm | 2026-11-01 | 2026-11-02 |\n",
             encoding="utf-8",
         )
         self.run_ok()
-        digest = self.text("WHERE_WE_LEFT_OFF.md")
+        digest = self.text("HANDOVER_SUMMARY.md")
         self.assertIn("Goal: screen papers.", digest)
-        self.assertNotIn("OLD KICKOFF", digest)
+        self.assertNotIn("OLD OPENING", digest)
         self.assertIn("Next: review.", digest)
         self.assertIn("draft the protocol", digest)
         self.assertNotIn("already finished", digest)
-        self.assertIn("REQ-001", digest)
-        self.assertNotIn("REQ-002", digest)
+        self.assertIn("REQ-0001", digest)
+        self.assertNotIn("REQ-0002", digest)
         self.assertEqual(find_row(digest, "Fixture kickoff")[1:], ["completed", mcs.ms_to_iso(fixture_db.T0)])
         self.assertEqual(find_row(digest, "1"), ["1", "Screened 12 papers for the review"])
 
     def test_digest_without_meeting_files_or_open_rows(self):
         self.build()
-        shutil.rmtree(self.lab / "06_decisions" / "lab_meetings")
-        (self.lab / "05_access_requests" / "ACCESS_REQUESTS.md").unlink()
+        shutil.rmtree(self.lab / "decisions" / "lab_meetings")
+        (self.lab / "requests" / "ACCESS_REQUESTS.md").unlink()
         self.run_ok()
-        digest = self.text("WHERE_WE_LEFT_OFF.md")
+        digest = self.text("HANDOVER_SUMMARY.md")
         self.assertIn("none found", digest)
         self.assertIn("not present", digest)
 
@@ -180,7 +199,7 @@ class DigestTest(ReportTestCase):
 
         self.build(edit=edit)
         self.run_ok()
-        digest = self.text("WHERE_WE_LEFT_OFF.md")
+        digest = self.text("HANDOVER_SUMMARY.md")
         lines = digest.split("\n")
         self.assertIn("| # | task summary |", lines)
         self.assertFalse([l for l in lines if l.startswith("# Injected")])
@@ -204,7 +223,7 @@ class DigestTest(ReportTestCase):
 
         self.build(edit=edit)
         self.run_ok()
-        digest = self.text("WHERE_WE_LEFT_OFF.md")
+        digest = self.text("HANDOVER_SUMMARY.md")
         numbered = [l for l in digest.split("\n") if re.match(r"^\| \d+ \| ", l)]
         self.assertEqual(len(numbered), 20)
         self.assertTrue(numbered[0].startswith("| 1 | `Summary number 24"), numbered[0])
@@ -238,7 +257,7 @@ class ConnectorsTest(ReportTestCase):
         text = self.text("CONNECTORS.md")
         literature = find_row(text, "bundled:literature")
         self.assertIn("Claude Science only; not portable", literature[-1])
-        self.assertIn("lab-project-manager", literature[-2])
+        self.assertIn("research-project-manager", literature[-2])
         pubmed = find_row(text, fixture_db.DIR_UUID_PUBMED)
         self.assertEqual(pubmed[1], "PubMed")
         self.assertIn("add with init --connectors pubmed", pubmed[-1])
@@ -307,7 +326,7 @@ class PermissionsTest(ReportTestCase):
         self.assertIn("proj_other", other)
         self.assertNotIn("proj_other", head)
         self.assertNotIn("Rscript", head)
-        self.assertFalse((self.proj / ".claude").exists())
+        self.assertFalse((self.proj / ".claude" / "settings.json").exists())
 
     def section_of(self, text, heading):
         return text.partition("## " + heading)[2].partition("\n## ")[0]
@@ -363,7 +382,7 @@ class PermissionsTest(ReportTestCase):
         self.assertNotIn("blocked.example.org", command)
         self.assertIn("blocked.example.org", text)
         self.assertIn("defaultMode: auto", text)
-        self.assertFalse((self.proj / ".claude").exists())
+        self.assertFalse((self.proj / ".claude" / "settings.json").exists())
 
     def test_permissions_md_without_preferences_file_says_so(self):
         self.build()
@@ -413,7 +432,7 @@ class SkillsTest(ReportTestCase):
         text = self.text("SKILLS_DRIFT.md")
         self.assertEqual(find_row(text, "doi-verified-evidence")[1:], ["verifying-evidence-by-doi", "same"])
         self.assertEqual(find_row(text, "peer-review")[1:], ["peer-review", "differs"])
-        self.assertIn("not lab or vendored: 1", text)
+        self.assertIn("not lab or adopted: 1", text)
         row = self.report_row("published lab skills")
         self.assertEqual((lead_int(row[1]), lead_int(row[2]), lead_int(row[4])), (3, 2, 1))
 
@@ -672,7 +691,7 @@ class ReportTest(ReportTestCase):
             "Nothing was imported. Re-run without --dry-run to import; the real run writes the files "
             "named below.", nxt)
         for name in ("memory/", "migration/PROFILE_DIFF.md", "migration/CONNECTORS.md",
-                     "migration/PERMISSIONS.md", "migration/WHERE_WE_LEFT_OFF.md",
+                     "migration/PERMISSIONS.md", "migration/HANDOVER_SUMMARY.md",
                      "migration/transcripts/", "migration/WARNINGS.md", "artifacts/"):
             self.assertIn("- `" + name, nxt)
         self.assertNotIn("git add", report)
@@ -757,7 +776,7 @@ class ReportTest(ReportTestCase):
     def test_next_section_warns_that_copied_text_may_hold_secrets(self):
         self.build()
         sentence = (
-            "Imported code cells, environment snapshots, check evidence and transcripts are copied "
+            "Imported code cells, environment snapshots, reviewer-finding evidence and transcripts are copied "
             "verbatim and may hold pasted secrets or personal data: review them before any public push."
         )
         self.run_ok()
@@ -824,14 +843,14 @@ class ReportTest(ReportTestCase):
         self.run_ok()
         line = (
             "Profiles, checklists and reports are rewritten on every run, so they count as imported "
-            "each time; ledger rows and memory files count as already present on a re-run."
+            "each time; table rows and memory files count as already present on a re-run."
         )
         for run in range(2):
             lines = self.text("MIGRATION_REPORT.md").split("\n")
             self.assertEqual(lines.count(line), 1)
             counts = lines.index("## Counts")
             self.assertLess(counts, lines.index(line))
-            self.assertLess(lines.index(line), lines.index("## Memory lint"))
+            self.assertLess(lines.index(line), lines.index("## Memory consistency check"))
             self.run_ok()
 
     def test_report_states_that_dates_and_times_are_utc(self):
@@ -842,7 +861,7 @@ class ReportTest(ReportTestCase):
             self.assertEqual(lines.count("Dates and times are UTC."), 1)
             counts = lines.index("## Counts")
             self.assertLess(counts, lines.index("Dates and times are UTC."))
-            self.assertLess(lines.index("Dates and times are UTC."), lines.index("## Memory lint"))
+            self.assertLess(lines.index("Dates and times are UTC."), lines.index("## Memory consistency check"))
             self.run_ok("--dry-run")
 
     def test_path_too_long_copy_is_a_warning_and_the_run_exits_0(self):
@@ -861,7 +880,7 @@ class ReportTest(ReportTestCase):
         self.assertIn("1 version could not be copied: its path is too long (enable long paths", warnings)
         self.assertIn("LongPathsEnabled=1", warnings)
         details = self.text("WARNINGS.md")
-        self.assertIn("path too long: " + self.info.versions["a1v2"] + " artifacts/store/", details)
+        self.assertIn("path too long: " + self.info.versions["a1v2"] + " artifacts/archive/", details)
         row = self.report_row("versions")
         self.assertEqual(lead_int(row[1]), lead_int(row[2]) + lead_int(row[3]) + lead_int(row[4]))
         self.assertEqual(lead_int(row[2]), 5)
@@ -878,7 +897,7 @@ class ReportTest(ReportTestCase):
         self.assertEqual([lead_int(c) for c in self.report_row("versions")[1:5]], [5, 0, 5, 0])
         self.assertEqual([lead_int(c) for c in self.report_row("artifacts")[1:5]], [4, 0, 4, 0])
         self.assertEqual([lead_int(c) for c in self.report_row("dependencies")[1:5]], [1, 0, 1, 0])
-        self.assertEqual([lead_int(c) for c in self.report_row("verification checks")[1:5]], [1, 0, 1, 0])
+        self.assertEqual([lead_int(c) for c in self.report_row("reviewer findings")[1:5]], [1, 0, 1, 0])
 
     def test_report_numbers_of_the_first_run(self):
         self.build()
@@ -887,7 +906,7 @@ class ReportTest(ReportTestCase):
         self.assertEqual([lead_int(c) for c in self.report_row("profiles")[1:5]], [2, 2, 0, 0])
         self.assertEqual([lead_int(c) for c in self.report_row("artifacts")[1:5]], [4, 4, 0, 0])
         self.assertEqual([lead_int(c) for c in self.report_row("versions")[1:5]], [5, 5, 0, 0])
-        self.assertEqual([lead_int(c) for c in self.report_row("verification checks")[1:5]], [1, 1, 0, 0])
+        self.assertEqual([lead_int(c) for c in self.report_row("reviewer findings")[1:5]], [1, 1, 0, 0])
         self.assertEqual([lead_int(c) for c in self.report_row("connectors")[1:5]], [2, 1, 0, 1])
         self.assertEqual([lead_int(c) for c in self.report_row("secret names")[1:5]], [1, 1, 0, 0])
         self.assertIn("other project", self.report_row("memories")[4])
@@ -906,14 +925,14 @@ class ReportTest(ReportTestCase):
         self.assertEqual([lead_int(c) for c in row[1:5]], [2, 1, 0, 1])
         self.assertIn("outside the project", row[4])
 
-    def test_memory_lint_result_is_in_the_report(self):
+    def test_memory_consistency_check_result_is_in_the_report(self):
         if shutil.which("node") is None:
             self.skipTest("node is not on PATH")
         self.build()
         self.run_ok()
         report = self.text("MIGRATION_REPORT.md")
-        self.assertIn("## Memory lint", report)
-        self.assertIn("exit 0", report.partition("## Memory lint")[2])
+        self.assertIn("## Memory consistency check", report)
+        self.assertIn("exit 0", report.partition("## Memory consistency check")[2])
 
     def test_stdout_gives_the_report_path_and_the_table(self):
         self.build()

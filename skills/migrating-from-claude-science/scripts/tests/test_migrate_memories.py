@@ -139,7 +139,7 @@ class MemoryTestCase(unittest.TestCase):
 class ClassifyTest(unittest.TestCase):
     def test_classify_type_examples(self):
         cases = {
-            "gotcha": "The loader breaks when the cache is cold.",
+            "pitfall": "The loader breaks when the cache is cold.",
             "decision": "The panel decided to keep the dev split.",
             "directive": "Standing rule: cite the DOI beside every claim.",
             "vocabulary": "OOD means out-of-distribution here.",
@@ -148,14 +148,16 @@ class ClassifyTest(unittest.TestCase):
         for expected, body in cases.items():
             self.assertEqual(mcs.classify_type(body), expected, body)
         self.assertEqual(mcs.classify_type("It was DECIDED late."), "decision")
-        self.assertEqual(mcs.classify_type("Upcast the loss. Always."), "gotcha")
+        self.assertEqual(mcs.classify_type("Upcast the loss. Always."), "pitfall")
+        self.assertEqual(mcs.classify_type("A known gotcha of the loader."), "pitfall")  # legacy word, read
         self.assertEqual(mcs.classify_type("A debugger helps."), "lesson")
         self.assertEqual(mcs.classify_type("x is defined as y"), "vocabulary")
         self.assertEqual(mcs.classify_type("No agent may edit the ledger."), "directive")
 
     def test_agent_role(self):
         self.assertEqual(mcs.agent_role("LIT_RESEARCHER"), "literature-researcher")
-        self.assertEqual(mcs.agent_role("OPERON"), "main-session")
+        self.assertEqual(mcs.agent_role("OPERON"), "lead-session")
+        self.assertEqual(mcs.agent_role("LAB_PROJECT_MANAGER"), "research-project-manager")
         self.assertEqual(mcs.agent_role("DATA_EVAL_RESEARCHER"), "data-evaluation-researcher")
         self.assertEqual(mcs.agent_role("Lit Researcher v2.1"), "lit-researcher-v2-1")
         self.assertEqual(mcs.agent_role("Some_Agent"), "some-agent")
@@ -204,7 +206,7 @@ class ExportTest(MemoryTestCase):
         self.assertLessEqual(len(data["description"]), 150)
         self.assertEqual(data["description"], "Mixed-precision training fails on the old GPU driver; upcast the loss to float32.")
         self.assertEqual(data["metadata"], {
-            "type": "gotcha", "entity": "project", "evidence": "observed",
+            "type": "pitfall", "entity": "project", "basis": "observed",
             "learned_by": "literature-researcher", "origin": "import",
         })
         self.assertEqual(data["date"], utc_date(m1["created_at"]))
@@ -242,7 +244,8 @@ class ExportTest(MemoryTestCase):
         self.assertEqual(report.profile, 1)
         text = (self.lab / "migration" / "PROFILE_MEMORIES.md").read_text(encoding="utf-8")
         self.assertIn("The researcher prefers short summaries.", text)
-        self.assertIn("your human partner", text)
+        self.assertIn("the researcher", text)
+        self.assertNotIn("your human partner", text)
         self.assertIn(self.row("m2")["id"], text)
         self.assertIn(utc_date(self.row("m2")["created_at"]), text)
         self.assertNotIn("short summaries", "".join(
@@ -267,7 +270,7 @@ class ExportTest(MemoryTestCase):
         self.assertEqual(path.parent, self.store / "artifact" / a1)
         data, _ = parse_entry(path)
         self.assertEqual(data["metadata"]["entity"], "artifact:" + a1)
-        self.assertEqual(data["metadata"]["learned_by"], "main-session")
+        self.assertEqual(data["metadata"]["learned_by"], "lead-session")
         lines = self.section_lines("## Artifacts")
         self.assertEqual(len(lines), 1)
         self.assertIn("](artifact/" + a1 + "/" + path.name + ")", lines[0])
@@ -367,7 +370,7 @@ class ExportTest(MemoryTestCase):
         self.assertNotIn("m9", json.loads((self.lab / "migration" / "memory-map.json").read_text(encoding="utf-8")))
         self.assertNotIn("see D-0124", "".join(p.read_text(encoding="utf-8") for p in self.store.rglob("*.md")))
 
-    def test_learned_by_falls_back_to_parent_then_root_then_main_session(self):
+    def test_learned_by_falls_back_to_parent_then_root_then_lead_session(self):
         blank_with_lit_parent = "00000000-0000-4000-8000-000000000f61"
         blank_under_root = "00000000-0000-4000-8000-000000000f62"
         no_such_frame = "00000000-0000-4000-8000-000000000f63"
@@ -404,7 +407,7 @@ class ExportTest(MemoryTestCase):
             for key, memory_id in ids.items()
         }
         self.assertEqual(learned, {
-            "parent": "literature-researcher", "root": "main-session", "missing": "main-session",
+            "parent": "literature-researcher", "root": "lead-session", "missing": "lead-session",
         })
         everything = "".join(p.read_text(encoding="utf-8") for p in self.store.rglob("*.md"))
         self.assertNotIn("learned_by: unknown", everything)
@@ -487,7 +490,7 @@ class ExportTest(MemoryTestCase):
         self.build(edit=edit)
         report = self.export()
         data, _ = parse_entry(self.entry_for("m1"))
-        self.assertEqual(data["metadata"]["evidence"], "stated")
+        self.assertEqual(data["metadata"]["basis"], "stated")
         self.assertTrue(any("weird" in line and self.info.memories["m1"] in line for line in report.lines))
 
     def test_over_budget_marks_oldest_inferred_for_prune_and_drops_nothing(self):

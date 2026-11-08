@@ -110,12 +110,12 @@ class HelpersTest(unittest.TestCase):
 
 
 class ExportArtifactsTest(ArtifactTestCase):
-    def test_copy_versions_land_in_store_with_kept_ids(self):
+    def test_copy_versions_land_in_the_archive_with_kept_ids(self):
         report = self.export()
         a1 = self.aids["a1"]
         v1, v2 = self.version("a1v1"), self.version("a1v2")
-        self.assertEqual(v1["storage_path"], "artifacts/store/" + a1 + "/v001_results.csv")
-        self.assertEqual(v2["storage_path"], "artifacts/store/" + a1 + "/v002_results.csv")
+        self.assertEqual(v1["storage_path"], "artifacts/archive/" + a1 + "/v001_results.csv")
+        self.assertEqual(v2["storage_path"], "artifacts/archive/" + a1 + "/v002_results.csv")
         for key, row in (("a1v1", v1), ("a1v2", v2)):
             stored = self.lab / row["storage_path"]
             self.assertEqual(stored.read_bytes(), self.info.files[key].read_bytes())
@@ -151,7 +151,7 @@ class ExportArtifactsTest(ArtifactTestCase):
         self.assertEqual((row["kind"], row["status"]), ("copy", "missing"))
         checksum = self.edit_checksum("a2v1")
         self.assertEqual(row["sha256"], checksum)
-        self.assertEqual(row["storage_path"], "artifacts/store/" + self.aids["a2"] + "/v001_notes.md")
+        self.assertEqual(row["storage_path"], "artifacts/archive/" + self.aids["a2"] + "/v001_notes.md")
         self.assertFalse((self.lab / row["storage_path"]).exists())
         self.assertEqual(report.versions_missing, 2)  # a2v1 and the absent host file a4v1
         line = next(l for l in self.lines if l.startswith("missing: " + self.ids["a2v1"] + " "))
@@ -262,7 +262,7 @@ class ExportArtifactsTest(ArtifactTestCase):
                 line.endswith(" (recorded sha256 " + self.edit_checksum(key) + ")"), line)
         self.edit_db(lambda c: c.execute(
             "UPDATE artifact_versions SET checksum = '' WHERE id = ?", (self.ids["a2v1"],)))
-        shutil.rmtree(self.lab / "artifacts" / "store")
+        shutil.rmtree(self.lab / "artifacts" / "archive")
         for name in ("versions", "artifacts", "dependencies", "verification_checks"):
             self.module.LabStore(self.lab).rewrite(name, [])
         self.export()
@@ -324,7 +324,7 @@ class ExportArtifactsTest(ArtifactTestCase):
         check = checks[0]
         self.assertEqual(check["id"], "00000000-0000-4000-8000-000000000d11")
         self.assertEqual(check["version_id"], self.ids["a1v2"])
-        self.assertEqual((check["verdict"], check["severity"], check["status"]), ("warn", "minor", "unaddressed"))
+        self.assertEqual((check["verdict"], check["severity"], check["status"]), ("warn", "minor", "open"))
         self.assertEqual(check["claim"], "The table mixes dev and test numbers.")
         self.assertEqual(check["evidence"], "Row 3 cites the test split.")
         self.assertIsNone(check["rebuttal"])
@@ -449,7 +449,7 @@ class ExportArtifactsTest(ArtifactTestCase):
         self.assertEqual(a1, {
             "id": self.aids["a1"], "filename": "results.csv", "latest_version_id": self.ids["a1v2"],
             "folder": "Results", "is_user_upload": False, "is_ephemeral": False,
-            "superseded_by": None, "retention": None, "destination": "snapshot",
+            "superseded_by": None, "retention": None, "destination": "milestone",
             "created_at": mcs.ms_to_iso(fixture_db.T0), "source": "claude-science",
         })
         self.assertIsNone(artifacts[self.aids["a2"]]["folder"])
@@ -465,7 +465,7 @@ class ExportArtifactsTest(ArtifactTestCase):
         self.assertEqual(v2["producing_session"], self.info.frames["lit"])
         self.assertEqual(v2["code_description"], "Builds the results table")
         self.assertEqual((v2["is_intermediate"], v2["is_checkpoint"]), (False, False))
-        self.assertEqual((v2["destination"], v2["environment"]), ("snapshot", None))
+        self.assertEqual((v2["destination"], v2["environment"]), ("milestone", None))
         self.assertEqual((v2["version_number"], v2["content_type"]), (2, "text/csv"))
         self.assertEqual(v2["created_at"], mcs.ms_to_iso(fixture_db.T0 + 100))
         v1 = self.version("a1v1")
@@ -477,7 +477,7 @@ class ExportArtifactsTest(ArtifactTestCase):
         (self.lab / "artifacts" / ".gitattributes").unlink()
         self.export()
         text = (self.lab / "artifacts" / ".gitattributes").read_text(encoding="utf-8")
-        self.assertIn("store/** -text", text)
+        self.assertIn("archive/** -text", text)
         self.assertIn("*.jsonl text eol=lf", text)
         self.assertNotIn("filter=lfs", text)
 
@@ -521,8 +521,22 @@ class ExportArtifactsTest(ArtifactTestCase):
         self.assertEqual(self.rows("versions"), [])
 
 
-class StoreFieldNamesTest(ArtifactTestCase):
-    def test_rows_use_the_store_field_names(self):
+class ReviewerFindingWordsTest(unittest.TestCase):
+    """The reviewer-finding status of an imported check is written in the new words; the old words are read."""
+
+    def test_new_words_for_the_old_statuses(self):
+        for old, new in (("unaddressed", "open"), ("claimed", "author-responded"), ("resolved", "closed")):
+            self.assertEqual(mcs.finding_status(old), new)
+
+    def test_new_words_pass_through_and_unknown_words_are_kept(self):
+        for word in ("open", "author-responded", "re-opened", "closed"):
+            self.assertEqual(mcs.finding_status(word), word)
+        self.assertEqual(mcs.finding_status("something-else"), "something-else")
+        self.assertIsNone(mcs.finding_status(None))
+
+
+class ArchiveFieldNamesTest(ArtifactTestCase):
+    def test_rows_use_the_archive_field_names(self):
         other = self.tmp / "other"
         other.mkdir()
         scaffold(other)
@@ -530,12 +544,12 @@ class StoreFieldNamesTest(ArtifactTestCase):
         (other / "a.txt").write_text("one", encoding="utf-8")
         (other / "b.txt").write_text("two", encoding="utf-8")
         saved = store.save(
-            [other / "a.txt"], role="paper-author", command="python a.py", stage=False)[0]
+            [other / "a.txt"], role="academic-paper-author", command="python a.py", stage=False)[0]
         linked = store.link(
-            [other / "b.txt"], role="paper-author", command="python b.py",
+            [other / "b.txt"], role="academic-paper-author", command="python b.py",
             inputs=[saved["version_id"]], stage=False)[0]
         store.check_add(saved["version_id"], claim="c", verdict="warn",
-                        reviewer_role="scientific-reviewer", stage=False)
+                        reviewer_role="scientific-peer-reviewer", stage=False)
 
         self.export()
         ours = {name: self.rows(name) for name in ("artifacts", "versions", "dependencies", "verification_checks")}
@@ -574,10 +588,10 @@ class LargeCopyTest(ArtifactTestCase):
         report = self.export()
         self.assertEqual(self.version("a1v1")["status"], "ok")
         text = (self.lab / "artifacts" / ".gitattributes").read_text(encoding="utf-8")
-        line = "store/" + self.aids["a1"] + "/v001_results.csv filter=lfs diff=lfs merge=lfs -text"
+        line = "archive/" + self.aids["a1"] + "/v001_results.csv filter=lfs diff=lfs merge=lfs -text"
         self.assertEqual(text.split("\n").count(line), 1)
         self.assertEqual(text.count("filter=lfs"), 1)
-        self.assertIn("store/** -text", text)
+        self.assertIn("archive/** -text", text)
         self.assertEqual(report.versions_copied, 2)
         self.assertEqual(self.store.lfs_check()["missing_lines"], [])
 
@@ -587,7 +601,7 @@ class LargeCopyTest(ArtifactTestCase):
         config["lfs"]["budgetWarnMB"] = 1
         (self.lab / "lab.json").write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
         self.export()
-        warning = [l for l in self.lines if "LFS total" in l]
+        warning = [l for l in self.lines if "(LFS) total" in l]
         self.assertEqual(len(warning), 1, self.lines)
         self.assertIn("1.5 MB", warning[0])
         self.assertIn("budgetWarnMB", warning[0])
@@ -595,7 +609,7 @@ class LargeCopyTest(ArtifactTestCase):
     def test_no_budget_warning_under_the_budget(self):
         self.big_a1v1()
         self.export()
-        self.assertEqual([l for l in self.lines if "LFS total" in l], [])
+        self.assertEqual([l for l in self.lines if "(LFS) total" in l], [])
 
 
 if __name__ == "__main__":
