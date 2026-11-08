@@ -61,4 +61,12 @@ case "$(ctx_in "$tmp/half")" in *"$oldlayout"*) ;; *) echo "old-layout line miss
 mkdir -p "$tmp/other/research_lab/data_2026"
 printf '{\n  "pluginVersion": "%s"\n}\n' "$plugin_version" > "$tmp/other/research_lab/lab.json"
 case "$(ctx_in "$tmp/other")" in *"$oldlayout"*) echo "old-layout line printed for an unrelated folder"; exit 1;; esac
+# A researcher's own numbered folder is not one of the ten 0.1 folders: the notice stays silent.
+mkdir -p "$tmp/rawdata/research_lab/10_raw_data" "$tmp/rawdata/research_lab/findings"
+printf '{\n  "pluginVersion": "%s"\n}\n' "$plugin_version" > "$tmp/rawdata/research_lab/lab.json"
+case "$(ctx_in "$tmp/rawdata")" in *"$oldlayout"*) echo "old-layout line printed for a researcher's 10_raw_data folder"; exit 1;; esac
+# A lab with only 04_reviews/ left (half migrated) is still the 0.1 layout.
+mkdir -p "$tmp/onlyreviews/research_lab/04_reviews" "$tmp/onlyreviews/research_lab/findings"
+printf '{\n  "pluginVersion": "%s"\n}\n' "$plugin_version" > "$tmp/onlyreviews/research_lab/lab.json"
+case "$(ctx_in "$tmp/onlyreviews")" in *"$oldlayout"*) ;; *) echo "old-layout line missing for a lab with only 04_reviews/ left"; exit 1;; esac
 echo "session-start: ok"

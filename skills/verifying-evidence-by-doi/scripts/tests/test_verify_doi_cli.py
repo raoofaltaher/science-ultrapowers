@@ -326,9 +326,29 @@ class OldLayoutTests(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertEqual(err.strip(), OLD_LAYOUT_MESSAGE)
 
+    def test_a_researchers_own_numbered_folder_is_not_the_old_layout(self):
+        with tempfile.TemporaryDirectory() as folder:
+            (Path(folder) / "research_lab" / "10_raw_data").mkdir(parents=True)
+            here = Path.cwd()
+            os.chdir(folder)
+            try:
+                self.assertFalse(verify_doi.lab_uses_old_layout())
+            finally:
+                os.chdir(here)
+
+    def test_a_half_migrated_lab_with_only_04_reviews_left_is_the_old_layout(self):
+        def setup(root):
+            (root / "research_lab" / "04_reviews").mkdir(parents=True)
+            new = root / "research_lab" / "literature"
+            new.mkdir(parents=True)
+            (new / "SOURCES.csv").write_text(SOURCES_HEADER + source_row("S1", "citable"), encoding="utf-8")
+        code, out, err = self.run_in(setup, "--csv", "research_lab/literature/SOURCES.csv")
+        self.assertEqual(code, 2)
+        self.assertEqual(err.strip(), OLD_LAYOUT_MESSAGE)
+
     def test_a_lab_with_the_new_layout_is_not_the_old_layout(self):
         def setup(root):
-            (root / "research_lab" / "01_reference_registry").mkdir(parents=True)
+            (root / "research_lab" / "10_raw_data").mkdir(parents=True)
             new = root / "research_lab" / "literature"
             new.mkdir(parents=True)
             (new / "SOURCES.csv").write_text(SOURCES_HEADER + source_row("S1", "citable"), encoding="utf-8")

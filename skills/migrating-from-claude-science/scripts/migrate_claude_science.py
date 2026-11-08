@@ -21,7 +21,7 @@ Steps (one function each; later steps are added below `pick_project`):
   6. profiles: one file per profile and PROFILE_DIFF.md against the plugin agents
   7. artifacts: versions copied or linked into the archive, dependency edges, reviewer findings
 
-A lab in the 0.1 layout (a numbered folder whose replacement is absent) is refused, exit 2.
+A lab in the 0.1 layout (any of its ten numbered folders) is refused, exit 2.  # legacy
 
 Exit codes: 0 success, 2 usage or not found, 3 schema mismatch.
 """
@@ -106,22 +106,21 @@ class MigrationError(Exception):
 
 
 OLD_LAYOUT_MESSAGE = "this lab uses the 0.1 layout; run science-ultrapowers:initializing-a-research-lab to migrate it"
-# The 0.1 numbered folders and the folders that replaced them.
+# The ten numbered folders of the 0.1 layout.  # legacy
 OLD_FOLDERS = (
-    ("00_project_knowledge", "project"), ("01_reference_registry", "literature"),
-    ("02_findings_ledger", "findings"), ("03_experiments", "experiments"), ("04_reviews", "reviews"),
-    ("05_access_requests", "requests"), ("06_decisions", "decisions"),
-    ("07_project_management", "planning"), ("08_decision_log", "automation"),
-    ("09_skill_vetting", "tool_vetting"),
+    "00_project_knowledge", "01_reference_registry", "02_findings_ledger", "03_experiments",  # legacy
+    "04_reviews", "05_access_requests", "06_decisions", "07_project_management",  # legacy
+    "08_decision_log", "09_skill_vetting",  # legacy
 )
 
 ID_RE = re.compile(r"[A-Za-z0-9_-]+")
 
 
 def old_layout(lab):
-    """True for a lab in the 0.1 layout: an old numbered folder under `lab` whose replacement does not exist."""
+    """True for a lab in the 0.1 layout: any of the ten numbered folders exists directly under `lab`.
+    A numbered folder of the researcher's own does not count."""
     lab = Path(lab)
-    return any((lab / old).is_dir() and not (lab / new).is_dir() for old, new in OLD_FOLDERS)
+    return any((lab / old).is_dir() for old in OLD_FOLDERS)
 
 
 def _valid_id(value):
@@ -945,7 +944,7 @@ PLUGIN_ROOT = Path(__file__).resolve().parents[3]
 OLD_SKILL_NAMES = {
     "doi-verified-evidence": "verifying-evidence-by-doi",
     "research-lab-workflow": "running-the-lab",
-    "findings-ledger": "recording-findings",
+    "findings-ledger": "recording-findings",  # legacy
     "reference-access-request": "requesting-reference-access",
     "jev-decisions": "deciding-with-jev",
 }
@@ -959,11 +958,12 @@ BUNDLED_SKILLS = frozenset(
     skill-creator solublempnn using-model-endpoint doc-coauthoring""".split()
 )
 
-EXAMPLE_SKILLS = frozenset(
-    """academy-guide algorithmic-art brand-guidelines canvas-design claude-api discernment-nudge
-    doc-coauthoring docx frontend-design internal-comms mcp-builder pdf pptx skill-creator
-    slack-gif-creator theme-factory webapp-testing web-artifacts-builder xlsx""".split()
-)
+EXAMPLE_SKILLS = frozenset((
+    "academy-guide", "algorithmic-art", "brand-guidelines", "canvas-design", "claude-api",
+    "discernment-nudge",  # legacy
+    "doc-coauthoring", "docx", "frontend-design", "internal-comms", "mcp-builder", "pdf", "pptx",
+    "skill-creator", "slack-gif-creator", "theme-factory", "webapp-testing", "web-artifacts-builder", "xlsx",
+))
 
 ACCOUNT_BASE = frozenset({"docx", "pdf", "pptx", "xlsx"})
 DEFAULT_SYNCED_SKILLS = Path.home() / ".claude" / "skills" / "synced"

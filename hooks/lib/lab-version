@@ -3,16 +3,18 @@
 #
 # session-start runs on every session start and forks nothing, so this file is
 # bash builtins only: string slicing for the walk up the folders, the read
-# builtin and [[ =~ ]] for the two version strings, a glob for the numbered
-# folders of the 0.1 layout.
+# builtin and [[ =~ ]] for the two version strings, a test of ten fixed paths
+# for the numbered folders of the 0.1 layout.
 
 # lab_setup_notice <start dir> <plugin.json path>: sets lab_notice to the
 # notice lines for the lab at or above <start dir> (the nearest
 # research_lab/lab.json), else to the empty string:
 #   - the version line, when lab.json carries a pluginVersion that differs from
 #     the plugin's own version;
-#   - the old-layout line, when a numbered folder such as 02_findings_ledger/
-#     exists under research_lab/ (the 0.1 layout).
+#   - the old-layout line, when any of the ten folders of the 0.1 layout
+#     (00_project_knowledge to 09_skill_vetting) exists directly under # legacy
+#     research_lab/; any other numbered folder of the researcher's own does not
+#     count.
 # Both lines, version first, when both apply. Silent on every other path: no
 # lab, an unreadable file, a missing key.
 lab_setup_notice() {
@@ -45,8 +47,10 @@ lab_setup_notice() {
       fi
     fi
   fi
-  for numbered in "${lab_dir}"/[0-9][0-9]_*; do
-    if [ -d "$numbered" ]; then
+  # The ten folders of the 0.1 layout (one criterion shared with init).
+  for numbered in 00_project_knowledge 01_reference_registry 02_findings_ledger 03_experiments \
+    04_reviews 05_access_requests 06_decisions 07_project_management 08_decision_log 09_skill_vetting; do # legacy
+    if [ -d "${lab_dir}/${numbered}" ]; then
       if [ -n "$lab_notice" ]; then
         lab_notice="${lab_notice}"$'\n'
       fi

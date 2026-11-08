@@ -91,20 +91,17 @@ def jev_no_lab_message():
     return "no research_lab/ at or above %s; every Jev call is logged there" % os.getcwd()
 
 
-# The 0.1 numbered folders and the folders that replaced them.
-JEV_OLD_FOLDERS = (("00_project_knowledge", "project"), ("01_reference_registry", "literature"),
-                   ("02_findings_ledger", "findings"), ("03_experiments", "experiments"), ("04_reviews", "reviews"),
-                   ("05_access_requests", "requests"), ("06_decisions", "decisions"),
-                   ("07_project_management", "planning"), ("08_decision_log", "automation"),
-                   ("09_skill_vetting", "tool_vetting"))
+# The ten numbered folders of the 0.1 layout.  # legacy
+JEV_OLD_FOLDERS = ("00_project_knowledge", "01_reference_registry", "02_findings_ledger",  # legacy
+                   "03_experiments", "04_reviews", "05_access_requests", "06_decisions",  # legacy
+                   "07_project_management", "08_decision_log", "09_skill_vetting")  # legacy
 
 
 def jev_old_layout(root):
-    """True for a lab in the 0.1 layout: an old numbered folder (such as 08_decision_log/) under research_lab/
-    whose replacement (automation/) does not exist yet."""
+    """True for a lab in the 0.1 layout: any of the ten numbered folders exists directly under research_lab/.
+    A numbered folder of the researcher's own does not count."""
     lab = os.path.join(root, "research_lab")
-    return any(os.path.isdir(os.path.join(lab, old)) and not os.path.isdir(os.path.join(lab, new))
-               for old, new in JEV_OLD_FOLDERS)
+    return any(os.path.isdir(os.path.join(lab, old)) for old in JEV_OLD_FOLDERS)
 
 
 def _folder_list(value, where):

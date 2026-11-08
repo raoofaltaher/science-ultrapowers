@@ -298,6 +298,75 @@ class PreregisterTests(unittest.TestCase):
             proc = run(outside, *args, env=env)
             self.assertEqual(proc.returncode, 2, proc.stdout + proc.stderr)
 
+    def test_exit_2_outside_git_tells_to_run_from_inside_the_repository(self):
+        outside = Path(self.tmp) / "plain2"
+        outside.mkdir()
+        env = dict(os.environ, GIT_CEILING_DIRECTORIES=str(Path(self.tmp)))
+        write(outside, PROTOCOL, PROTOCOL_TEXT)
+        proc = run(outside, "register", PROTOCOL, env=env)
+        self.assertEqual(proc.returncode, 2, proc.stdout + proc.stderr)
+        self.assertIn("run the script from inside the project's repository", json.loads(proc.stdout)["error"])
+
+    def test_a_researchers_own_numbered_folder_is_not_the_0_1_layout(self):
+        write(self.repo, "research_lab/10_raw_data/notes.txt", "the researcher's own folder\n")
+        write(self.repo, PROTOCOL, PROTOCOL_TEXT)
+        proc = run(self.repo, "register", PROTOCOL)
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        code, report = check(self.repo)
+        self.assertEqual(code, 0, report)
+
+    def test_a_half_migrated_lab_with_only_04_reviews_left_is_the_0_1_layout(self):
+        write(self.repo, "research_lab/04_reviews/REVIEW_LOG.md", "an old folder\n")
+        write(self.repo, PROTOCOL, PROTOCOL_TEXT)
+        before = git(self.repo, "log", "--format=%H")
+        for args in (("register", PROTOCOL), ("check", PROTOCOL)):
+            proc = run(self.repo, *args)
+            self.assertEqual(proc.returncode, 2, proc.stdout + proc.stderr)
+            self.assertEqual(proc.stderr, OLD_LAYOUT_MESSAGE)
+        self.assertEqual(git(self.repo, "log", "--format=%H"), before)
+
+    def test_the_stamp_goes_after_a_leading_frontmatter_block(self):
+        text = "---\ntitle: EXP-0001\nstatus: draft\n---\n# EXP-0001 preregistration\n\n1. Hypothesis: yes.\n"
+        write(self.repo, PROTOCOL, text)
+        result = register(self.repo)
+        lines = (self.repo / PROTOCOL).read_text(encoding="utf-8").splitlines()
+        self.assertEqual(lines[:4], ["---", "title: EXP-0001", "status: draft", "---"])
+        self.assertEqual(lines[4], f"Registered at commit: {result['registration_commit']}")
+        self.assertEqual(lines[5], "# EXP-0001 preregistration")
+        code, report = check(self.repo)
+        self.assertEqual(code, 0, report)
+        for name, item in report["checks"].items():
+            self.assertEqual(item["status"], "clear", (name, item))
+
+    def test_an_unclosed_frontmatter_marker_is_not_a_block(self):
+        text = "---\n# EXP-0001 preregistration\n\n1. Hypothesis: yes.\n"
+        write(self.repo, PROTOCOL, text)
+        result = register(self.repo)
+        lines = (self.repo / PROTOCOL).read_text(encoding="utf-8").splitlines()
+        self.assertEqual(lines[0], "---")
+        self.assertEqual(lines[1], f"Registered at commit: {result['registration_commit']}")
+
+    def test_timestamp_only_after_the_protocol_was_renamed_with_git_mv(self):
+        registration = register_by_hand(self.repo)
+        renamed = "research_lab/experiments/preregistrations/EXP-0001-renamed.md"
+        git(self.repo, "mv", PROTOCOL, renamed)
+        git(self.repo, "commit", "-q", "-m", "rename the protocol file")
+        proc = run(self.repo, "register", renamed, "--timestamp-only", "--task", "TASK-0001")
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        result = json.loads(proc.stdout)
+        self.assertEqual(result["registration_commit"], registration)
+        self.assertEqual(result["protocol_id"], "EXP-0001")
+        message = git(self.repo, "log", "-1", "--format=%B")
+        self.assertIn("time-stamp protocol EXP-0001", message)
+        self.assertIn(f"Preregistration-Timestamp: {registration}", message)
+
+    def test_timestamp_only_without_any_registration_trailer_is_refused(self):
+        write(self.repo, PROTOCOL, PROTOCOL_TEXT)
+        commit_all(self.repo, "add protocol", PROTOCOL)
+        proc = run(self.repo, "register", PROTOCOL, "--timestamp-only")
+        self.assertEqual(proc.returncode, 2, proc.stdout + proc.stderr)
+        self.assertIn("no registration commit", json.loads(proc.stdout)["error"])
+
     def test_exit_2_on_the_0_1_layout(self):
         old = "research_lab/03_experiments/protocols/EXP-0001.md"
         write(self.repo, old, PROTOCOL_TEXT)

@@ -67,7 +67,12 @@ LEGACY_SOURCE_STATUSES = {
     "REJECTED_MISMATCH": "rejected: mismatch",  # legacy
 }
 OLD_LAYOUT_MESSAGE = "this lab uses the 0.1 layout; run science-ultrapowers:initializing-a-research-lab to migrate it"
-NUMBERED_FOLDER = re.compile(r"^\d\d_")
+# The ten numbered folders of the 0.1 layout; any one of them directly under research_lab/ makes the lab old.
+OLD_NUMBERED_FOLDERS = (  # legacy
+    "00_project_knowledge", "01_reference_registry", "02_findings_ledger", "03_experiments",  # legacy
+    "04_reviews", "05_access_requests", "06_decisions", "07_project_management",  # legacy
+    "08_decision_log", "09_skill_vetting",  # legacy
+)
 PREPRINT_PREFIXES = ("10.48550/", "10.2139/ssrn", "10.20944/preprints", "10.31219/", "10.36227/")
 
 
@@ -110,15 +115,14 @@ def normalize_source_status(token):
 
 def lab_uses_old_layout(*paths):
     """True when a `research_lab/` folder (the current directory's, or one that contains a given path) still has
-    a numbered folder such as `01_reference_registry/` and no `literature/` folder: the 0.1 layout."""
+    any of the ten numbered folders of the 0.1 layout directly under it. A numbered folder of the
+    researcher's own does not count."""
     roots = [Path.cwd() / "research_lab"]
     for given in paths:
         resolved = Path(given).resolve()
         roots.extend(parent for parent in (resolved, *resolved.parents) if parent.name == "research_lab")
     for root in roots:
-        if not root.is_dir() or (root / "literature").is_dir():
-            continue
-        if any(child.is_dir() and NUMBERED_FOLDER.match(child.name) for child in root.iterdir()):
+        if root.is_dir() and any((root / name).is_dir() for name in OLD_NUMBERED_FOLDERS):
             return True
     return False
 
@@ -622,7 +626,7 @@ def main():
     ap.add_argument("--extract-from", help="extract and check every DOI in a text/tex/md file (resolution + retraction only)")
     ap.add_argument("--bibtex", action="store_true", help="print Crossref BibTeX for the given DOI(s); matched, peer-reviewed sources only")
     ap.add_argument("--sources-bib", dest="sources_bib", help="build a .bib from the source table (citable rows, re-checked at build time)")
-    ap.add_argument("--registry-bib", dest="sources_bib", help=argparse.SUPPRESS)  # the 0.1 name, hidden
+    ap.add_argument("--registry-bib", dest="sources_bib", help=argparse.SUPPRESS)  # legacy
     ap.add_argument("--out", help="output .bib path for --sources-bib")
     a = ap.parse_args()
     if (a.sources_bib or a.csv) and lab_uses_old_layout(a.sources_bib or a.csv):

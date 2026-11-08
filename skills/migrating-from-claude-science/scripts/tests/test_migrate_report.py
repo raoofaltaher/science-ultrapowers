@@ -142,9 +142,18 @@ class OldLayoutTest(ReportTestCase):
         self.assertEqual(self.err.strip(), self.MESSAGE)
         self.assertEqual(before, tree_snapshot(self.proj))
 
-    def test_a_numbered_folder_beside_its_replacement_is_not_the_old_layout(self):
+    def test_a_numbered_folder_beside_its_replacement_is_still_the_old_layout(self):
         self.build()
-        (self.lab / "07_project_management").mkdir()  # planning/ exists, so this one is not the old layout
+        (self.lab / "04_reviews").mkdir()  # a half-migrated lab: one criterion, any of the ten 0.1 folders
+        before = tree_snapshot(self.proj)
+        code = self.cli()
+        self.assertEqual(code, 2, self.err + self.out)
+        self.assertEqual(self.err.strip(), self.MESSAGE)
+        self.assertEqual(before, tree_snapshot(self.proj))
+
+    def test_a_researchers_own_numbered_folder_is_not_the_old_layout(self):
+        self.build()
+        (self.lab / "10_raw_data").mkdir()
         self.run_ok()
 
 
@@ -164,7 +173,9 @@ class DigestTest(ReportTestCase):
         )
         requests = self.lab / "requests" / "ACCESS_REQUESTS.md"
         requests.write_text(
-            requests.read_text(encoding="utf-8")
+            "# Access requests\n\n"
+            "| REQ-id (request) | Type | Priority | Status | Source | Filed | Resolved |\n"
+            "|---|---|---|---|---|---|---|\n"
             + "| REQ-0001 | full-text request | blocks a stage | open | pm | 2026-11-01 | |\n"
             + "| REQ-0002 | full-text request | this cycle | fulfilled | pm | 2026-11-01 | 2026-11-02 |\n",
             encoding="utf-8",

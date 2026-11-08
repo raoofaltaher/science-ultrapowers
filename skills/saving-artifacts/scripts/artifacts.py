@@ -34,8 +34,8 @@ Usage:
 
     python artifacts.py resolve FILE [--write]
 
-A lab that still has the 0.1 layout (the old artifact folder or a numbered folder, and no
-artifacts/archive/) exits 2 and names the migration.
+A lab that still has the 0.1 layout (any of its ten numbered folders, or the old artifact
+folder without artifacts/archive/) exits 2 and names the migration.
 """
 from __future__ import annotations
 
@@ -159,17 +159,21 @@ def report_finding(row: dict) -> dict:
     return out
 
 
+# The ten numbered folders of the 0.1 layout; any one of them directly under research_lab/ makes the
+# lab old (the criterion of init's detect_old_layout). A numbered folder of the researcher's own does not.
+OLD_NUMBERED_FOLDERS = (  # legacy
+    "00_project_knowledge", "01_reference_registry", "02_findings_ledger", "03_experiments",  # legacy
+    "04_reviews", "05_access_requests", "06_decisions", "07_project_management",  # legacy
+    "08_decision_log", "09_skill_vetting",  # legacy
+)
+
+
 def is_old_layout(lab: Path) -> bool:
-    """True when the lab has the 0.1 layout: no artifacts/archive/, and either the old artifact
-    folder or a numbered folder."""
-    if (lab / "artifacts" / "archive").is_dir():
-        return False
-    if (lab / "artifacts" / "store").is_dir():  # legacy
+    """True when the lab has the 0.1 layout: any of the ten numbered folders exists under it, or the
+    old artifact folder exists and artifacts/archive/ does not."""
+    if (lab / "artifacts" / "store").is_dir() and not (lab / "artifacts" / "archive").is_dir():  # legacy
         return True
-    try:
-        return any(d.is_dir() and re.fullmatch(r"\d\d_.+", d.name) for d in lab.iterdir())
-    except OSError:
-        return False
+    return any((lab / name).is_dir() for name in OLD_NUMBERED_FOLDERS)
 
 
 def sha256_file(path: Path) -> str:

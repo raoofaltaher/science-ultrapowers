@@ -111,6 +111,28 @@ class ProfileTestCase(unittest.TestCase):
         return text[start:] if end < 0 else text[start:end]
 
 
+class SkillNameConstantsTest(unittest.TestCase):
+    """The skill-name sets the classifier uses keep their values (pinned across a restructure)."""
+
+    def test_example_skills_values(self):
+        self.assertIsInstance(mcs.EXAMPLE_SKILLS, frozenset)
+        self.assertEqual(sorted(mcs.EXAMPLE_SKILLS), [
+            "academy-guide", "algorithmic-art", "brand-guidelines", "canvas-design", "claude-api",
+            "discernment-nudge", "doc-coauthoring", "docx", "frontend-design", "internal-comms",
+            "mcp-builder", "pdf", "pptx", "skill-creator", "slack-gif-creator", "theme-factory",
+            "web-artifacts-builder", "webapp-testing", "xlsx",
+        ])
+
+    def test_old_skill_names_values(self):
+        self.assertEqual(mcs.OLD_SKILL_NAMES, {
+            "doi-verified-evidence": "verifying-evidence-by-doi",
+            "research-lab-workflow": "running-the-lab",
+            "findings-ledger": "recording-findings",
+            "reference-access-request": "requesting-reference-access",
+            "jev-decisions": "deciding-with-jev",
+        })
+
+
 class ClassifierTest(ProfileTestCase):
     def test_classes_in_order(self):
         c = self.classifier()

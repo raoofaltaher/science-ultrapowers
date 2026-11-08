@@ -562,9 +562,25 @@ class OldLayoutTests(JevCliBase):
         self.assertEqual(str(cm.exception), self.MESSAGE)
         self.assertEqual(fake.requests, [])
 
-    def test_a_lab_with_both_folders_is_not_the_old_layout(self):
+    def test_a_numbered_folder_beside_its_replacement_is_still_the_old_layout(self):
+        # A half-migrated lab: one criterion everywhere, any of the ten 0.1 folders.
         (self.root / "research_lab" / "automation").mkdir()
         (self.root / "research_lab" / "decisions").mkdir()
+        self.assertTrue(jev.jev_old_layout(str(self.root)))
+
+    def test_only_04_reviews_left_is_the_old_layout(self):
+        (self.root / "research_lab" / "08_decision_log").rmdir()
+        (self.root / "research_lab" / "06_decisions").rmdir()
+        (self.root / "research_lab" / "automation").mkdir()
+        (self.root / "research_lab" / "reviews").mkdir()
+        (self.root / "research_lab" / "04_reviews").mkdir()
+        self.assertTrue(jev.jev_old_layout(str(self.root)))
+
+    def test_a_researchers_own_numbered_folder_is_not_the_old_layout(self):
+        (self.root / "research_lab" / "08_decision_log").rmdir()
+        (self.root / "research_lab" / "06_decisions").rmdir()
+        (self.root / "research_lab" / "automation").mkdir()
+        (self.root / "research_lab" / "10_raw_data").mkdir()
         self.assertFalse(jev.jev_old_layout(str(self.root)))
 
     def test_any_numbered_folder_without_its_replacement_is_the_old_layout(self):

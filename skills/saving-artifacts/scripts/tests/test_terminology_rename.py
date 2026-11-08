@@ -110,12 +110,25 @@ class OldLayoutTest(RenameTestBase):
             code, out, err = run_cli(["--lab", str(lab), *argv])
             self.assertEqual((code, err.strip()), (2, OLD_LAYOUT), argv)
 
-    def test_an_archive_beside_numbered_folders_is_not_old(self):
+    def test_an_archive_beside_one_of_the_ten_folders_is_still_old(self):
+        # A half-migrated lab: one criterion everywhere, any of the ten 0.1 folders.
         lab = make_lab(self.t)
-        (lab / "02_findings_ledger").mkdir()
+        (lab / "04_reviews").mkdir()
         (lab / "artifacts" / "archive").mkdir(parents=True)
+        self._assert_exit_2(lab)
+
+    def test_only_04_reviews_left_is_the_old_layout(self):
+        lab = make_lab(self.t)
+        (lab / "findings").mkdir()
+        (lab / "04_reviews").mkdir()
+        self._assert_exit_2(lab)
+
+    def test_a_researchers_own_numbered_folder_is_not_the_old_layout(self):
+        lab = make_lab(self.t)
+        (lab / "10_raw_data").mkdir()
         code, out, err = run_cli(["--lab", str(lab), "search"])
         self.assertEqual((code, json.loads(out)), (0, []))
+        self.assertFalse(artifacts.is_old_layout(lab))
 
     def test_a_new_lab_is_not_old(self):
         lab = make_lab(self.t)

@@ -73,7 +73,7 @@ def git_commit(repo, subject, trailer, path):
 def find_repo(cwd) -> Path:
     proc = subprocess.run(["git", "-C", str(cwd), "rev-parse", "--show-toplevel"], capture_output=True)
     if proc.returncode != 0:
-        raise UsageError("not inside a git repository")
+        raise UsageError("not inside a git repository; run the script from inside the project's repository")
     return Path(proc.stdout.decode("utf-8", "replace").strip()).resolve()
 
 
@@ -105,6 +105,17 @@ def registration_commit(repo, path, protocol_id):
         if trailer(repo, commit, "Preregistration") == protocol_id:
             return commit
     return first_commit_touching(repo, path)
+
+
+def registration_by_trailer(repo, path):
+    """(commit, protocol id) of the oldest commit touching the path (renames followed) that carries any
+    'Preregistration:' trailer; (None, None) without one. The id comes from the trailer, so a protocol
+    file renamed with git mv after its registration keeps the id it was registered under."""
+    for commit in reversed(git(repo, "log", "--follow", "--format=%H", "--", path).split()):
+        found = trailer(repo, commit, "Preregistration")
+        if found:
+            return commit, found
+    return None, None
 
 
 def paths_in_commit(repo, commit) -> list:
@@ -169,8 +180,18 @@ def stamp_bytes(data: bytes, registration: str) -> bytes:
             lines[i] = new
             break
     else:
-        lines.insert(1, new)
+        lines.insert(_stamp_position(lines), new)
     return b"\n".join(lines)
+
+
+def _stamp_position(lines) -> int:
+    """The line index for a new stamp: after a leading YAML frontmatter block (a first line of '---' and a
+    later line of '---'), otherwise at line 2, after the title."""
+    if lines and lines[0].rstrip(b"\r") == b"---":
+        for i in range(1, len(lines)):
+            if lines[i].rstrip(b"\r") == b"---":
+                return i + 1
+    return 1
 
 
 def inputs_of(data: bytes) -> list:
@@ -189,17 +210,21 @@ def inputs_of(data: bytes) -> list:
     return found
 
 
+# The ten numbered folders of the 0.1 layout; any one of them directly under research_lab/ makes the
+# lab old (the criterion of init's detect_old_layout). A numbered folder of the researcher's own does not.
+OLD_NUMBERED_FOLDERS = (  # legacy
+    "00_project_knowledge", "01_reference_registry", "02_findings_ledger", "03_experiments",  # legacy
+    "04_reviews", "05_access_requests", "06_decisions", "07_project_management",  # legacy
+    "08_decision_log", "09_skill_vetting",  # legacy
+)
+
+
 def is_old_layout(lab: Path) -> bool:
-    """True when the lab has the 0.1 layout: no artifacts/archive/, and either the old artifact
-    folder or a numbered folder."""
-    if (lab / "artifacts" / "archive").is_dir():
-        return False
-    if (lab / "artifacts" / "store").is_dir():  # legacy
+    """True when the lab has the 0.1 layout: any of the ten numbered folders exists under it, or the
+    old artifact folder exists and artifacts/archive/ does not."""
+    if (lab / "artifacts" / "store").is_dir() and not (lab / "artifacts" / "archive").is_dir():  # legacy
         return True
-    try:
-        return any(d.is_dir() and re.fullmatch(r"\d\d_.+", d.name) for d in lab.iterdir())
-    except OSError:
-        return False
+    return any((lab / name).is_dir() for name in OLD_NUMBERED_FOLDERS)
 
 
 def repo_relative(repo: Path, arg) -> str:
@@ -265,18 +290,20 @@ def cmd_register(repo, protocol, inputs, task, timestamp_only) -> dict:
     if timestamp_only:
         if inputs:
             raise UsageError("inputs are recorded at registration; do not combine --input with --timestamp-only")
-        registration = registration_commit(repo, protocol, pid)
-        if registration is None or trailer(repo, registration, "Preregistration") != pid:
+        registration, pid = registration_by_trailer(repo, protocol)
+        if registration is None:
             raise UsageError(
-                "the first commit of the protocol is not a registration commit "
-                f"(no 'Preregistration: {pid}' trailer)"
+                "the protocol has no registration commit: none of its commits carries a "
+                "'Preregistration:' trailer"
             )
         if find_timestamp_commits(repo, protocol, registration):
             raise UsageError("the protocol is already time-stamped")
         if has_uncommitted(repo, protocol):
             raise UsageError("the protocol has uncommitted edits; commit or discard them first")
         timestamp = _stamp_commit(repo, protocol, pid, registration, task)
-        registered = inputs_of(git_bytes(repo, "cat-file", "blob", f"{registration}:{protocol}"))
+        changed = paths_in_commit(repo, registration)
+        registered_path = protocol if protocol in changed or len(changed) != 1 else changed[0]
+        registered = inputs_of(git_bytes(repo, "cat-file", "blob", f"{registration}:{registered_path}"))
         return _register_result(protocol, pid, registration, timestamp, registered)
     if git(repo, "log", "-1", "--format=%H", "--", protocol).strip():
         raise UsageError(
