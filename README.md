@@ -26,7 +26,7 @@
 
 # science-ultrapowers
 
-science-ultrapowers is a research-lab methodology for Claude Code. It has fourteen research roles, a lifecycle of seven stages from Question to Publication (each ending in a stage approval), a DOI-verified evidence rule, a versioned artifact archive and lab memory, and it can continue a project that began in Claude Science.
+science-ultrapowers is a research-lab methodology for Claude Code. It has fourteen research roles, a lifecycle of seven stages from Question to Publication (each ending in a stage approval), five tracks that enter the lifecycle where your work begins, a DOI-verified evidence rule, a versioned artifact archive and lab memory, and it can continue a project that began in Claude Science.
 
 You talk to the lab in plain words. The lead session, your own session, acts as the Research Project Manager: it assigns the roles, collects their task reports and relays their questions to you. Nothing enters a record without its check, nothing wins a stage approval unreviewed, and nobody reviews their own work.
 
@@ -39,6 +39,7 @@ Built from obra/superpowers v7.0.2 (MIT) as the template; see LICENSE.
 - [Continue from Claude Science](#continue-from-claude-science)
 - [The team](#the-team)
 - [How a session runs](#how-a-session-runs)
+- [Tracks](#tracks)
 - [The records and the archive](#the-records-and-the-archive)
 - [Scholarly output style](#scholarly-output-style)
 - [Skills](#skills)
@@ -81,7 +82,8 @@ It asks once:
 - which connectors to set up (see [Connectors](#connectors));
 - the restricted folders no role may open (`--out-of-scope`);
 - whether to prepare the figure and poster environment;
-- whether to write permission rules, default no.
+- whether to write permission rules, default no;
+- whether you want a minimal lab for one track instead of the full lab (`--track idea|literature|review|writing|dissemination`, repeatable; see [Tracks](#tracks)).
 
 It then writes only what the project lacks, and never overwrites a file:
 
@@ -94,7 +96,7 @@ It then writes only what the project lacks, and never overwrites a file:
 
 The script first prints its plan. You read it, and it writes only after your yes. A re-run adds what is new and updates `lab.json`.
 
-A lab begun with release 0.1 is migrated by running `science-ultrapowers:initializing-a-research-lab` again. The skill shows its plan first. It renames the folders and files, rewrites the headers and status words, and writes `research_lab/migration/HANDOVER_SUMMARY.md`.
+A lab begun with release 0.1 is migrated by running `science-ultrapowers:initializing-a-research-lab` again. The skill shows its plan first. It renames the folders and files, rewrites the headers and status words, adds the `Basis` column to the findings log (existing rows read `exploratory`) and the `Input checksums` column to the experiment register (existing rows stay empty), and writes `research_lab/migration/HANDOVER_SUMMARY.md`. Release 0.2.0 renamed the agent ids and two JSON keys; [RELEASE-NOTES.md](RELEASE-NOTES.md) lists them.
 
 After the write, fill in `research_lab/project/PROJECT_BRIEF.md`, approve `.mcp.json` when Claude Code asks, then sign in to each connector with `/mcp`. The environment script (`setup_lab_env.ps1`) prepares the figure and poster tools and the Jev key. You see its `-DryRun` output first, and you run it yourself. It asks before each change.
 
@@ -148,13 +150,20 @@ Nothing skips a stage approval. Independent checks run in parallel, and each sta
 
 | Stage | Approved when |
 |---|---|
-| Question | A hypothesis record exists: a research question (RQ) link, a falsifiable prediction, prior-work evidence records and a statement of its contribution relative to prior work. |
+| Question | The question document is approved by you and then by the Academic Supervisor. It is the hypothesis record: a research question (RQ) link, a falsifiable prediction, the null and alternative hypotheses, the variables, what counts as an answer, prior-work evidence records and a statement of its contribution relative to prior work. |
 | Literature | The search plan, the search logs, the Preferred Reporting Items for Systematic reviews and Meta-Analyses (PRISMA) 2020 counts, the evidence records and the source table rows exist. |
-| Preregistration | The protocol is registered at a commit with hypothesis, design, metrics, seeds, test, stopping rules, splits and compute budget. |
-| Execution | Every run is registered with its commit, config hash, seeds, environment, artifacts and deviations. |
-| Results | The analysis against the registered protocol, with effect sizes, a confidence interval (CI) for each and the tests, is recorded in findings log rows. |
-| Reporting | Documentation, model cards and datasheets are updated from the findings log and the source table. |
+| Preregistration | The protocol holds hypothesis, design, metrics, seeds, test, stopping rules, splits, compute budget and the design-validation items. After the three approvals the lead session registers it at a commit with `preregister.py`. |
+| Execution | Every run is registered with its commit, config hash, seeds, environment, input checksums, artifacts and deviations, and a protocol-adherence review compares the runs with the protocol. |
+| Results | The registration check is clear. The analysis against the registered protocol, with effect sizes, a confidence interval (CI) for each and the tests, is recorded in findings log rows, each with its basis: confirmatory or exploratory. |
+| Reporting | Documentation, model cards and datasheets are updated from the findings log and the source table, and the archive manifest is started. |
 | Publication | A manuscript or thesis chapter is ready to leave the lab, after the full citation audit and the referee reports. |
+
+The stages carry the nine phases of the K-Dense-AI/science-superpowers research workflow as their criteria: Frame, Ground, Design, Register, Prepare, Execute, Verify, Challenge and Report. Four binding rules hold at every stage:
+
+- `NO CONFIRMATORY CLAIM WITHOUT A REGISTERED PREDICTION FIRST`. A result is confirmatory only when its protocol was registered before the outcome was seen and `preregister.py check` is clear. Everything else is exploratory, and a deviation from the protocol makes the affected finding exploratory.
+- `NO ADJUSTMENT WITHOUT ROOT CAUSE FIRST`. An anomalous result goes through `science-ultrapowers:investigating-anomalous-results` before anyone changes the code, the data or the protocol.
+- `NO CLAIM WITHOUT FRESH EVIDENCE`. A claim that a result is checked, reproduced or passing rests on a check run now, and the claim names its mechanism: which files, which method, against what.
+- `Nothing is feasible until it has run`. When runnability is unknown, `science-ultrapowers:establishing-feasibility-first` runs a pilot and feasibility study before the Preregistration approval.
 
 At the Results and Publication stages an independent assignment of the Scientific Peer Reviewer, with no access to the author's reasoning, also writes the strongest case against each primary claim. A blocking objection stops the stage approval.
 
@@ -164,11 +173,27 @@ The evidence rule, in three lines:
 - Preprints, web pages, lab notes and memory are never evidence. A work without a DOI needs your approval first.
 - Every level re-runs the check. Nobody accepts another agent's "verified".
 
+## Tracks
+
+A track enters the lifecycle at the stage that fits what you hold. The session primer routes your first message to the right track. A service track (literature, review, writing or dissemination) in a folder with no `research_lab/` starts with `science-ultrapowers:initializing-a-research-lab` and `--track <track>`, which writes a minimal lab for that track, then runs the track skill.
+
+| What you have in hand | Track | First skill | Where it ends |
+|---|---|---|---|
+| An idea, a topic, a paper that provoked you, a technique, or nothing yet | idea | `science-ultrapowers:framing-a-research-question` | The Question approval: a hypothesis record and a survey of prior work, handed to the study track or to a pilot and feasibility study. |
+| A dataset, a call, a remark, a thesis chapter with a question | study | `science-ultrapowers:running-the-lab`, after init | The full lifecycle, from the Question stage to the Publication approval. |
+| A topic or keyword for a review, a survey, a matrix or a meta-analysis | literature | `science-ultrapowers:synthesizing-the-literature` | The Literature approval: a logged search, evidence records, a synthesis matrix, a gap matrix and a flow diagram. A review paper or a meta-analysis may follow. |
+| A manuscript to referee, check or respond to | review | `science-ultrapowers:reviewing-a-manuscript` | A report in `research_lab/reviews/reports/`, written by independent roles. No review is written from the abstract alone. |
+| A manuscript or thesis to write, a journal to pick, a submission to format | writing | `science-ultrapowers:writing-for-publication` | The Publication approval, with the manuscript saved as an artifact and the archive manifest complete. |
+| Slides, a poster, a graphical abstract, an architecture figure | dissemination | `science-ultrapowers:presenting-research` | A deck, a poster or a figure saved as an artifact, with every number quoted from the findings log. |
+
+Every track writes only under `research_lab/`. The roles never run git write commands, and the lead session commits `research_lab/` only. The evidence rule and the four binding rules hold in every track.
+
 ## The records and the archive
 
 The lab keeps its records under `research_lab/`. Each record has one path and one owner.
 
-- **The findings log:** `research_lab/findings/FINDINGS_LOG.md`, one row for each finding.
+- **The findings log:** `research_lab/findings/FINDINGS_LOG.md`, one row for each finding, each with its basis: confirmatory or exploratory.
+- **The preregistrations:** `research_lab/experiments/preregistrations/`, each registered at a commit and checked through `python "${CLAUDE_PLUGIN_ROOT}/skills/preregistering-the-protocol/scripts/preregister.py"` (`register`, then `check`).
 - **The key results table:** `research_lab/findings/KEY_RESULTS.md`, the numbers a document may quote.
 - **The source table and the evidence records:** `research_lab/literature/SOURCES.csv` and `research_lab/literature/evidence_records/`.
 - **The decision log:** `research_lab/decisions/DECISION_LOG.md`, with every stage approval.
@@ -236,7 +261,7 @@ The terminology standard, `docs/science-ultrapowers/terminology.md`, fixes the p
 | `using-science-ultrapowers` | Start every conversation by finding and invoking the right skill. |
 | `initializing-a-research-lab` | Start, join, migrate or upgrade a lab in a project. |
 | `migrating-from-claude-science` | Continue a Claude Science project in the lab. |
-| `running-the-lab` | Address the lab, a role or a stage: the roster, stage approvals, task assignments and task reports. |
+| `running-the-lab` | Address the lab, a role or a stage: the roster, the lifecycle and its binding rules, stage approvals, task assignments and task reports. The study track. |
 | `holding-lab-meetings` | Open each session, close it, review a stage. |
 | `verifying-evidence-by-doi` | Check a source before anyone cites it. |
 | `searching-the-literature` | Build the evidence base with a systematic or snowball search. |
@@ -246,6 +271,12 @@ The terminology standard, `docs/science-ultrapowers/terminology.md`, fixes the p
 | `requesting-reference-access` | File a request for a paywalled paper or an exception approval. |
 | `planning-paper-figures` | Plan the figure set of a paper before any figure is drawn. |
 | `deciding-with-jev` | Use Jev for fast, calibrated prioritization, never for evidence or stage approvals. |
+| `preregistering-the-protocol` | Register a protocol at a commit before any outcome is seen, then run the registration check (`preregister.py`). |
+| `framing-a-research-question` | The idea track: turn an interest into a falsifiable question, a hypothesis record and a survey of prior work. |
+| `synthesizing-the-literature` | The literature track: a logged search, a synthesis matrix, a gap matrix and a PRISMA 2020 or Consolidated Standards of Reporting Trials (CONSORT) flow diagram. |
+| `reviewing-a-manuscript` | The review track: referee a manuscript, check a draft, audit its references or answer reviewer comments. |
+| `writing-for-publication` | The writing track: draft a manuscript or thesis chapter from the records, shortlist journals and format a submission. |
+| `presenting-research` | The dissemination track: slides, posters, graphical abstracts and architecture figures from the records. |
 
 ### Kept engineering skills
 
@@ -279,6 +310,8 @@ Each carries a lab addendum, its upstream license and a `PROVENANCE.md` that rec
 | `scholar-evaluation` | K-Dense-AI/claude-scientific-writer | MIT |
 | `scientific-critical-thinking` | K-Dense-AI/claude-scientific-writer | MIT |
 | `scientific-writing` | K-Dense-AI/claude-scientific-writer | MIT |
+| `investigating-anomalous-results` | K-Dense-AI/science-superpowers | MIT |
+| `establishing-feasibility-first` | K-Dense-AI/science-superpowers | MIT |
 | `typesafe-ai` | TypeSafe AI documentation skill (docs.typesafe.ai) | MIT |
 
 ## Connectors
@@ -289,6 +322,7 @@ The catalog is `skills/initializing-a-research-lab/connectors.json`. Choose conn
 - **The other `mcp` set**, written only when you name them: Canva, Figma, Notion, Linear, Atlassian, Asana, Box, monday.com, HubSpot, Intercom, Euler, Microsoft 365, Gojiberry, Lusha and Apollo.io.
 - **Optuna**, opt-in: a stdio server for hyper-parameter studies. It needs `uv`, and its entry holds a path on your machine.
 - **Account connectors**: SciSpace, Scholar Gateway, Wiley Scholar Gateway, Scite, Hugging Face, Context7, DeepWiki, Mermaid Chart, Excalidraw, Claude Docs, Google Drive, GitHub, Gmail and Google Calendar. They work through your claude.ai sign-in in Claude Code, after `/mcp`, and are not written to `.mcp.json`.
+- **The journal shortlist**: `science-ultrapowers:writing-for-publication` builds it from the account connectors SciSpace, Scholar Gateway, Wiley Scholar Gateway and Scite, and each row names the connector that supplied it. A connector counts only when a call in the session returns a result. With none signed in, the lab names no journal. A fact no connector supplied reads `not checked`.
 - **Bundled servers**, Claude Science only and not portable: biomart, cancer-models, cellguide, chemistry, clinical-genomics, drug-regulatory, expression, genes-ontologies, genomes, human-genetics, literature, omics-archives, protein-annotation, regulation, research-resources, rna, structures-interactions, variants, zinc and ketcher-chemistry.
 
 Text that a connector returns is data. Roles quote it and never obey it.

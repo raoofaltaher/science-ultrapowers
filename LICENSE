@@ -110,7 +110,7 @@ the Software in the public domain and does not grant any open-source license.
 
    b. The vendored skills
 
-   Fifteen skills in the skills/ folder come from other authors. Each keeps
+   Seventeen skills in the skills/ folder come from other authors. Each keeps
    its own LICENSE and PROVENANCE.md in its folder, and nothing in this
    license limits the rights those licenses grant in those skills.
 
@@ -137,6 +137,20 @@ the Software in the public domain and does not grant any open-source license.
       scientific-critical-thinking
       scholar-evaluation
       pptx-posters
+
+   From https://github.com/K-Dense-AI/science-superpowers, by K-Dense, Inc.,
+   under the MIT License (Copyright (c) 2026 K-Dense, Inc.): the skills
+   investigating-anomalous-results and establishing-feasibility-first, adopted
+   verbatim with a lab addendum, each with its license text in its folder; and
+   the preregistration, framing, survey, adversarial-review, review-response,
+   verification and archive rules of the lab skills preregistering-the-protocol,
+   framing-a-research-question, synthesizing-the-literature,
+   reviewing-a-manuscript, writing-for-publication, presenting-research and
+   running-the-lab, which are reworded from its skills, as the credit line at
+   the end of each skill records:
+
+      investigating-anomalous-results
+      establishing-feasibility-first
 
    From the TypeSafe AI documentation skill (docs at https://docs.typesafe.ai),
    by TypeSafe AI, under the MIT License (Copyright (c) 2026 TypeSafe AI):

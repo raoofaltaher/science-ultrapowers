@@ -16,7 +16,7 @@ done
 
 if [ -f README.md ]; then
   for h in "Install" "Start a lab" "Continue from Claude Science" "The team" \
-    "How a session runs" "The records and the archive" "Scholarly output style"     "Skills" "Connectors" "Testing" "License"; do
+    "How a session runs" "Tracks" "The records and the archive" "Scholarly output style" "Skills" "Connectors" "Testing" "License"; do
     grep -qx "## $h" README.md || bad "README.md lacks the heading: ## $h"
   done
   grep -qF 'terminology.md' README.md || bad "README.md does not name terminology.md"
@@ -36,10 +36,12 @@ if [ -f LICENSE ]; then
     || bad "LICENSE first line is not 'science-ultrapowers Proprietary Use License'"
   grep -qF '7.0.2' LICENSE || bad "LICENSE does not name 7.0.2"
   grep -qF 'MIT' LICENSE || bad "LICENSE does not name MIT"
+  grep -qF 'science-superpowers' LICENSE || bad "LICENSE does not name science-superpowers"
 fi
 
 if [ -f RELEASE-NOTES.md ]; then
   grep -qE '^## 0\.1\.0( |$)' RELEASE-NOTES.md || bad "RELEASE-NOTES.md has no '## 0.1.0' heading"
+  grep -qE '^## 0\.2\.0' RELEASE-NOTES.md || bad "RELEASE-NOTES.md has no '## 0.2.0' heading"
   ! grep -qi 'unreleased' RELEASE-NOTES.md || bad "RELEASE-NOTES.md still says unreleased"
 fi
 
@@ -75,6 +77,7 @@ if [ -f README.md ]; then
   grep -qi 'pwsh\|PowerShell 7' README.md || bad "README.md requirements do not name PowerShell 7"
 fi
 grep -q 'test-repo-documents.sh' docs/testing.md || bad "docs/testing.md does not list test-repo-documents.sh"
+grep -q 'test_preregister.py' docs/testing.md || bad "docs/testing.md does not name test_preregister.py"
 grep -q '^permissions:' .github/workflows/ci.yml || bad "ci.yml has no permissions block"
 grep -q 'validate-0.1.0.txt' docs/science-ultrapowers/evals/README.md || bad "evals/README.md does not index validate-0.1.0.txt"
 

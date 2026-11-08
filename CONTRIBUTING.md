@@ -33,6 +33,8 @@ Search open and closed issues first. Never paste secrets, lab records, unpublish
 
 A skill is a markdown file that shapes how an agent behaves, so a wording change is a behavior change. Binding rules, rationalization tables and warning signs in the skills are deliberate devices. A skill's `description` says only when to use it ("Use when..."), never its workflow. Skills name actions, not tool names, and refer to each other as `science-ultrapowers:<skill>`. "The researcher" is deliberate terminology for the person who runs the lab.
 
+Five track skills (idea, literature, review, writing and dissemination), with the study track in `running-the-lab`, enter one lifecycle of seven stages at the stage that fits.
+
 For this reason no skill is added or changed without a pressure test: a baseline run without the change, a run with it, and a grading of both. `science-ultrapowers:writing-skills` describes the method, and the transcripts so far are under `docs/science-ultrapowers/evals/`. A report that quotes a session where a skill failed under pressure is the most useful kind.
 
 ## The terminology standard
