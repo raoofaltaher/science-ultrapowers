@@ -95,6 +95,18 @@ def first_commit_touching(repo, path):
     return out[-1] if out else None
 
 
+def registration_commit(repo, path, protocol_id):
+    """The commit that registered the protocol: the oldest commit touching the path (renames followed)
+    whose 'Preregistration:' trailer names the protocol id. Without such a commit, the commit that
+    added the path. Git's copy detection can otherwise trace a protocol copied from the lab's
+    template back to the commit that added the template."""
+    commits = git(repo, "log", "--follow", "--format=%H", "--", path).split()
+    for commit in reversed(commits):
+        if trailer(repo, commit, "Preregistration") == protocol_id:
+            return commit
+    return first_commit_touching(repo, path)
+
+
 def paths_in_commit(repo, commit) -> list:
     out = git_bytes(repo, "diff-tree", "--root", "--no-commit-id", "--name-only", "-r", "-z", commit)
     return [p.decode("utf-8", "replace") for p in out.split(b"\0") if p]
@@ -253,7 +265,7 @@ def cmd_register(repo, protocol, inputs, task, timestamp_only) -> dict:
     if timestamp_only:
         if inputs:
             raise UsageError("inputs are recorded at registration; do not combine --input with --timestamp-only")
-        registration = first_commit_touching(repo, protocol)
+        registration = registration_commit(repo, protocol, pid)
         if registration is None or trailer(repo, registration, "Preregistration") != pid:
             raise UsageError(
                 "the first commit of the protocol is not a registration commit "
@@ -355,7 +367,7 @@ def cmd_check(repo, protocol, outputs) -> dict:
             "shallow clone",
         )
         return _report(protocol, checks)
-    registration = first_commit_touching(repo, protocol)
+    registration = registration_commit(repo, protocol, Path(protocol).stem)
     if registration is None:
         return _report(protocol, _blocked(item("not clear", "no commit holds the protocol"), "no registration commit"))
     changed = paths_in_commit(repo, registration)
@@ -363,7 +375,7 @@ def cmd_check(repo, protocol, outputs) -> dict:
         reg_path = changed[0]
         registered = item("clear", f"commit {registration[:10]} holds the protocol alone")
     else:
-        registered = item("not clear", "the first commit of the protocol also holds: " + ", ".join(changed[:5]))
+        registered = item("not clear", "the registration commit also holds: " + ", ".join(changed[:5]))
         reg_path = protocol if protocol in changed else None
     if reg_path is None:
         return _report(protocol, _blocked(registered, "registration commit unknown"))

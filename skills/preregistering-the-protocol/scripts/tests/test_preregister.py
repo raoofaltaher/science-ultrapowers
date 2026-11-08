@@ -169,6 +169,20 @@ class PreregisterTests(unittest.TestCase):
         for name, item in report["checks"].items():
             self.assertEqual(item["status"], "clear", (name, item))
 
+    def test_check_registered_when_protocol_copied_from_a_tracked_template(self):
+        # A protocol copied from the lab's tracked template: git's copy detection must not trace
+        # the protocol back to the commit that added the template (which holds other files too).
+        write(self.repo, "research_lab/templates/PREREGISTRATION.md", PROTOCOL_TEXT)
+        write(self.repo, "research_lab/README.md", "the lab\n")
+        commit_all(self.repo, "lab set-up", "research_lab/templates/PREREGISTRATION.md", "research_lab/README.md")
+        write(self.repo, PROTOCOL, PROTOCOL_TEXT)
+        register(self.repo, "--input", "data/raw/fixture.csv")
+        write(self.repo, "results/EXP-0001/metrics.txt", "f1=0.8\n")
+        commit_all(self.repo, "run EXP-0001", "results/EXP-0001/metrics.txt")
+        code, report = check(self.repo, "--outputs", "results")
+        self.assertEqual(code, 0, report)
+        self.assertEqual(report["checks"]["registered"]["status"], "clear", report["checks"]["registered"])
+
     def test_check_registered_is_not_clear_when_never_committed(self):
         write(self.repo, PROTOCOL, PROTOCOL_TEXT)
         code, report = check(self.repo)
