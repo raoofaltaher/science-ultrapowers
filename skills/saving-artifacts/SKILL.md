@@ -29,6 +29,7 @@ NO DELIVERABLE LEAVES A HAND-OFF UNSAVED, AND NOTHING IS RECOMPUTED BEFORE THE S
 | A reviewer's verdict | `check add` on that version; the author answers with `mark-addressed`, a reviewer closes with `check review`. |
 | Citing a deliverable | `{{artifact:<version id>}}` or `[your text]({{artifact:<version id>}})`; `art_<artifact id>` means the latest version. `resolve <file> --write` rewrites the file with the markers turned into links before it leaves the lab; without `--write` it prints the resolved text and changes nothing. |
 | Looking for prior work | `search`, then `lineage` or `graph`. A folder listing is not a search. |
+| What a deliverable was based on, what is still open | `search <name>` for its ids, `lineage <latest version id>` for its inputs and checks, `check list` for the open verdicts. The ledgers are keyed by version id: a grep for an artifact id or a file name finds nothing and proves nothing. |
 | Large files | LFS lines are automatic; if `save` warns, install git-lfs if it is missing, then `git lfs install`. `lfs-check` at every stand-up. Exit 1 means one of two things: `missing_lines` lists stored copies without an LFS line (add the printed pattern to `research_lab/artifacts/.gitattributes`, or re-save), or the filter is unconfigured (`git lfs install`). When `path` reports a pointer, `git lfs pull`. |
 
 ## Commands
@@ -58,6 +59,7 @@ path <ref>      lineage <ref>      graph <ref>      lfs-check
 | "It's just an intermediate file" | `--intermediate`: search hides it, lineage keeps it. |
 | "A new filename is cleaner than a version" | It breaks the chain. `--version-of`. |
 | "I remember this file exists" | Memory is not the store. `search`. |
+| "I grepped the ledgers and found no rows" | Rows are keyed by version id. `search`, then `lineage`. |
 | "The inputs are obvious" | Not to next month's reviewer. `--inputs`. |
 | "The reviewer's note can live in chat" | Chat is gone at compaction. `check add`. |
 | "Save the .env so the key is versioned" | Never. The store is committed; a secret saved there is published. `save` and `link` refuse such files; `--force` is for a file your human partner has said is safe. |

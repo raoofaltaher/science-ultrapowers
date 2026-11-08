@@ -125,7 +125,7 @@ Deviations from the brief: <list or 'none'>
 
 ## Record map
 
-`research_lab/`: `00_project_knowledge/` brief; `01_reference_registry/` REGISTRY.csv, evidence_cards/, audits/; `02_findings_ledger/` FINDINGS.md, CANONICAL_NUMBERS.md; `03_experiments/` EXPERIMENT_REGISTER.md, protocols/; `04_reviews/` REVIEW_LOG.md, reports/; `05_access_requests/` ACCESS_REQUESTS.md; `06_decisions/` DECISIONS.md, lab_meetings/; `07_project_management/` TASK_BOARD.md; `08_decision_log/` Jev calls; `09_skill_vetting/`; `migration/` import digests and checklists; `templates/`; `artifacts/` the store: lineage and check list answer what a deliverable was based on and what is still unaddressed; `memory/`; `lab.json`; `.scratch/`. Full texts: `references/` at the project root.
+`research_lab/`: `00_project_knowledge/` brief; `01_reference_registry/` REGISTRY.csv, evidence_cards/, audits/; `02_findings_ledger/` FINDINGS.md, CANONICAL_NUMBERS.md; `03_experiments/` EXPERIMENT_REGISTER.md, protocols/; `04_reviews/` REVIEW_LOG.md, reports/; `05_access_requests/` ACCESS_REQUESTS.md; `06_decisions/` DECISIONS.md, lab_meetings/; `07_project_management/` TASK_BOARD.md; `08_decision_log/` Jev calls; `09_skill_vetting/`; `migration/` import digests and checklists; `templates/`; `artifacts/` the store: `science-ultrapowers:saving-artifacts` answers what a deliverable was based on and what is still unaddressed (`search <name>`, then `lineage <version id>` and `check list`; the ledgers are keyed by version id, so a grep of them proves nothing); `memory/`; `lab.json`; `.scratch/`. Full texts: `references/` at the project root.
 
 ## Every role
 

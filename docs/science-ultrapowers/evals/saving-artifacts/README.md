@@ -31,3 +31,14 @@ The scenario discriminates. Without the skill, agents know a store exists (the p
 - v3 → v4: the citing row's imperative "Run `resolve` before …" made both v3 runs call `resolve` with no markers in sight, one of them on a version id. v4 restores the descriptive form and names the argument: "`resolve <file>` turns markers into links before it leaves the lab."
 - Script (fix pass B): `--inputs` accepts repeated flags (B16), and a comma-separated `--inputs` gets a hint in its error (B19).
 - v4 → v5 (the pre-release review): artifact identity is the project-relative path, `resolve --write`, the secret and ignored-file refusal, `link:~/` expansion. The scenario reruns unchanged: [with-skill-v5-haiku](with-skill-v5-haiku.md) passes.
+
+## Scenario v2: what a deliverable was based on (0.1.1)
+
+Acceptance scenario 3 of 0.1.0 (the live project, "What is RV-0048 based on, and what is still unaddressed on it?") grepped the ledgers by artifact id, found nothing, and answered from the report, while `lineage` on the latest version listed five inputs and three checks. The fix adds a row to this skill's table and to `running-the-lab`'s record map: the ledgers are keyed by version id; `search`, then `lineage`, then `check list`. [scenario-v2-based-on.md](scenario-v2-based-on.md) plants the empty grep and the report's own input list.
+
+| Run | Skill | Model | Verdict | Notes |
+|---|---|---|---|---|
+| [v2-baseline](v2-baseline.md) | none | Haiku 5.5 | FAIL | "the store records no dependencies for this artifact, so the answer has to come from the report" |
+| [v2-with-skill-A](v2-with-skill-A.md) | 0.1.1 | Haiku 5.5 | PASS | search, lineage by version id, check list --all; the grep "could never match" |
+| [v2-with-skill-B](v2-with-skill-B.md) | 0.1.1 | Haiku 5.5 | PASS | same sequence; the report is secondary, the ledger output wins |
+
