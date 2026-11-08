@@ -9,8 +9,8 @@ fail=0
 # The private-string scan covers the design documents and the reading records. The
 # harness and removed-skill scans leave them out: the design documents name the other harnesses and the
 # removed skills on purpose, as non-goals and as history.
-exempt='^(RELEASE-NOTES\.md|LICENSE|tests/|docs/science-ultrapowers/evals/|docs/science-ultrapowers/claude-science-schema\.md)'
-exempt_design='^(RELEASE-NOTES\.md|LICENSE|docs/science-ultrapowers/specs/|docs/science-ultrapowers/plans/|docs/science-ultrapowers/research/|tests/|docs/science-ultrapowers/evals/|docs/science-ultrapowers/claude-science-schema\.md)'
+exempt='^(RELEASE-NOTES\.md|LICENSE|skills/[^/]+/LICENSE$|tests/|docs/science-ultrapowers/evals/|docs/science-ultrapowers/claude-science-schema\.md)'
+exempt_design='^(RELEASE-NOTES\.md|LICENSE|skills/[^/]+/LICENSE$|docs/science-ultrapowers/specs/|docs/science-ultrapowers/plans/|docs/science-ultrapowers/research/|tests/|docs/science-ultrapowers/evals/|docs/science-ultrapowers/claude-science-schema\.md)'
 ex="$exempt_design"
 # scan FLAGS PATTERN: matching lines of every non-exempt tracked file (NUL-safe).
 scan() {
