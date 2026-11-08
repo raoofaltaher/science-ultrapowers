@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # The repository documents, the logo assets, the release notes and the
-# licence field are in place and agree with each other.
+# license field are in place and agree with each other.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 fail=0
@@ -16,9 +16,11 @@ done
 
 if [ -f README.md ]; then
   for h in "Install" "Start a lab" "Continue from Claude Science" "The team" \
-    "How a session runs" "The stores" "Skills" "Connectors" "Testing" "Licence"; do
+    "How a session runs" "The records and the archive" "Scholarly output style"     "Skills" "Connectors" "Testing" "License"; do
     grep -qx "## $h" README.md || bad "README.md lacks the heading: ## $h"
   done
+  grep -qF 'terminology.md' README.md || bad "README.md does not name terminology.md"
+  grep -qF 'Scholarly Explanatory' README.md || bad "README.md does not name Scholarly Explanatory"
   grep -qE '^Built from obra/superpowers v7\.0\.2 \(MIT\) as the template' README.md \
     || bad "README.md lacks the template credit line"
   grep -qF 'assets/science-ultrapowers-small.svg' README.md \
@@ -55,6 +57,10 @@ fi
 
 [ "$(python -c "import json,sys; print(json.load(open(sys.argv[1], encoding='utf-8')).get('license', ''))" .claude-plugin/plugin.json)" != "MIT" ] \
   || bad "plugin.json license is still MIT"
+
+for f in docs/science-ultrapowers/terminology.md output-styles/scholarly-explanatory.md; do
+  [ -f "$f" ] || bad "missing file: $f"
+done
 
 for e in '.claude/' '__pycache__/' '*.pyc' 'node_modules/' '.DS_Store' '/.ultrapowers/'; do
   grep -qxF "$e" .gitignore || bad ".gitignore lacks: $e"
