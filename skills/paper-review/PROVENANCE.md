@@ -26,7 +26,7 @@
 | File | Status | Upstream | Vendored |
 |---|---|---|---|
 | `LICENSE` | added | `` | `52c155c8e749` |
-| `SKILL.md` | modified | `782ccccaa6cf` | `a7d69faedcbe` |
+| `SKILL.md` | modified | `782ccccaa6cf` | `dcaeb01261a6` |
 | `examples/sample-manuscript-excerpt.md` | unchanged | `5dc7ac57c567` | `5dc7ac57c567` |
 | `examples/sample-manuscript-review.md` | unchanged | `3baf0cb16b6a` | `3baf0cb16b6a` |
 | `references/figure-review-guide.md` | unchanged | `0ec273b08a34` | `0ec273b08a34` |
@@ -37,3 +37,4 @@
 | `references/statistical-review-guide.md` | unchanged | `e1c82bb1b4b4` | `e1c82bb1b4b4` |
 
 To re-verify: download `https://github.com/neuromechanist/research-skills/archive/f0219bde233abb44d8a0c5d73f41ea27073e1493.zip` and compare the `unchanged` rows.
+- 2026-11-08 science-ultrapowers: the lab's own lines in the body use the standard's paths and words (SKILL.md hash refreshed)

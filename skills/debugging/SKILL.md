@@ -119,7 +119,7 @@ itself is well-posed before chasing an unmet target.
 - Fix verified by the original failing check plus the standard gates.
 - Regression test added (or an explicit reason why not).
 - If the investigation dead-ends: document it (goal, issue, root cause if
-  known, lesson, alternative) in `research_lab/02_findings_ledger/LAB_NOTEBOOK.md` (and, for runs, `research_lab/03_experiments/EXPERIMENT_REGISTER.md`); a documented dead end is a valid outcome, a silent one is
+  known, lesson, alternative) in `research_lab/findings/LAB_NOTEBOOK.md` (and, for runs, `research_lab/experiments/EXPERIMENT_REGISTER.md`); a documented dead end is a valid outcome, a silent one is
   not.
 - If you are deep in a long session and the remaining fix is risky, prefer a
   validated, independently re-runnable handoff artifact (script plus ordered

@@ -46,9 +46,9 @@ For several candidates, issue one dispatch per candidate in a single message so 
 Run the reviewer in a **fresh context** and pass only framing (figure file paths, target journal, mode), never the authoring rationale. The reviewer reads `references/figure-qa-agent-procedure.md` from this skill's folder before producing findings.
 
 - **Claude Code:** delegate to the academic-reviewer or research-engineer (not the figure's author) subagent with the same framing; for panel mode issue one Agent call per lens in a single message, then one synthesis call.
-- **Inline fallback:** the figure's author may run the deterministic checks as a self-check before submitting; the gate check (G5/G6) is run by a non-author. Use it when delegation is unavailable or the user wants an in-thread check, following the procedure file directly.
+- **Inline fallback:** the figure's author may run the deterministic checks as a self-check before submitting; the stage-approval check (Reporting and Publication) is run by a non-author. Use it when delegation is unavailable or the user wants an in-thread check, following the procedure file directly.
 
-Independence: nobody reviews their own work (`science-ultrapowers:running-the-lab`). Log the result in `research_lab/04_reviews/` (`REVIEW_LOG.md`).
+Independence: nobody reviews their own work (`science-ultrapowers:running-the-lab`). Log the result in `research_lab/reviews/` (`REVIEW_LOG.md`).
 
 ## The report and the loop
 

@@ -35,7 +35,7 @@
 | File | Status | Upstream | Vendored |
 |---|---|---|---|
 | `LICENSE` | added | `` | `52c155c8e749` |
-| `SKILL.md` | modified | `ed3e58bfe469` | `1ad4527b6760` |
+| `SKILL.md` | modified | `ed3e58bfe469` | `193aca2a885f` |
 | `lib/theme.py` | added | `` | `77a61a048aff` |
 | `references/figure-qa-agent-procedure.md` | added | `` | `d8aabcd669c8` |
 | `references/figure-qa-procedure.md` | modified | `c35717f669b5` | `5a4f2c1a36f2` |
@@ -47,3 +47,4 @@
 | `scripts/validate_fonts.py` | added | `` | `a632bcbd9b98` |
 
 To re-verify: download `https://github.com/neuromechanist/research-skills/archive/f0219bde233abb44d8a0c5d73f41ea27073e1493.zip` and compare the `unchanged` rows.
+- 2026-11-08 science-ultrapowers: the lab's own lines in the body use the standard's paths and words (SKILL.md hash refreshed)

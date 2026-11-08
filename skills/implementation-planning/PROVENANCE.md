@@ -21,6 +21,7 @@
 | File | Status | Upstream | Vendored |
 |---|---|---|---|
 | `LICENSE` | added | `` | `52c155c8e749` |
-| `SKILL.md` | modified | `3c2d8e134aaf` | `71ccf021aed6` |
+| `SKILL.md` | modified | `3c2d8e134aaf` | `88f804ac6650` |
 
 To re-verify: download `https://github.com/neuromechanist/research-skills/archive/f0219bde233abb44d8a0c5d73f41ea27073e1493.zip` and compare the `unchanged` rows.
+- 2026-11-08 science-ultrapowers: the lab's own lines in the body use the standard's paths and words (SKILL.md hash refreshed)

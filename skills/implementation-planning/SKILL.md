@@ -19,7 +19,7 @@ description: "Use this skill when the user asks to \"plan this feature\", \"writ
 Plans that a different (or weaker) model could execute without re-deriving
 your reasoning, with success criteria fixed before any result is seen.
 
-## Model handoff (lab overlay)
+## Model assignment (lab addendum)
 
 Use the strongest available model for problem framing, macro architecture, irreversible decisions and plan drafting. **Plan approval is a lab gate decision** (G0/G2, Academic Supervisor, recorded in the decision log), not a model choice. After approval, split the work into task briefs (see `science-ultrapowers:running-the-lab`) for the owning specialists, each dispatched as the role's subagent. Write each brief so a specialist can execute it without reconstructing design intent.
 
