@@ -1,5 +1,11 @@
 # Release notes
 
+## 0.1.1 (2026-11-08)
+
+- `running-the-lab` and `saving-artifacts`: a "what is this deliverable based on" question runs `search`, then `lineage` by version id and `check list`; a grep of the ledgers by artifact id proves nothing, because the rows are keyed by version id (found by acceptance scenario 3 of 0.1.0).
+- The leak gate follows the design documents to `docs/science-ultrapowers/specs/` and `plans/`.
+- The acceptance transcripts of 0.1.0 under `docs/science-ultrapowers/evals/acceptance/`.
+
 ## 0.1.0 (2026-11-08)
 
 Initial release, built from obra/superpowers v7.0.2 (MIT) as the template.

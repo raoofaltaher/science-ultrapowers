@@ -1,14 +1,19 @@
 {
   "name": "science-ultrapowers",
   "description": "Marketplace for the science-ultrapowers research-lab plugin",
-  "owner": { "name": "raoofaltaher", "url": "https://github.com/raoofaltaher" },
+  "owner": {
+    "name": "raoofaltaher",
+    "url": "https://github.com/raoofaltaher"
+  },
   "plugins": [
     {
       "name": "science-ultrapowers",
       "description": "A research-lab methodology for Claude Code: fourteen research roles, stage gates G0-G6, a DOI-verified evidence rule, a versioned artifact store and lab memory, with migration from Claude Science",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "source": "./",
-      "author": { "name": "RAOOF A." }
+      "author": {
+        "name": "RAOOF A."
+      }
     }
   ]
 }

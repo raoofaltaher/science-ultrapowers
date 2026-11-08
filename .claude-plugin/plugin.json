@@ -1,12 +1,23 @@
 {
   "name": "science-ultrapowers",
   "description": "A research-lab methodology for Claude Code: fourteen research roles, stage gates G0-G6, a DOI-verified evidence rule, a versioned artifact store and lab memory, with migration from Claude Science",
-  "version": "0.1.0",
-  "author": { "name": "RAOOF A." },
+  "version": "0.1.1",
+  "author": {
+    "name": "RAOOF A."
+  },
   "homepage": "https://github.com/raoofaltaher/science-ultrapowers",
   "repository": "https://github.com/raoofaltaher/science-ultrapowers",
   "license": "SEE LICENSE IN LICENSE",
-  "keywords": ["research", "science", "skills", "evidence", "pre-registration", "reproducibility", "research-lab", "workflows"],
+  "keywords": [
+    "research",
+    "science",
+    "skills",
+    "evidence",
+    "pre-registration",
+    "reproducibility",
+    "research-lab",
+    "workflows"
+  ],
   "agents": [
     "./agents/academic-reviewer.md",
     "./agents/academic-supervisor.md",
