@@ -2,15 +2,15 @@
 name: debugging
 description: "Use this skill when the user asks to \"debug\", \"find the root cause\", \"figure out why X fails\", \"investigate this bug\", \"this test is flaky\", \"the build broke\", \"production incident\", \"why is the output wrong\", or when any observed behavior contradicts expected behavior. Covers the reproduce-isolate-prove-fix-verify loop, anti-shortcut gates, and numerical/scientific debugging."
 ---
-> **LAB OVERLAY (binding).** Vendored third-party skill: `neuromechanist/research-skills` @ `f0219bde233a` (BSD-3-Clause). Where anything below conflicts with the lab's rules, the lab's rules win.
+> **LAB ADDENDUM (binding).** Adopted third-party skill: `neuromechanist/research-skills` @ `f0219bde233a` (BSD-3-Clause). Where anything below conflicts with the lab's rules, the lab's rules win.
 >
-> 1. **Evidence rule wins.** Facts and citations come only through `science-ultrapowers:verifying-evidence-by-doi` (peer-reviewed, Crossref-verified DOI, full text read, evidence card). Never cite from web search, model memory or preprints.
-> 2. **Records.** Numbers and results come only from `science-ultrapowers:recording-findings` (F-ids, `CANONICAL_NUMBERS.md`); work moves through the `science-ultrapowers:running-the-lab` gates.
+> 1. **Evidence rule wins.** Facts and citations come only through `science-ultrapowers:verifying-evidence-by-doi` (peer-reviewed, DOI matched through Crossref, full text read, evidence record). Never cite from web search, model memory or preprints.
+> 2. **Records.** Numbers and results come only from `science-ultrapowers:recording-findings` (FND-ids, `KEY_RESULTS.md`); work moves through the `science-ultrapowers:running-the-lab` stage approvals.
 > 3. **No pre-approved tools.** Any upstream `allowed-tools` grant was removed from this copy, so normal permission prompts apply.
 > 4. **Tools in Claude Code:** read PDFs with the file reader, edit with the file tools, read the skill's bundled files under `${CLAUDE_PLUGIN_ROOT}/skills/debugging/`; packages the figure and poster skills need live in the project's `.venv-lab-skills` (see `science-ultrapowers:initializing-a-research-lab`).
-> 5. **Skill-specific:** Dead ends and root causes are logged in `research_lab/02_findings_ledger/LAB_NOTEBOOK.md` (and the experiment register when a run is involved).
+> 5. **Skill-specific:** Negative results and root causes are logged in `research_lab/findings/LAB_NOTEBOOK.md` (and the experiment register when a run is involved).
 >
-> Provenance, licence and change log: `PROVENANCE.md`.
+> Provenance, license and change log: `PROVENANCE.md`.
 
 
 # Debugging

@@ -10,21 +10,22 @@
 | Vetting | static security review (S1-S8) and quality rubric (Q1-Q6) by an independent reviewer track; Jev second opinion; review board (Academic Supervisor + Scientific Peer Reviewer profiles). Records: the originating lab's decision log, review records and skill-vetting folder (not shipped with the plugin) |
 | Approved by | the user (References & Resources Specialist), 2026-09-26: "Install all 14" |
 
-## Lab overlays applied
+## Lab addenda applied
 - annotated references/security_validation.md as unverified vendor narrative
-- inserted the LAB OVERLAY block at the top of SKILL.md
+- inserted the LAB ADDENDUM block at the top of SKILL.md
 - added LICENSE (upstream repository licence, verbatim)
 - 2026-11-07 science-ultrapowers: Claude-Science-only overlay items removed (PDF-explorer, kernel paths, host skill-reader calls), Claude Code tool line added, skill cross-references renamed, project names and decision ids generalised
 - 2026-11-07 science-ultrapowers: references/security_validation.md: lab note generalised (project name and date removed)
 - 2026-11-08 science-ultrapowers: line endings normalised from CRLF to LF (no content change), vendored hashes refreshed: references/security_validation.md
 - 2026-11-08 science-ultrapowers: overlay: `uv run` removed from the overlay (uv is not a plugin runtime dependency); SKILL.md hash refreshed
 - 2026-11-08 science-ultrapowers: overlay runs python with -B (SKILL.md hash refreshed)
+- 2026-11-08 science-ultrapowers: overlay retitled LAB ADDENDUM (binding), the standard's words (SKILL.md hash refreshed)
 
 ## File hashes (SHA-256, first 12 hex chars)
 | File | Status | Upstream | Vendored |
 |---|---|---|---|
 | `LICENSE` | added | `` | `6ea149808a17` |
-| `SKILL.md` | modified | `039881416522` | `e41eb6c80ae9` |
+| `SKILL.md` | modified | `039881416522` | `f77dfe6e5ca0` |
 | `assets/evidence_ledger_template.csv` | unchanged | `1ec5cc4ada96` | `1ec5cc4ada96` |
 | `assets/falsification_controls_template.json` | unchanged | `beea4e2be3b5` | `beea4e2be3b5` |
 | `assets/hypothesis_record_template.json` | unchanged | `73f080a6696c` | `73f080a6696c` |

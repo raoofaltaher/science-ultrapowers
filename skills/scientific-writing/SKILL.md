@@ -7,16 +7,16 @@ metadata:
   version: "2.0"
   skill-author: K-Dense Inc.
 ---
-> **LAB OVERLAY (binding).** Vendored third-party skill: `K-Dense-AI/claude-scientific-writer` @ `0c7260603be3` (MIT). Where anything below conflicts with the lab's rules, the lab's rules win.
+> **LAB ADDENDUM (binding).** Adopted third-party skill: `K-Dense-AI/claude-scientific-writer` @ `0c7260603be3` (MIT). Where anything below conflicts with the lab's rules, the lab's rules win.
 >
-> 1. **Evidence rule wins.** Facts and citations come only through `science-ultrapowers:verifying-evidence-by-doi` (peer-reviewed, Crossref-verified DOI, full text read, evidence card). Never cite from web search, model memory or preprints.
-> 2. **Records.** Numbers and results come only from `science-ultrapowers:recording-findings` (F-ids, `CANONICAL_NUMBERS.md`); work moves through the `science-ultrapowers:running-the-lab` gates.
+> 1. **Evidence rule wins.** Facts and citations come only through `science-ultrapowers:verifying-evidence-by-doi` (peer-reviewed, DOI matched through Crossref, full text read, evidence record). Never cite from web search, model memory or preprints.
+> 2. **Records.** Numbers and results come only from `science-ultrapowers:recording-findings` (FND-ids, `KEY_RESULTS.md`); work moves through the `science-ultrapowers:running-the-lab` stage approvals.
 > 3. **No pre-approved tools.** Any upstream `allowed-tools` grant was removed from this copy, so normal permission prompts apply.
 > 4. **Windows:** where this skill says `python3`, run `python` with `-B`.
 > 5. **Tools in Claude Code:** read PDFs with the file reader, edit with the file tools, run bundled scripts with `python -B "${CLAUDE_PLUGIN_ROOT}/skills/scientific-writing/scripts/<script>"`; packages the figure and poster skills need live in the project's `.venv-lab-skills` (see `science-ultrapowers:initializing-a-research-lab`).
-> 6. **Skill-specific:** Map this skill's IDs onto lab records: `E` sources = registry `ref_id` + evidence-card `EC-` ids; `C` claims = the section's claim-evidence map; `N`/`M`/`O`/`R` numeric facts, methods, outcomes and results = `F-` ids in `FINDINGS.md` / `CANONICAL_NUMBERS.md`. 'An accountable human has opened it and confirmed the exact support' = the five checks of `science-ultrapowers:verifying-evidence-by-doi` plus the Citation Auditor's re-read.
+> 6. **Skill-specific:** Map this skill's IDs onto lab records: `E` sources = source table `source_id` + evidence record `EVR-` ids; `C` claims = the section's claim-evidence map; `N`/`M`/`O`/`R` numeric facts, methods, outcomes and results = `FND-` ids in `FINDINGS_LOG.md` / `KEY_RESULTS.md`. 'An accountable human has opened it and confirmed the exact support' = the five checks of `science-ultrapowers:verifying-evidence-by-doi` plus the Citation & Reference Auditor's re-read.
 >
-> Provenance, licence and change log: `PROVENANCE.md`.
+> Provenance, license and change log: `PROVENANCE.md`.
 
 
 # Scientific Writing

@@ -3,17 +3,17 @@ name: manuscript-formatting
 description: "Use this skill for \"format manuscript\", \"prepare for submission\", \"journal formatting\", \"LaTeX template\", \"submission checklist\", \"format references\", \"BibTeX\", \"author guidelines\", \"page limits\", \"format for Nature\", \"format for IEEE\", or when the user wants to format a manuscript for journal submission."
 version: 0.3.0
 ---
-> **LAB OVERLAY (binding).** Vendored third-party skill: `neuromechanist/research-skills` @ `f0219bde233a` (BSD-3-Clause). Where anything below conflicts with the lab's rules, the lab's rules win.
+> **LAB ADDENDUM (binding).** Adopted third-party skill: `neuromechanist/research-skills` @ `f0219bde233a` (BSD-3-Clause). Where anything below conflicts with the lab's rules, the lab's rules win.
 >
-> 1. **Evidence rule wins.** Facts and citations come only through `science-ultrapowers:verifying-evidence-by-doi` (peer-reviewed, Crossref-verified DOI, full text read, evidence card). Never cite from web search, model memory or preprints.
-> 2. **Records.** Numbers and results come only from `science-ultrapowers:recording-findings` (F-ids, `CANONICAL_NUMBERS.md`); work moves through the `science-ultrapowers:running-the-lab` gates.
+> 1. **Evidence rule wins.** Facts and citations come only through `science-ultrapowers:verifying-evidence-by-doi` (peer-reviewed, DOI matched through Crossref, full text read, evidence record). Never cite from web search, model memory or preprints.
+> 2. **Records.** Numbers and results come only from `science-ultrapowers:recording-findings` (FND-ids, `KEY_RESULTS.md`); work moves through the `science-ultrapowers:running-the-lab` stage approvals.
 > 3. **No pre-approved tools.** Any upstream `allowed-tools` grant was removed from this copy, so normal permission prompts apply.
-> 4. **Not installed in this lab:** `docx` -> not installed (licence conflict); edit .docx with python-docx only if needed; `humanizer` -> not installed (research-integrity policy): authors edit prose themselves and disclose AI assistance.
+> 4. **Not installed in this lab:** `docx` -> not installed (license conflict); edit .docx with python-docx only if needed; `humanizer` -> not installed (research-integrity policy): authors edit prose themselves and disclose AI assistance.
 > 5. **Windows:** where this skill says `python3`, run `python` with `-B`.
 > 6. **Tools in Claude Code:** read PDFs with the file reader, edit with the file tools, run bundled scripts with `python -B "${CLAUDE_PLUGIN_ROOT}/skills/manuscript-formatting/scripts/<script>"`; packages the figure and poster skills need live in the project's `.venv-lab-skills` (see `science-ultrapowers:initializing-a-research-lab`).
 > 7. **Skill-specific:** The two checklist items that told agents to run `humanizer` were replaced (research-integrity policy). This skill has no row for a journal template such as Springer Nature sn-jnl, so use it for the diff-safe `semantic_breaks.py` and the generic checklist only.
 >
-> Provenance, licence and change log: `PROVENANCE.md`.
+> Provenance, license and change log: `PROVENANCE.md`.
 
 
 # Manuscript Formatting and Submission Preparation

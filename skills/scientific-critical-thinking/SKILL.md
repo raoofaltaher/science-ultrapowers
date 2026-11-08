@@ -7,16 +7,16 @@ metadata:
   version: "1.2"
   skill-author: K-Dense Inc.
 ---
-> **LAB OVERLAY (binding).** Vendored third-party skill: `K-Dense-AI/claude-scientific-writer` @ `0c7260603be3` (MIT). Where anything below conflicts with the lab's rules, the lab's rules win.
+> **LAB ADDENDUM (binding).** Adopted third-party skill: `K-Dense-AI/claude-scientific-writer` @ `0c7260603be3` (MIT). Where anything below conflicts with the lab's rules, the lab's rules win.
 >
-> 1. **Evidence rule wins.** Facts and citations come only through `science-ultrapowers:verifying-evidence-by-doi` (peer-reviewed, Crossref-verified DOI, full text read, evidence card). Never cite from web search, model memory or preprints.
-> 2. **Records.** Numbers and results come only from `science-ultrapowers:recording-findings` (F-ids, `CANONICAL_NUMBERS.md`); work moves through the `science-ultrapowers:running-the-lab` gates.
+> 1. **Evidence rule wins.** Facts and citations come only through `science-ultrapowers:verifying-evidence-by-doi` (peer-reviewed, DOI matched through Crossref, full text read, evidence record). Never cite from web search, model memory or preprints.
+> 2. **Records.** Numbers and results come only from `science-ultrapowers:recording-findings` (FND-ids, `KEY_RESULTS.md`); work moves through the `science-ultrapowers:running-the-lab` stage approvals.
 > 3. **No pre-approved tools.** Any upstream `allowed-tools` grant was removed from this copy, so normal permission prompts apply.
 > 4. **Tools in Claude Code:** read PDFs with the file reader, edit with the file tools, read the skill's bundled files under `${CLAUDE_PLUGIN_ROOT}/skills/scientific-critical-thinking/`; packages the figure and poster skills need live in the project's `.venv-lab-skills` (see `science-ultrapowers:initializing-a-research-lab`).
 > 5. **Not installed in this lab:** `scientific-schematics` -> `svg-primitives` / `figure-bible` (lab-local; no external image APIs).
 > 6. **Skill-specific:** The upstream 'Visual Aids' route to an external AI-diagram API was removed; make any figure with lab-local tools.
 >
-> Provenance, licence and change log: `PROVENANCE.md`.
+> Provenance, license and change log: `PROVENANCE.md`.
 
 
 # Scientific Critical Thinking

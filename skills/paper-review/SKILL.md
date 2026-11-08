@@ -3,16 +3,16 @@ name: paper-review
 description: "Use this skill for \"review this paper\", \"review this manuscript\", \"peer review\", \"review my paper\", \"critique this manuscript\", \"review this submission\", \"give me feedback on my paper\", \"check my methods\", \"review my statistics\", \"review as a peer reviewer\", \"evaluate this manuscript\", \"review this PDF\", or mentions manuscript review, peer review, paper critique, or methodological review."
 version: 0.1.1
 ---
-> **LAB OVERLAY (binding).** Vendored third-party skill: `neuromechanist/research-skills` @ `f0219bde233a` (BSD-3-Clause). Where anything below conflicts with the lab's rules, the lab's rules win.
+> **LAB ADDENDUM (binding).** Adopted third-party skill: `neuromechanist/research-skills` @ `f0219bde233a` (BSD-3-Clause). Where anything below conflicts with the lab's rules, the lab's rules win.
 >
-> 1. **Evidence rule wins.** Facts and citations come only through `science-ultrapowers:verifying-evidence-by-doi` (peer-reviewed, Crossref-verified DOI, full text read, evidence card). Never cite from web search, model memory or preprints.
-> 2. **Records.** Numbers and results come only from `science-ultrapowers:recording-findings` (F-ids, `CANONICAL_NUMBERS.md`); work moves through the `science-ultrapowers:running-the-lab` gates.
+> 1. **Evidence rule wins.** Facts and citations come only through `science-ultrapowers:verifying-evidence-by-doi` (peer-reviewed, DOI matched through Crossref, full text read, evidence record). Never cite from web search, model memory or preprints.
+> 2. **Records.** Numbers and results come only from `science-ultrapowers:recording-findings` (FND-ids, `KEY_RESULTS.md`); work moves through the `science-ultrapowers:running-the-lab` stage approvals.
 > 3. **No pre-approved tools.** Any upstream `allowed-tools` grant was removed from this copy, so normal permission prompts apply.
 > 4. **Tools in Claude Code:** read PDFs with the file reader, edit with the file tools, read the skill's bundled files under `${CLAUDE_PLUGIN_ROOT}/skills/paper-review/`; packages the figure and poster skills need live in the project's `.venv-lab-skills` (see `science-ultrapowers:initializing-a-research-lab`).
 > 5. **Not installed in this lab:** `humanizer` -> not installed (research-integrity policy): authors edit prose themselves and disclose AI assistance.
-> 6. **Skill-specific:** Every literature reference used in a critique must pass `science-ultrapowers:verifying-evidence-by-doi`; the upstream 'flag from domain knowledge' fallback is forbidden, so say 'literature coverage not assessed' instead. Manuscript intake uses the file reader, not opencite. Use for the statistically deep pre-G6 dry run; `peer-review` produces the final confidentiality-gated referee report.
+> 6. **Skill-specific:** Every literature reference used in a critique must go through `science-ultrapowers:verifying-evidence-by-doi`; the upstream 'flag from domain knowledge' fallback is forbidden, so say 'literature coverage not assessed' instead. Manuscript intake uses the file reader, not opencite. Use for the statistically deep dry run before the Publication stage; `peer-review` produces the final referee report, held under confidentiality.
 >
-> Provenance, licence and change log: `PROVENANCE.md`.
+> Provenance, license and change log: `PROVENANCE.md`.
 
 
 # Academic Manuscript Review

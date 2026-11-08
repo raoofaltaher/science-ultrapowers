@@ -35,16 +35,16 @@ done
 # (c) the lab's twelve load-bearing sentences, each in the skill that owns it
 sentences=(
   'running-the-lab|Nobody reviews or audits their own work'
-  'running-the-lab|A FAIL or "reject" blocks the gate until resolved'
-  'running-the-lab|The test split is touched only by a pre-registered final evaluation'
-  'running-the-lab|A bare claim of verification counts as unverified'
-  'verifying-evidence-by-doi|Only `VERIFIED` passes'
+  'running-the-lab|A not-cleared citation audit blocks the stage approval'
+  'running-the-lab|The test set is touched only by a preregistered final evaluation'
+  'running-the-lab|A bare claim of checking counts as unchecked'
+  'verifying-evidence-by-doi|Only a matched DOI passes'
   'verifying-evidence-by-doi|Preprints'
   'verifying-evidence-by-doi|never as evidence'
-  'verifying-evidence-by-doi|A label of "verified" written by another agent is **never** accepted without re-checking it'
+  'verifying-evidence-by-doi|A label of "matched" written by another role is never accepted without re-running the check'
   'verifying-evidence-by-doi|Bibliographies are generated, never typed'
   'recording-findings|A verified row is never edited'
-  'recording-findings|A bare claim of verification counts as unverified'
+  'recording-findings|A bare claim of checking counts as unchecked'
   'requesting-reference-access|Use shadow libraries or pirate sites'
   'deciding-with-jev|A Jev output is never evidence'
 )

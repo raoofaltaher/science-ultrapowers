@@ -7,17 +7,17 @@ metadata:
   version: "2.1"
   skill-author: K-Dense Inc.
 ---
-> **LAB OVERLAY (binding).** Vendored third-party skill: `K-Dense-AI/claude-scientific-writer` @ `0c7260603be3` (MIT). Where anything below conflicts with the lab's rules, the lab's rules win.
+> **LAB ADDENDUM (binding).** Adopted third-party skill: `K-Dense-AI/claude-scientific-writer` @ `0c7260603be3` (MIT). Where anything below conflicts with the lab's rules, the lab's rules win.
 >
-> 1. **Evidence rule wins.** Facts and citations come only through `science-ultrapowers:verifying-evidence-by-doi` (peer-reviewed, Crossref-verified DOI, full text read, evidence card). Never cite from web search, model memory or preprints.
-> 2. **Records.** Numbers and results come only from `science-ultrapowers:recording-findings` (F-ids, `CANONICAL_NUMBERS.md`); work moves through the `science-ultrapowers:running-the-lab` gates.
+> 1. **Evidence rule wins.** Facts and citations come only through `science-ultrapowers:verifying-evidence-by-doi` (peer-reviewed, DOI matched through Crossref, full text read, evidence record). Never cite from web search, model memory or preprints.
+> 2. **Records.** Numbers and results come only from `science-ultrapowers:recording-findings` (FND-ids, `KEY_RESULTS.md`); work moves through the `science-ultrapowers:running-the-lab` stage approvals.
 > 3. **No pre-approved tools.** Any upstream `allowed-tools` grant was removed from this copy, so normal permission prompts apply.
-> 4. **Not installed in this lab:** `docx` -> not installed (licence conflict); edit .docx with python-docx only if needed; `pdf` -> read PDFs with the file reader; `pptx` -> not installed (licence conflict); `pptx-posters` uses python-pptx directly; `xlsx` -> not installed (licence conflict).
+> 4. **Not installed in this lab:** `docx` -> not installed (license conflict); edit .docx with python-docx only if needed; `pdf` -> read PDFs with the file reader; `pptx` -> not installed (license conflict); `pptx-posters` uses python-pptx directly; `xlsx` -> not installed (license conflict).
 > 5. **Windows:** where this skill says `python3`, run `python` with `-B`.
 > 6. **Tools in Claude Code:** read PDFs with the file reader, edit with the file tools, run bundled scripts with `python -B "${CLAUDE_PLUGIN_ROOT}/skills/pptx-posters/scripts/<script>"`; packages the figure and poster skills need live in the project's `.venv-lab-skills` (see `science-ultrapowers:initializing-a-research-lab`).
-> 7. **Skill-specific:** Manifest source IDs must be lab evidence-card IDs (`EC-`) or F-ids; `author_verified: true` may be set only after the five checks of `science-ultrapowers:verifying-evidence-by-doi`. Posters quote numbers only from `CANONICAL_NUMBERS.md`. The generator enforces exact pins (`assets/generation_dependencies.json`: python-pptx 1.0.2, Pillow 12.3.0, lxml 6.1.1) and refuses placeholder content; the `.venv-lab-skills` environment matches the pins. `references/security_validation.md` is unverified vendor narrative.
+> 7. **Skill-specific:** Manifest source IDs must be lab evidence record IDs (`EVR-`) or FND-ids; `author_verified: true` may be set only after the five checks of `science-ultrapowers:verifying-evidence-by-doi`. Posters quote numbers only from `KEY_RESULTS.md`. The generator enforces exact pins (`assets/generation_dependencies.json`: python-pptx 1.0.2, Pillow 12.3.0, lxml 6.1.1) and refuses placeholder content; the `.venv-lab-skills` environment matches the pins. `references/security_validation.md` is unverified vendor narrative.
 >
-> Provenance, licence and change log: `PROVENANCE.md`.
+> Provenance, license and change log: `PROVENANCE.md`.
 
 
 # PPTX posters

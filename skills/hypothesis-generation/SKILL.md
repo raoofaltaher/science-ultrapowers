@@ -8,16 +8,16 @@ metadata:
   skill-author: K-Dense Inc.
   last-reviewed: "2026-07-23"
 ---
-> **LAB OVERLAY (binding).** Vendored third-party skill: `K-Dense-AI/claude-scientific-writer` @ `0c7260603be3` (MIT). Where anything below conflicts with the lab's rules, the lab's rules win.
+> **LAB ADDENDUM (binding).** Adopted third-party skill: `K-Dense-AI/claude-scientific-writer` @ `0c7260603be3` (MIT). Where anything below conflicts with the lab's rules, the lab's rules win.
 >
-> 1. **Evidence rule wins.** Facts and citations come only through `science-ultrapowers:verifying-evidence-by-doi` (peer-reviewed, Crossref-verified DOI, full text read, evidence card). Never cite from web search, model memory or preprints.
-> 2. **Records.** Numbers and results come only from `science-ultrapowers:recording-findings` (F-ids, `CANONICAL_NUMBERS.md`); work moves through the `science-ultrapowers:running-the-lab` gates.
+> 1. **Evidence rule wins.** Facts and citations come only through `science-ultrapowers:verifying-evidence-by-doi` (peer-reviewed, DOI matched through Crossref, full text read, evidence record). Never cite from web search, model memory or preprints.
+> 2. **Records.** Numbers and results come only from `science-ultrapowers:recording-findings` (FND-ids, `KEY_RESULTS.md`); work moves through the `science-ultrapowers:running-the-lab` stage approvals.
 > 3. **No pre-approved tools.** Any upstream `allowed-tools` grant was removed from this copy, so normal permission prompts apply.
 > 4. **Windows:** where this skill says `python3`, run `python` with `-B`.
 > 5. **Tools in Claude Code:** read PDFs with the file reader, edit with the file tools, run bundled scripts with `python -B "${CLAUDE_PLUGIN_ROOT}/skills/hypothesis-generation/scripts/<script>"`; packages the figure and poster skills need live in the project's `.venv-lab-skills` (see `science-ultrapowers:initializing-a-research-lab`).
-> 6. **Skill-specific:** Hypothesis objects become lab H-cards (`research_lab/templates/H_CARD.md`, gate G0); pre-registration output goes to `research_lab/03_experiments/protocols/` (gate G2, Supervisor approval). `references/security_validation.md` is unverified vendor narrative.
+> 6. **Skill-specific:** Hypothesis objects become lab hypothesis records (`research_lab/templates/HYPOTHESIS_RECORD.md`, the Question stage); preregistration output goes to `research_lab/experiments/preregistrations/` (the Preregistration stage, Academic Supervisor approval). `references/security_validation.md` is unverified vendor narrative.
 >
-> Provenance, licence and change log: `PROVENANCE.md`.
+> Provenance, license and change log: `PROVENANCE.md`.
 
 
 # Scientific Hypothesis Generation

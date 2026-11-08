@@ -10,7 +10,7 @@
 | Vetting | static security review (S1-S8) and quality rubric (Q1-Q6) by an independent reviewer track; Jev second opinion; review board (Academic Supervisor + Scientific Peer Reviewer profiles). Records: the originating lab's decision log, review records and skill-vetting folder (not shipped with the plugin) |
 | Approved by | the user (References & Resources Specialist), 2026-09-26: "Install all 14" |
 
-## Lab overlays applied
+## Lab addenda applied
 - added schemas/theme.schema.json (from plugins/figures/schemas/, unmodified; lib/theme.py loads it from ../schemas)
 - added scripts/check_svg.py (from plugins/figures/agents/figure-qa-scripts/check_svg.py; theme/validator paths patched)
 - added scripts/check_raster.py (from plugins/figures/agents/figure-qa-scripts/check_raster.py; theme/validator paths patched)
@@ -23,18 +23,19 @@
 - edited references/figure-qa-agent-procedure.md: plugin-root lookup replaced by skill-local paths
 - edited references/figure-qa-procedure.md: plugin script lookup replaced by skill-local scripts/
 - annotated references/iterate-loop.md (AI generation not installed) and replaced its Agent dispatch
-- inserted the LAB OVERLAY block at the top of SKILL.md
+- inserted the LAB ADDENDUM block at the top of SKILL.md
 - added LICENSE (upstream repository licence, verbatim)
 - 2026-11-07 science-ultrapowers: Claude-Science-only overlay items removed (PDF-explorer, kernel paths, host skill-reader calls), Claude Code tool line added, skill cross-references renamed, project names and decision ids generalised
 - 2026-11-07 science-ultrapowers: references/iterate-loop.md: other-harness sentences removed; references/figure-qa-procedure.md and references/figure-qa-agent-procedure.md: project name removed; scripts/check_svg.py: comment generalised; lib/theme.py and schemas/theme.schema.json: advisory image-generator model fields removed
 - 2026-11-08 science-ultrapowers: line endings normalised from CRLF to LF (no content change), vendored hashes refreshed: references/figure-qa-agent-procedure.md, references/figure-qa-procedure.md, references/iterate-loop.md, scripts/check_plot_script.py, scripts/check_raster.py, scripts/check_svg.py
 - 2026-11-08 science-ultrapowers: overlay runs python with -B (SKILL.md hash refreshed)
+- 2026-11-08 science-ultrapowers: overlay retitled LAB ADDENDUM (binding), the standard's words (SKILL.md hash refreshed)
 
 ## File hashes (SHA-256, first 12 hex chars)
 | File | Status | Upstream | Vendored |
 |---|---|---|---|
 | `LICENSE` | added | `` | `52c155c8e749` |
-| `SKILL.md` | modified | `ed3e58bfe469` | `9717e297b42e` |
+| `SKILL.md` | modified | `ed3e58bfe469` | `1ad4527b6760` |
 | `lib/theme.py` | added | `` | `77a61a048aff` |
 | `references/figure-qa-agent-procedure.md` | added | `` | `d8aabcd669c8` |
 | `references/figure-qa-procedure.md` | modified | `c35717f669b5` | `5a4f2c1a36f2` |

@@ -7,81 +7,81 @@ description: Use when recording, verifying, reconciling, quoting or looking up a
 
 ## Overview
 
-Every number or fact in a document, report, manuscript or chat answer is quoted from the lab's records, never retyped from memory. If it is not in the ledger, it is not a finding.
+Every number or fact in a document, report, manuscript or chat answer is quoted from the lab's records, never retyped from memory. If it is not in the findings log, it is not a finding.
 
 **Core principle:** A claim is only as good as the check it names.
 
-## The Iron Law
+## The binding rule
 
 ```
-A NUMBER NOT IN THE LEDGER IS NOT A FINDING; A VERIFICATION THAT DOES NOT NAME ITS CHECK IS NOT A VERIFICATION
+A NUMBER NOT IN THE FINDINGS LOG IS NOT A FINDING; A CHECK THAT DOES NOT NAME ITS MECHANISM IS NOT A CHECK
 ```
 
-## Findings ledger
+## Findings log
 
-`research_lab/02_findings_ledger/FINDINGS.md`: one row per finding, append-only.
+`research_lab/findings/FINDINGS_LOG.md`: one row per finding, append-only. The header is `| FND-id (finding) | Statement | Type | Evidence | Status | Recorded | Verified | Scope and caveats |`.
 
 | Field | Content |
 |---|---|
-| `F-id` | `F-0001`, sequential |
-| Statement | One precise sentence including the number and its definition (metric, split, seed count, confidence interval) |
-| Type | `experimental`, `literature`, `code-audit`, `data-audit` or `doc-audit` |
-| Evidence | Experimental: experiment id and metrics file path (and row or epoch). Literature: registry ref-id and evidence card id. Audit: file path and line or cell |
-| Status | `tentative`, `verified`, `superseded by F-xxxx` or `refuted by F-xxxx` |
-| Recorded / verified | Date and role for each |
-| Scope / caveats | e.g. "dev split only", "known leakage in this split", "single seed" |
+| `FND-id` | `FND-0001`, sequential, one counter per lab. Rows written under the 0.1 layout keep their old ids (`F-0001`), which stay valid |
+| Statement | One precise sentence including the number and its definition (metric, partition, seed count, confidence interval (CI)) |
+| Type | `experimental`, `literature`, `code inspection`, `data inspection` or `document inspection` |
+| Evidence | Experimental: experiment id (EXP-id) and metrics file path (and row or epoch). Literature: source id and evidence record id (EVR-id). Inspection: file path and line or cell |
+| Status | `tentative`, `verified`, `superseded by FND-xxxx` or `refuted by FND-xxxx` |
+| Recorded and verified | Date and role for each |
+| Scope and caveats | e.g. "dev partition only", "known leakage in this partition", "single seed" |
 
 These four statuses are the only ones. There is no "candidate", "provisional" or "pending" row.
 
 Transitions:
 
-- `tentative` to `verified` requires an independent re-check by the Curator: re-open the file or re-run the query; for literature, re-run `science-ultrapowers:verifying-evidence-by-doi` and re-read the quote. For claims a manuscript or thesis will use, Supervisor approval at G4 as well.
-- A verified row is never edited. Write a new row and mark the old one `superseded by F-new` or `refuted by F-new`.
+- `tentative` to `verified` requires an independent re-check by the Findings & Records Curator (the Curator): re-open the file or re-run the query; for literature, re-run `science-ultrapowers:verifying-evidence-by-doi` and re-read the quote. For claims a manuscript or thesis will use, Academic Supervisor approval at the Results stage as well.
+- A verified row is never edited. Write a new row and mark the old one `superseded by FND-new` or `refuted by FND-new`.
 - A single-seed, dev-only or partial-run result stays `tentative` and says so in its caveats.
 
-A number seen only in a console log, a progress bar, a report or another role's hand-off has no row, not even a `tentative` one. Recompute it from the metrics file yourself (see Verification before recording); the recomputed number enters as `tentative`, never `verified`. `tentative` means you recomputed it; it never means "not yet checked".
+A number seen only in a console log, a progress bar, a report or another role's task report has no row, not even a `tentative` one. Recompute it from the metrics file yourself (see Checks before recording); the recomputed number enters as `tentative`, never `verified`. `tentative` means you recomputed it; it never means "not yet checked".
 
-## Canonical numbers
+## Key results table
 
-`research_lab/02_findings_ledger/CANONICAL_NUMBERS.md` lists the numbers documents quote (headline metrics, ratios, dataset counts, parameter counts): `name | value | exact definition | F-id | allowed wording`.
+`research_lab/findings/KEY_RESULTS.md` lists the numbers documents quote (primary metrics, ratios, dataset counts, parameter counts): `name | value | exact definition | FND-id | allowed wording`.
 
-When documents disagree on a number, the Curator traces each variant to its source, records one canonical value with its definition, and opens a doc-fix task for every document that deviates. Open reconciliations stay listed at the bottom of the file until resolved.
+When documents disagree on a number, the Curator traces each variant to its source, records one key result with its definition, and opens a doc-fix task for every document that deviates. Open reconciliations stay listed at the bottom of the file until resolved.
 
 ## Lab notebook
 
-`research_lab/02_findings_ledger/LAB_NOTEBOOK.md`: dated, append-only entries, one per working session per role. Record what was attempted, the commands or configs used, what happened (failures and dead ends included), links to experiment ids, F-ids and evidence cards, and next steps. Record negative results as carefully as positive ones.
+`research_lab/findings/LAB_NOTEBOOK.md`: dated, append-only entries, one per working session per role. Record what was attempted, the commands or configs used, what happened (failures and negative results included), links to experiment ids, FND-ids and evidence records, and next steps. Record negative results as carefully as positive ones.
 
 ## Experiment register
 
-`research_lab/03_experiments/EXPERIMENT_REGISTER.md`: one row per experiment.
+`research_lab/experiments/EXPERIMENT_REGISTER.md`: one row per experiment. The header is `| EXP-id (experiment) | Preregistration | Hypothesis | Code and config | Seeds and partitions | Environment | Status | Outputs | Deviations | Findings |`.
 
 | Field | Content |
 |---|---|
-| Experiment id | Keep the project's scheme |
-| Protocol | Path to the pre-registration in `research_lab/03_experiments/protocols/`, and the G2 approval decision |
-| Hypothesis | H-id(s) |
-| Code / config | Git commit, config file SHA-256, overrides |
-| Seeds / splits | Seed list; splits used (test only for the pre-registered final evaluation) |
-| Environment | Lock-file hash, framework and CUDA versions, GPU |
+| EXP-id | Keep the project's scheme |
+| Preregistration | Path to the preregistration in `research_lab/experiments/preregistrations/`, and the Preregistration stage approval decision |
+| Hypothesis | HYP-id(s) |
+| Code and config | Git commit, Secure Hash Algorithm 256 (SHA-256) hash of the config file, overrides |
+| Seeds and partitions | Seed list; partitions used (test only for the preregistered final evaluation) |
+| Environment | Lock-file hash, framework and CUDA (Compute Unified Device Architecture) versions, graphics processing unit (GPU) |
 | Status | `planned`, `registered`, `running`, `completed`, `failed` or `aborted` (with the reason) |
-| Outputs | Run dir, checkpoints, metrics files, logs, tuning study |
-| Deviations | Anything that differed from the protocol |
-| Findings | F-ids derived from this run |
+| Outputs | Run directory, checkpoints, metrics files, logs, tuning study |
+| Deviations | Anything that differed from the preregistration |
+| Findings | FND-ids derived from this run |
 
-## Verification before recording
+## Checks before recording
 
 - **Experimental:** open the metrics file and recompute the number rather than copying it from a log line or a report.
-- **Literature:** the finding must point to an evidence card whose DOI is `VERIFIED` and whose quote you re-read in the full text.
-- **Audit:** cite the file path and line or cell, and re-open the file at recording time.
+- **Literature:** the finding must point to an evidence record whose DOI status is `matched` and whose quote you re-read in the full text.
+- **Check of a file:** cite the file path and line or cell, and re-open the file at recording time.
 
 ## Naming the check
 
-Write "verified", "re-hashed", "confirmed identical", "checked" or similar only together with the mechanism: which files, which method (byte hash, row count, substring presence, visual inspection) and against what. A bare claim of verification counts as unverified.
+Write "verified", "re-hashed", "confirmed identical", "checked" or similar only together with the mechanism: which files, which method (byte hash, row count, substring presence, visual inspection) and against what. A bare claim of checking counts as unchecked.
 
-A source is not a check. "The CSV row" names where a number lives, not what was done to it.
+A source is not a check. "The metrics file row" names where a number lives, not what was done to it.
 
 ```
-Verified: recomputed val_f1 with python -c from the epoch-12 row of <run dir>/metrics.csv (byte hash of the file unchanged since the run) against the number in the F-0042 statement; matches to 4 decimals.
+Verified: recomputed val_f1 with python -c from the epoch-12 row of <run dir>/metrics.csv (byte hash of the file unchanged since the run) against the number in the FND-0042 statement; matches to 4 decimals.
 ```
 
 ## Methodological basis
@@ -91,26 +91,26 @@ Verified: recomputed val_f1 with python -c from the epoch-12 row of <run dir>/me
 
 ## Claude Code notes
 
-Change ledger files with the file tools. Recompute with a short `python -c` against the metrics file and paste the command into the notebook entry.
+Change findings log files with the file tools. Recompute with a short `python -c` against the metrics file and paste the command into the notebook entry.
 
-## Common Rationalizations
+## Rationalizations and replies
 
 | Excuse | Reality |
 |---|---|
 | "The log line has the number" | A log line is not the metrics file. Recompute it first. |
-| "I'll record it after the run finishes" | Dead ends are forgotten by then. Write the notebook entry now. |
+| "I'll record it after the run finishes" | Negative results are forgotten by then. Write the notebook entry now. |
 | "I'll add a candidate row until it's checked" | There is no such status. `tentative` after recomputing, nothing before. |
-| "I'll add it as `tentative` from the hand-off and let the Curator check it" | `tentative` is a number you recomputed. Open the metrics file and recompute first; until then, no row. |
-| "Editing the verified row is quicker" | Never edited. Write the new row; mark the old `superseded by F-new`. |
+| "I'll add it as `tentative` from the task report and let the Curator check it" | `tentative` is a number you recomputed. Open the metrics file and recompute first; until then, no row. |
+| "Editing the verified row is quicker" | Never edited. Write the new row; mark the old `superseded by FND-new`. |
 | "Single seed is fine for now" | Fine as `tentative` with "single seed" in the caveats. Never `verified`. |
-| "The report I'm summarising already verified it" | A report is not the file. Re-open the file and recompute. |
-| "'Verified' is just a word" | A bare claim counts as unverified. Name files, method and reference. |
-| "The CSV row is the check" | That is the source. Name the method and the reference too. |
+| "The report I'm summarizing already verified it" | A report is not the file. Re-open the file and recompute. |
+| "'Verified' is just a word" | A bare claim counts as unchecked. Name files, method and reference. |
+| "The metrics file row is the check" | That is the source. Name the method and the reference too. |
 
-## Red Flags
+## Warning signs
 
-- A number in a draft, brief or answer with no F-id behind it
-- A row added from a log line, a hand-off or someone's summary, under any status
+- A number in a draft, task assignment or answer with no FND-id behind it
+- A row added from a log line, a task report or someone's summary, under any status
 - A status other than the four above
 - "Verified" with no file, method and reference
 - An edit to a row that is already `verified`
@@ -118,11 +118,11 @@ Change ledger files with the file tools. Recompute with a short `python -c` agai
 
 **Any of these: stop, recompute from the file, and record only what the check supports.**
 
-## Verification Checklist
+## Checklist
 
-- [ ] Every number I quote has an F-id and matches the ledger
+- [ ] Every number I quote has an FND-id and matches the findings log
 - [ ] Every new row's evidence is a file I re-opened at recording time
 - [ ] No `verified` row was edited
 - [ ] Single-seed, dev-only and partial-run rows are `tentative` with caveats
 - [ ] Every "verified" I wrote names files, method and reference
-- [ ] Canonical numbers and the notebook entry are updated
+- [ ] The key results table and the notebook entry are updated

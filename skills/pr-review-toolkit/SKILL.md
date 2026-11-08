@@ -2,16 +2,16 @@
 name: pr-review-toolkit
 description: "Review pull requests and recent code changes across specialized lenses: general code quality, tests, error handling and silent failures, comments and docs, type design, and simplification. Use when the user asks to review a PR, review recent changes, check tests, check error handling, check comments, analyze types, simplify/refine an implementation, run \"review-pr\", or at a gate-3 (G3) code-review checkpoint."
 ---
-> **LAB OVERLAY (binding).** Vendored third-party skill: `neuromechanist/research-skills` @ `f0219bde233a` (BSD-3-Clause). Where anything below conflicts with the lab's rules, the lab's rules win.
+> **LAB ADDENDUM (binding).** Adopted third-party skill: `neuromechanist/research-skills` @ `f0219bde233a` (BSD-3-Clause). Where anything below conflicts with the lab's rules, the lab's rules win.
 >
-> 1. **Evidence rule wins.** Facts and citations come only through `science-ultrapowers:verifying-evidence-by-doi` (peer-reviewed, Crossref-verified DOI, full text read, evidence card). Never cite from web search, model memory or preprints.
-> 2. **Records.** Numbers and results come only from `science-ultrapowers:recording-findings` (F-ids, `CANONICAL_NUMBERS.md`); work moves through the `science-ultrapowers:running-the-lab` gates.
+> 1. **Evidence rule wins.** Facts and citations come only through `science-ultrapowers:verifying-evidence-by-doi` (peer-reviewed, DOI matched through Crossref, full text read, evidence record). Never cite from web search, model memory or preprints.
+> 2. **Records.** Numbers and results come only from `science-ultrapowers:recording-findings` (FND-ids, `KEY_RESULTS.md`); work moves through the `science-ultrapowers:running-the-lab` stage approvals.
 > 3. **No pre-approved tools.** Any upstream `allowed-tools` grant was removed from this copy, so normal permission prompts apply.
 > 4. **Tools in Claude Code:** read PDFs with the file reader, edit with the file tools, read the skill's bundled files under `${CLAUDE_PLUGIN_ROOT}/skills/pr-review-toolkit/`; packages the figure and poster skills need live in the project's `.venv-lab-skills` (see `science-ultrapowers:initializing-a-research-lab`).
-> 5. **Not installed in this lab:** `epic-dev` -> `science-ultrapowers:running-the-lab` gates; `project-preflight` -> the linter, type checker, security scanner and tests the project brief names.
-> 6. **Skill-specific:** Satisfies the G3 'code review by a non-author': the reviewer must be a fresh-context Research Engineer (or Scientific Reviewer) who did not write the change. The upstream dispatch branches and panel protocol were removed. For ML-pipeline changes apply `references/lab-ml-pipeline-checklist.md` (lab-authored after a first-hand read of this skill).
+> 5. **Not installed in this lab:** `epic-dev` -> `science-ultrapowers:running-the-lab` stage approvals; `project-preflight` -> the linter, type checker, security scanner and tests the project brief names.
+> 6. **Skill-specific:** Satisfies the Execution stage 'code review by a non-author': the reviewer must be an independent Research Engineer (or Scientific Peer Reviewer) who did not write the change. The upstream assignment branches and panel protocol were removed. For machine learning (ML) workflow changes apply the lab-authored checklist in this skill's `references/` folder (written after a first-hand read of this skill).
 >
-> Provenance, licence and change log: `PROVENANCE.md`.
+> Provenance, license and change log: `PROVENANCE.md`.
 
 
 # PR Review Toolkit

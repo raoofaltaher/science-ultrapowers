@@ -2,16 +2,16 @@
 name: implementation-planning
 description: "Use this skill when the user asks to \"plan this feature\", \"write an implementation plan\", \"design before coding\", \"think through the approach\", \"review this plan\", or before any multi-file change, architectural decision, experiment with a go/no-go outcome, or strategic pivot. Produces a verifiable plan with pre-registered decision gates and an explicit list of open judgment calls."
 ---
-> **LAB OVERLAY (binding).** Vendored third-party skill: `neuromechanist/research-skills` @ `f0219bde233a` (BSD-3-Clause). Where anything below conflicts with the lab's rules, the lab's rules win.
+> **LAB ADDENDUM (binding).** Adopted third-party skill: `neuromechanist/research-skills` @ `f0219bde233a` (BSD-3-Clause). Where anything below conflicts with the lab's rules, the lab's rules win.
 >
-> 1. **Evidence rule wins.** Facts and citations come only through `science-ultrapowers:verifying-evidence-by-doi` (peer-reviewed, Crossref-verified DOI, full text read, evidence card). Never cite from web search, model memory or preprints.
-> 2. **Records.** Numbers and results come only from `science-ultrapowers:recording-findings` (F-ids, `CANONICAL_NUMBERS.md`); work moves through the `science-ultrapowers:running-the-lab` gates.
+> 1. **Evidence rule wins.** Facts and citations come only through `science-ultrapowers:verifying-evidence-by-doi` (peer-reviewed, DOI matched through Crossref, full text read, evidence record). Never cite from web search, model memory or preprints.
+> 2. **Records.** Numbers and results come only from `science-ultrapowers:recording-findings` (FND-ids, `KEY_RESULTS.md`); work moves through the `science-ultrapowers:running-the-lab` stage approvals.
 > 3. **No pre-approved tools.** Any upstream `allowed-tools` grant was removed from this copy, so normal permission prompts apply.
 > 4. **Tools in Claude Code:** read PDFs with the file reader, edit with the file tools, read the skill's bundled files under `${CLAUDE_PLUGIN_ROOT}/skills/implementation-planning/`; packages the figure and poster skills need live in the project's `.venv-lab-skills` (see `science-ultrapowers:initializing-a-research-lab`).
-> 5. **Not installed in this lab:** `agent-fanout` -> `science-ultrapowers:running-the-lab` (task briefs + delegation); `engineering-loop` -> `science-ultrapowers:running-the-lab` gates; `epic-dev` -> `science-ultrapowers:running-the-lab` gates.
-> 6. **Skill-specific:** Store plans as `research_lab/03_experiments/protocols/<EXP-id>_plan.md`. The plan's pre-registered decision gates are G2 pre-registration items (Supervisor approval, recorded in the decision log); open judgement calls go to `research_lab/06_decisions/DECISIONS.md`; resolved gates become ledger findings. The upstream model-routing section was replaced.
+> 5. **Not installed in this lab:** `agent-fanout` -> `science-ultrapowers:running-the-lab` (task assignments + delegation); `engineering-loop` -> `science-ultrapowers:running-the-lab` stage approvals; `epic-dev` -> `science-ultrapowers:running-the-lab` stage approvals.
+> 6. **Skill-specific:** Store plans as `research_lab/experiments/preregistrations/<EXP-id>_plan.md`. The plan's preregistered decision points are Preregistration stage items (Academic Supervisor approval, recorded in the decision log); open judgment calls go to `research_lab/decisions/DECISION_LOG.md`; resolved decision points become findings log rows. The upstream model-routing section was replaced.
 >
-> Provenance, licence and change log: `PROVENANCE.md`.
+> Provenance, license and change log: `PROVENANCE.md`.
 
 
 # Implementation Planning

@@ -3,16 +3,16 @@ name: svg-primitives
 description: 'Use when the user asks to build a programmatic SVG schematic in Python: flowcharts, boxes and arrows, auto-fit SVG text, mm-precise diagrams, edge-snapped arrows, tangent-correct curve arrowheads, orthogonal or Manhattan routing, deterministic z-order layers, labeled groups, bracket groupings, leader-line annotations, or strict Canvas.save validation for text overflow. Use figure-qa instead for after-the-fact validation of arbitrary hand-authored or exported SVGs. Built on drawsvg, svgpathtools, and fontTools; output SVGs can be composed by scientific-figure.'
 version: 0.3.1
 ---
-> **LAB OVERLAY (binding).** Vendored third-party skill: `neuromechanist/research-skills` @ `f0219bde233a` (BSD-3-Clause). Where anything below conflicts with the lab's rules, the lab's rules win.
+> **LAB ADDENDUM (binding).** Adopted third-party skill: `neuromechanist/research-skills` @ `f0219bde233a` (BSD-3-Clause). Where anything below conflicts with the lab's rules, the lab's rules win.
 >
-> 1. **Evidence rule wins.** Facts and citations come only through `science-ultrapowers:verifying-evidence-by-doi` (peer-reviewed, Crossref-verified DOI, full text read, evidence card). Never cite from web search, model memory or preprints.
-> 2. **Records.** Numbers and results come only from `science-ultrapowers:recording-findings` (F-ids, `CANONICAL_NUMBERS.md`); work moves through the `science-ultrapowers:running-the-lab` gates.
+> 1. **Evidence rule wins.** Facts and citations come only through `science-ultrapowers:verifying-evidence-by-doi` (peer-reviewed, DOI matched through Crossref, full text read, evidence record). Never cite from web search, model memory or preprints.
+> 2. **Records.** Numbers and results come only from `science-ultrapowers:recording-findings` (FND-ids, `KEY_RESULTS.md`); work moves through the `science-ultrapowers:running-the-lab` stage approvals.
 > 3. **No pre-approved tools.** Any upstream `allowed-tools` grant was removed from this copy, so normal permission prompts apply.
-> 4. **Not installed in this lab:** `ai-full-figure` -> not installed (sends prompts to external image APIs); `plot-styling` -> `figure-bible`; `scientific-figure` -> `figure-bible` + `svg-primitives` (+ vendored `validate_fonts.py` in `figure-qa`); `svg-figure` -> `svg-primitives`; `transparent-icons` -> not installed (external image APIs).
+> 4. **Not installed in this lab:** `ai-full-figure` -> not installed (sends prompts to external image APIs); `plot-styling` -> `figure-bible`; `scientific-figure` -> `figure-bible` + `svg-primitives` (+ adopted `validate_fonts.py` in `figure-qa`); `svg-figure` -> `svg-primitives`; `transparent-icons` -> not installed (external image APIs).
 > 5. **Tools in Claude Code:** read PDFs with the file reader, edit with the file tools, run bundled scripts with `python -B "${CLAUDE_PLUGIN_ROOT}/skills/svg-primitives/scripts/<script>"`; packages the figure and poster skills need live in the project's `.venv-lab-skills` (see `science-ultrapowers:initializing-a-research-lab`).
 > 6. **Skill-specific:** The font search path was patched to include the Windows font folders (`C:\Windows\Fonts`, per-user fonts), so Arial or Segoe UI is found; use `strict_metrics=True` for journal-submission figures. Known upstream defect at the pinned commit: `curve="orthogonal-h"` between exactly stacked boxes emits zero-length end segments (test `test_orthogonal_with_vertically_aligned_boxes` fails), so use `orthogonal-v` or `straight` for stacked boxes. Needs drawsvg, fontTools, pillow, lxml; cairosvg only for PNG export.
 >
-> Provenance, licence and change log: `PROVENANCE.md`.
+> Provenance, license and change log: `PROVENANCE.md`.
 
 
 # SVG Primitives

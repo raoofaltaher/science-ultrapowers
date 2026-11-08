@@ -10,18 +10,19 @@
 | Vetting | static security review (S1-S8) and quality rubric (Q1-Q6) by an independent reviewer track; Jev second opinion; review board (Academic Supervisor + Scientific Peer Reviewer profiles). Records: the originating lab's decision log, review records and skill-vetting folder (not shipped with the plugin) |
 | Approved by | the user (References & Resources Specialist), 2026-09-26: "Install all 14" |
 
-## Lab overlays applied
-- inserted the LAB OVERLAY block at the top of SKILL.md
+## Lab addenda applied
+- inserted the LAB ADDENDUM block at the top of SKILL.md
 - added LICENSE (upstream repository licence, verbatim)
 - 2026-11-07 science-ultrapowers: Claude-Science-only overlay items removed (PDF-explorer, kernel paths, host skill-reader calls), Claude Code tool line added, skill cross-references renamed, project names and decision ids generalised
 - 2026-11-08 science-ultrapowers: overlay: `uv run` removed from the overlay (uv is not a plugin runtime dependency); SKILL.md hash refreshed
 - 2026-11-08 science-ultrapowers: overlay runs python with -B (SKILL.md hash refreshed)
+- 2026-11-08 science-ultrapowers: overlay retitled LAB ADDENDUM (binding), the standard's words (SKILL.md hash refreshed)
 
 ## File hashes (SHA-256, first 12 hex chars)
 | File | Status | Upstream | Vendored |
 |---|---|---|---|
 | `LICENSE` | added | `` | `6ea149808a17` |
-| `SKILL.md` | modified | `31f4fb3c0df5` | `a0ebf3cdaf65` |
+| `SKILL.md` | modified | `31f4fb3c0df5` | `497c0e426e4d` |
 | `assets/REPORT_FORMATTING_GUIDE.md` | unchanged | `2bb69499426e` | `2bb69499426e` |
 | `assets/authorship_template.json` | unchanged | `04a590ac47ed` | `04a590ac47ed` |
 | `assets/claim_evidence_template.csv` | unchanged | `cfb7a9f44cd1` | `cfb7a9f44cd1` |

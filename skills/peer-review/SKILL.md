@@ -7,16 +7,16 @@ metadata:
   version: "2.1"
   skill-author: K-Dense Inc.
 ---
-> **LAB OVERLAY (binding).** Vendored third-party skill: `K-Dense-AI/claude-scientific-writer` @ `0c7260603be3` (MIT). Where anything below conflicts with the lab's rules, the lab's rules win.
+> **LAB ADDENDUM (binding).** Adopted third-party skill: `K-Dense-AI/claude-scientific-writer` @ `0c7260603be3` (MIT). Where anything below conflicts with the lab's rules, the lab's rules win.
 >
-> 1. **Evidence rule wins.** Facts and citations come only through `science-ultrapowers:verifying-evidence-by-doi` (peer-reviewed, Crossref-verified DOI, full text read, evidence card). Never cite from web search, model memory or preprints.
-> 2. **Records.** Numbers and results come only from `science-ultrapowers:recording-findings` (F-ids, `CANONICAL_NUMBERS.md`); work moves through the `science-ultrapowers:running-the-lab` gates.
+> 1. **Evidence rule wins.** Facts and citations come only through `science-ultrapowers:verifying-evidence-by-doi` (peer-reviewed, DOI matched through Crossref, full text read, evidence record). Never cite from web search, model memory or preprints.
+> 2. **Records.** Numbers and results come only from `science-ultrapowers:recording-findings` (FND-ids, `KEY_RESULTS.md`); work moves through the `science-ultrapowers:running-the-lab` stage approvals.
 > 3. **No pre-approved tools.** Any upstream `allowed-tools` grant was removed from this copy, so normal permission prompts apply.
 > 4. **Windows:** where this skill says `python3`, run `python` with `-B`.
 > 5. **Tools in Claude Code:** read PDFs with the file reader, edit with the file tools, run bundled scripts with `python -B "${CLAUDE_PLUGIN_ROOT}/skills/peer-review/scripts/<script>"`; packages the figure and poster skills need live in the project's `.venv-lab-skills` (see `science-ultrapowers:initializing-a-research-lab`).
-> 6. **Skill-specific:** `references/security_validation.md` cites test suites and scanners that do not exist in the upstream repository: treat it as unverified vendor narrative, not an audit record.
+> 6. **Skill-specific:** `references/security_validation.md` cites test suites and scanners that do not exist in the upstream repository: treat it as unverified vendor narrative, not a record of checks performed.
 >
-> Provenance, licence and change log: `PROVENANCE.md`.
+> Provenance, license and change log: `PROVENANCE.md`.
 
 
 # Peer Review

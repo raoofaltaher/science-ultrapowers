@@ -7,13 +7,13 @@ description: Use when completing tasks, implementing major features, or before m
 
 Dispatch a code reviewer subagent to catch issues before they cascade. The reviewer gets precisely crafted context for evaluation — never your session's history.
 
-In the lab this is gate G3, run by a role that did not write the code (a non-author), and the report lands in `research_lab/04_reviews/`.
+In the lab this is the Execution stage approval, run by a role that did not write the code (a non-author), and the report lands in `research_lab/reviews/`.
 
 **Core principle:** Review early, review often.
 
 ## In the lab
 
-A role that cannot dispatch other roles does not review its own code and does not wait: it names the review it needs in its hand-off, as `Review requested: <what, by which non-author role>`. The orchestrator then dispatches a fresh non-author (`research-engineer` or `scientific-reviewer`) under `science-ultrapowers:pr-review-toolkit`, and logs the review in `research_lab/04_reviews/REVIEW_LOG.md`. Only a role that can dispatch uses "How to Request" below itself, and never on its own work.
+A role that cannot assign other roles does not review its own code and does not wait: it names the review it needs in its task report, as `Review requested: <what, by which non-author role>`. The project manager then assigns an independent non-author reviewer (`research-engineer` or `scientific-peer-reviewer`) under `science-ultrapowers:pr-review-toolkit`, and logs the review in `research_lab/reviews/REVIEW_LOG.md`. Only a role that can assign uses "How to Request" below itself, and never on its own work.
 
 ## When to Request Review
 

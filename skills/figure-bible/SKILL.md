@@ -3,16 +3,16 @@ name: figure-bible
 description: Use this skill when the user asks to "make a figure bible", "set up a style bible", "create a figure theme", "make a theme for my figures", "set up a figure style", "palette for my paper figures", or wants a consistent figure style. Scaffolds and validates figures/theme.json; run before any figures skill generates images.
 version: 0.1.0
 ---
-> **LAB OVERLAY (binding).** Vendored third-party skill: `neuromechanist/research-skills` @ `f0219bde233a` (BSD-3-Clause). Where anything below conflicts with the lab's rules, the lab's rules win.
+> **LAB ADDENDUM (binding).** Adopted third-party skill: `neuromechanist/research-skills` @ `f0219bde233a` (BSD-3-Clause). Where anything below conflicts with the lab's rules, the lab's rules win.
 >
-> 1. **Evidence rule wins.** Facts and citations come only through `science-ultrapowers:verifying-evidence-by-doi` (peer-reviewed, Crossref-verified DOI, full text read, evidence card). Never cite from web search, model memory or preprints.
-> 2. **Records.** Numbers and results come only from `science-ultrapowers:recording-findings` (F-ids, `CANONICAL_NUMBERS.md`); work moves through the `science-ultrapowers:running-the-lab` gates.
+> 1. **Evidence rule wins.** Facts and citations come only through `science-ultrapowers:verifying-evidence-by-doi` (peer-reviewed, DOI matched through Crossref, full text read, evidence record). Never cite from web search, model memory or preprints.
+> 2. **Records.** Numbers and results come only from `science-ultrapowers:recording-findings` (FND-ids, `KEY_RESULTS.md`); work moves through the `science-ultrapowers:running-the-lab` stage approvals.
 > 3. **No pre-approved tools.** Any upstream `allowed-tools` grant was removed from this copy, so normal permission prompts apply.
-> 4. **Not installed in this lab:** `ai-full-figure` -> not installed (sends prompts to external image APIs); `plot-styling` -> this skill; `scientific-figure` -> this skill + `svg-primitives` (+ vendored `validate_fonts.py` in `figure-qa`); `transparent-icons` -> not installed (external image APIs).
+> 4. **Not installed in this lab:** `ai-full-figure` -> not installed (sends prompts to external image APIs); `plot-styling` -> this skill; `scientific-figure` -> this skill + `svg-primitives` (+ adopted `validate_fonts.py` in `figure-qa`); `transparent-icons` -> not installed (external image APIs).
 > 5. **Tools in Claude Code:** read PDFs with the file reader, edit with the file tools, run bundled scripts with `python -B "${CLAUDE_PLUGIN_ROOT}/skills/figure-bible/scripts/<script>"`; packages the figure and poster skills need live in the project's `.venv-lab-skills` (see `science-ultrapowers:initializing-a-research-lab`).
-> 6. **Skill-specific:** `lib/theme.py` and `schemas/theme.schema.json` are vendored and the scripts' library path is patched to this folder. Needs jsonschema. Keep the project theme at `figures/theme.json`.
+> 6. **Skill-specific:** `lib/theme.py` and `schemas/theme.schema.json` are adopted and the scripts' library path is patched to this folder. Needs jsonschema. Keep the project theme at `figures/theme.json`.
 >
-> Provenance, licence and change log: `PROVENANCE.md`.
+> Provenance, license and change log: `PROVENANCE.md`.
 
 
 # Figure Bible

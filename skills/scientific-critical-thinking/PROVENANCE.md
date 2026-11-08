@@ -10,18 +10,19 @@
 | Vetting | static security review (S1-S8) and quality rubric (Q1-Q6) by an independent reviewer track; Jev second opinion; review board (Academic Supervisor + Scientific Peer Reviewer profiles). Records: the originating lab's decision log, review records and skill-vetting folder (not shipped with the plugin) |
 | Approved by | the user (References & Resources Specialist), 2026-09-26: "Install all 14" |
 
-## Lab overlays applied
+## Lab addenda applied
 - removed allowed-tools from frontmatter
 - replaced 'Visual Aids' section (removed the OpenRouter/scientific-schematics route); edited compatibility field
-- inserted the LAB OVERLAY block at the top of SKILL.md
+- inserted the LAB ADDENDUM block at the top of SKILL.md
 - added LICENSE (upstream repository licence, verbatim)
 - 2026-11-07 science-ultrapowers: Claude-Science-only overlay items removed (PDF-explorer, kernel paths, host skill-reader calls), Claude Code tool line added, skill cross-references renamed, project names and decision ids generalised
+- 2026-11-08 science-ultrapowers: overlay retitled LAB ADDENDUM (binding), the standard's words (SKILL.md hash refreshed)
 
 ## File hashes (SHA-256, first 12 hex chars)
 | File | Status | Upstream | Vendored |
 |---|---|---|---|
 | `LICENSE` | added | `` | `6ea149808a17` |
-| `SKILL.md` | modified | `e615da7e6a90` | `6d4a5b3dcaea` |
+| `SKILL.md` | modified | `e615da7e6a90` | `d638a3ef73a4` |
 | `references/common_biases.md` | unchanged | `99f608c86075` | `99f608c86075` |
 | `references/core_capabilities.md` | unchanged | `ed5e62032737` | `ed5e62032737` |
 | `references/evidence_hierarchy.md` | unchanged | `e58b6fbbd080` | `e58b6fbbd080` |

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# The fourteen overlaid vendored skills: shape, lab overlay, cleanliness, provenance hashes.
-# The one verbatim vendored skill (typesafe-ai, no overlay): shape, cleanliness, provenance hashes.
+# The fourteen adopted skills with an addendum: shape, lab addendum, cleanliness, provenance hashes.
+# The one adopted skill copied verbatim (typesafe-ai, no addendum): shape, cleanliness, provenance hashes.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
@@ -11,7 +11,7 @@ fail() { echo "vendored-skills: $1: $2" >&2; exit 1; }
 
 # The repository patterns (same as the repository gate plus the repository rules not yet in it).
 repo_patterns_ci='superpowers:|obra/|codex|gemini|opencode|hermes|antigravity|kimi|\.pi/|jesse vincent|prime radiant|subagent-driven|writing-plans|executing-plans|using-superpowers|using-git-worktrees|finishing-a-development-branch|diagnosing-superpowers|:brainstorming\b|/brainstorming\b|brainstorming skill|copilot|claude science|\.claude/skills'
-repo_patterns_cs='\bCursor\b|\bMuse\b|\bDevin\b|CURSOR_|MUSE_|DEVIN_|Z:[\\]|Z:/|host\.(skills|artifacts|lineage|agents|query|mcp)|D-00[0-9][0-9]|RV-00[0-9]+|doi-verified-evidence|research-lab-workflow|findings-ledger|reference-access-request|jev-decisions|pdf-explore|kernel\.py'
+repo_patterns_cs='\bCursor\b|\bMuse\b|\bDevin\b|CURSOR_|MUSE_|DEVIN_|Z:[\\]|Z:/|host\.(skills|artifacts|lineage|agents|query|mcp)|(^|[^A-Za-z])D-00[0-9][0-9]|RV-00[0-9]+|doi-verified-evidence|research-lab-workflow|findings-ledger|reference-access-request|jev-decisions|pdf-explore|kernel\.py'
 old_names='doi-verified-evidence|findings-ledger|research-lab-workflow|reference-access-request|jev-decisions'
 # Owner-specific strings come from tests/private-strings.txt (git-ignored; see tests/private-strings.example).
 if [ -f tests/private-strings.txt ]; then
@@ -62,12 +62,13 @@ for name in $NAMES $VERBATIM; do
 
   skill="$dir/SKILL.md"
   if [ "$overlaid" = 1 ]; then
-    grep -qF 'LAB OVERLAY (binding)' "$skill" || fail "$name" "SKILL.md lacks 'LAB OVERLAY (binding)'"
+    grep -qF 'LAB ADDENDUM (binding)' "$skill" || fail "$name" "SKILL.md lacks 'LAB ADDENDUM (binding)'"
+    ! grep -qF 'LAB OVERLAY' "$skill" || fail "$name" "SKILL.md still says LAB OVERLAY"
     grep -qF "Where anything below conflicts with the lab's rules, the lab's rules win." "$skill" \
       || fail "$name" "SKILL.md lacks the conflict line"
   fi
 
-  if grep -n -E 'host\.|\brepl\b|pdf-explore|Claude Science|kernel\.py|analysis kernel|\.claude/skills/|doi-verified-evidence|findings-ledger|research-lab-workflow|AFN-UPF|D-00[0-9][0-9]' "$skill"; then
+  if grep -n -E 'host\.|\brepl\b|pdf-explore|Claude Science|kernel\.py|analysis kernel|\.claude/skills/|doi-verified-evidence|findings-ledger|research-lab-workflow|AFN-UPF|(^|[^A-Za-z])D-00[0-9][0-9]' "$skill"; then
     fail "$name" "SKILL.md still carries Claude-Science or project strings (lines above)"
   fi
 
@@ -78,6 +79,8 @@ for name in $NAMES $VERBATIM; do
       || fail "$name" "SKILL.md lacks \${CLAUDE_PLUGIN_ROOT}/skills/$name/"
     grep -E '^- 2026-11-07 science-ultrapowers:.*Claude-Science-only overlay items removed' "$prov" >/dev/null \
       || fail "$name" "PROVENANCE.md lacks the 2026-11-07 overlay-removal line"
+    grep -E '^- 2026-11-08 science-ultrapowers:.*LAB ADDENDUM' "$prov" >/dev/null \
+      || fail "$name" "PROVENANCE.md lacks the 2026-11-08 addendum line"
   fi
 
   check_hash_table "$name" "$dir"
@@ -104,7 +107,7 @@ for name in $NAMES $VERBATIM; do
   done < <(find "$dir" -type f ! -name LICENSE ! -name '*.png' ! -name '*.jpg' ! -name '*.jpeg' ! -name '*.gif' ! -name '*.pdf' ! -name '*.ttf' ! -name '*.otf' ! -name '*.woff*' ! -name '*.pptx' ! -name '*.docx' ! -name '*.xlsx')
 done
 
-# Skills copied verbatim, with no lab overlay: their files and provenance hashes only.
+# Skills copied verbatim, with no lab addendum: their files and provenance hashes only.
 VERBATIM="typesafe-ai"
 for name in $VERBATIM; do
   dir="skills/$name"
