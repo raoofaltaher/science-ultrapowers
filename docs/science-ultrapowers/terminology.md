@@ -531,6 +531,7 @@ An existing lab can hold any of these old forms. Scripts read them and write the
 | Request priorities P1, P2, P3 | blocks a stage, this cycle, background | The priority column of an existing request file. | <!-- legacy -->
 | Reviewer-finding statuses claimed, unaddressed, resolved | author-responded, re-opened, closed | Rows of an existing archive's verification checks. | <!-- legacy -->
 | The DOI check value `VERIFIED` | `matched` | Existing evidence records; readers accept it for one release. | <!-- legacy -->
+| Finding types `code-audit`, `data-audit`, `doc-audit` | `code inspection`, `data inspection`, `document inspection` | The Type column of an existing findings log; init rewrites them. | <!-- legacy -->
 | Registration check items FROZEN, STAMP, INTEGRITY, CHRONOLOGY, DATA | registered, timestamp, unaltered, chronology, inputs | Plans only; no shipped script holds them. | <!-- legacy -->
 | Commit trailers `Protocol-Freeze:` and `Protocol-Stamp:` | `Preregistration:` and `Preregistration-Timestamp:` | Plans only; no shipped script writes them. | <!-- legacy -->
 | `snapshot` as a destination | `milestone` | Rows of an existing archive; the archive reads both. | <!-- legacy -->
