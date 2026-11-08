@@ -9,7 +9,7 @@
     {
       "name": "science-ultrapowers",
       "description": "A research-lab methodology for Claude Code: fourteen research roles, seven stages from Question to Publication (each ending in a stage approval), a DOI-verified evidence rule, a versioned artifact archive and lab memory, with migration from Claude Science",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "source": "./",
       "author": {
         "name": "RAOOF A."

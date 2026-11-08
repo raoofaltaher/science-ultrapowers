@@ -33,7 +33,7 @@ import urllib.request
 from pathlib import Path
 
 CROSSREF_API = "https://api.crossref.org"
-DOI_USER_AGENT = "science-ultrapowers-doi-verifier/0.2.0"
+DOI_USER_AGENT = "science-ultrapowers-doi-verifier/0.2.1"
 ALLOWED_URL_SCHEMES = ("https",)
 DOI_REGEX = r"10\.\d{4,9}/[^\s\"<>\]\[,;{}\\|`]+"
 RETRACTION_TYPES = ("retraction", "withdrawal", "removal", "retracted")

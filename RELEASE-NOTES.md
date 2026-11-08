@@ -1,5 +1,13 @@
 # Release notes
 
+## 0.2.1 (2026-11-09)
+
+A patch for init's migration, found on the first upgrade of a real 0.1 lab (issue 1).
+
+- A record kept in sections (rows, a note, more rows) is one table: the migration rewrites every row whose cell count is the header's, to the end of the file. Before, a review log with a resolution note after its first rows had only those rows rewritten, and the plan showed nothing.
+- The 0.1 finding types `code-audit`, `data-audit` and `doc-audit` become `code inspection`, `data inspection` and `document inspection`, as the standard says. <!-- legacy -->
+- A cell that starts with a 0.1 status word and holds more text (for example a priority with a note after it) is left as it is and listed in the plan's warnings, so the researcher can edit it by hand.
+
 ## 0.2.0 (2026-11-08)
 
 The terminology release and the research lifecycle release. A lab in the 0.1 layout migrates through `science-ultrapowers:initializing-a-research-lab`; read the breaking changes below first.
