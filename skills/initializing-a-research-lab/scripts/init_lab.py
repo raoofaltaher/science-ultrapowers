@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Scaffold a project-local research lab: compute a plan, print it, apply it with --yes.
+"""Set up a project-local research lab: compute a plan, print it, apply it with --yes.
 
 The plan lists what would be created, appended to or skipped. Nothing is written without --yes, and a
 file that already exists is never overwritten. Standard library only.
@@ -33,7 +33,7 @@ INSTRUCTION_FILES = ("CLAUDE.md", ".claude/CLAUDE.md")
 OLD_SKILL_NAMES = (
     "doi-verified-evidence",
     "research-lab-workflow",
-    "findings-ledger",
+    "findings-ledger",  # legacy
     "reference-access-request",
     "jev-decisions",
 )
@@ -50,8 +50,8 @@ COPIED_FILES = {
     "research_lab/memory/MEMORY.md": "remembering-for-the-lab/templates/MEMORY.md",
     "research_lab/memory/README.md": "remembering-for-the-lab/templates/README.md",
     "research_lab/templates/LAB_MEETING.md": "holding-lab-meetings/templates/LAB_MEETING.md",
-    "research_lab/templates/SESSION_KICKOFF.md": "holding-lab-meetings/templates/SESSION_KICKOFF.md",
-    "research_lab/templates/SESSION_STANDUP.md": "holding-lab-meetings/templates/SESSION_STANDUP.md",
+    "research_lab/templates/SESSION_OPENING.md": "holding-lab-meetings/templates/SESSION_OPENING.md",
+    "research_lab/templates/SESSION_CLOSE.md": "holding-lab-meetings/templates/SESSION_CLOSE.md",
 }
 
 _PLACEHOLDER = re.compile(r"\{\{([A-Z_]+)\}\}")
@@ -68,7 +68,7 @@ class Options:
     yes: bool = False
     json_output: bool = False
     project_root: Path | None = None
-    connectors: list[str] = field(default_factory=list)  # catalogue ids, resolved and in catalogue order
+    connectors: list[str] = field(default_factory=list)  # catalog ids, resolved and in catalog order
     permissions: bool = False
     allow_domains: list[str] = field(default_factory=list)  # lowercased, validated hosts
     out_of_scope: list[str] = field(default_factory=list)  # cleaned folders no role may open
@@ -86,6 +86,14 @@ class Plan:
     configured_connectors: list[str] = field(default_factory=list)
     # With --permissions: {"file", "action": "create" | "skip", "rules": [...]}; empty without it.
     permissions: dict = field(default_factory=dict)
+    # The migration of a 0.1 lab: the shown lines, the (old, new) renames in the order they run, the new folders it
+    # stops for, and the lab.json it would write.
+    migration: list[str] = field(default_factory=list)
+    migration_renames: list = field(default_factory=list)
+    migration_skip_folders: list[str] = field(default_factory=list)
+    lab_json_migrated: bytes | None = None
+    # {"file", "action": "create" | "skip", "setting"}; empty when the plugin lacks the style file.
+    output_style: dict = field(default_factory=dict)
 
 
 # --- helpers -----------------------------------------------------------------------------------------
@@ -166,7 +174,7 @@ def clean_scope_folder(text: str) -> str | None:
 
 
 def out_of_scope_block(folders: list[str]) -> str:
-    """Section 7 of the brief: a bullet per folder, else the prompt for your human partner to answer."""
+    """Section 7 of the brief: a bullet per folder, else the prompt for the researcher to answer."""
     if not folders:
         return OUT_OF_SCOPE_PROMPT
     return "\n".join(f"- `{folder}`" for folder in folders)
@@ -250,8 +258,8 @@ def build_lab_json(
     data["lfs"]["thresholdMB"] = opts.lfs_threshold_mb
     data["permissions"] = {"written": bool(permissions_written)}
     chosen = set(configured or [])
-    data["connectors"] = [e["id"] for e in load_catalogue() if e["id"] in chosen and e["kind"] == "mcp"]
-    data["jev"]["blockedPaths"] = list(opts.out_of_scope)
+    data["connectors"] = [e["id"] for e in load_catalog() if e["id"] in chosen and e["kind"] == "mcp"]
+    data["scope"]["restrictedFolders"] = list(opts.out_of_scope)
     return json.dumps(data, indent=2, ensure_ascii=False) + "\n"
 
 
@@ -269,8 +277,8 @@ def parse_lab_json(raw: bytes) -> dict:
 def merge_lab_json(data: dict, opts: Options, configured: list[str], permissions_written: bool) -> bool:
     """Bring an existing lab.json's own values up to date in place; True when something changed.
 
-    Only these change: the plugin version, the connectors list (union with the ones configured now, catalogue
-    order), permissions.written (only ever to true) and jev.blockedPaths (union with --out-of-scope)."""
+    Only these change: the plugin version, the connectors list (union with the ones configured now, catalog
+    order), permissions.written (only ever to true) and scope.restrictedFolders (union with --out-of-scope)."""
     changed = False
     version = plugin_version()
     if version != "unknown" and data.get("pluginVersion") != version:
@@ -279,7 +287,7 @@ def merge_lab_json(data: dict, opts: Options, configured: list[str], permissions
     if configured:
         have = data.get("connectors") if isinstance(data.get("connectors"), list) else []
         wanted = set(have) | set(configured)
-        merged = [e["id"] for e in load_catalogue() if e["id"] in wanted]
+        merged = [e["id"] for e in load_catalog() if e["id"] in wanted]
         merged += [item for item in have if isinstance(item, str) and item not in merged]
         if merged != data.get("connectors"):
             data["connectors"] = merged
@@ -293,13 +301,13 @@ def merge_lab_json(data: dict, opts: Options, configured: list[str], permissions
             permissions["written"] = True
             changed = True
     if opts.out_of_scope:
-        jev = data.get("jev")
-        if not isinstance(jev, dict):
-            jev = data["jev"] = {}
-        have_paths = jev.get("blockedPaths") if isinstance(jev.get("blockedPaths"), list) else []
+        scope = data.get("scope")
+        if not isinstance(scope, dict):
+            scope = data["scope"] = {}
+        have_paths = scope.get("restrictedFolders") if isinstance(scope.get("restrictedFolders"), list) else []
         merged_paths = list(have_paths) + [p for p in opts.out_of_scope if p not in have_paths]
-        if merged_paths != jev.get("blockedPaths"):
-            jev["blockedPaths"] = merged_paths
+        if merged_paths != scope.get("restrictedFolders"):
+            scope["restrictedFolders"] = merged_paths
             changed = True
     return changed
 
@@ -364,7 +372,7 @@ def find_duplicates(project_root: Path) -> list[str]:
         roles = json.loads((TEMPLATE_ROOT / "lab.json").read_text(encoding="utf-8")).get("roles", {})
     except (OSError, ValueError):
         roles = {}
-    for name in roles:
+    for name in (*roles, *ROLE_RENAMES):
         rel = f".claude/agents/{name}.md"
         if os.path.lexists(project_root / rel):
             found.append(rel)
@@ -418,6 +426,8 @@ def plan_lab_json(project_root: Path, opts: Options, plan: Plan) -> None:
         plan.skip.append(LAB_JSON_REL)
         plan.warn.append(f"cannot read {LAB_JSON_REL}; left unchanged")
         return
+    if plan.lab_json_migrated is not None:
+        raw = plan.lab_json_migrated  # the migration writes it first
     try:
         text = merged_lab_json_text(
             raw, opts, plan.configured_connectors, plan.permissions.get("action") == "create"
@@ -432,41 +442,41 @@ def plan_lab_json(project_root: Path, opts: Options, plan: Plan) -> None:
 # --- connectors --------------------------------------------------------------------------------------
 
 
-def load_catalogue() -> list[dict]:
+def load_catalog() -> list[dict]:
     path = SKILL_ROOT / "connectors.json"
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:
-        raise SystemExit(f"init_lab: cannot read the connector catalogue {path}: {exc}")
+        raise SystemExit(f"init_lab: cannot read the connector catalog {path}: {exc}")
     if not isinstance(data, list):
-        raise SystemExit(f"init_lab: the connector catalogue {path} must be a list")
+        raise SystemExit(f"init_lab: the connector catalog {path} must be a list")
     return data
 
 
 def resolve_connectors(text: str) -> list[str]:
-    """Ids and the word `science`, comma separated -> catalogue ids in catalogue order.
+    """Ids and the word `science`, comma separated -> catalog ids in catalog order.
 
     Raises ValueError carrying the list of unknown ids."""
-    catalogue = load_catalogue()
-    known = {entry["id"] for entry in catalogue}
+    catalog = load_catalog()
+    known = {entry["id"] for entry in catalog}
     chosen: set[str] = set()
     unknown: list[str] = []
     for item in (part.strip() for part in text.split(",")):
         if not item:
             continue
         if item == "science":
-            chosen.update(e["id"] for e in catalogue if e["kind"] == "mcp" and e.get("tag") == "science")
+            chosen.update(e["id"] for e in catalog if e["kind"] == "mcp" and e.get("tag") == "science")
         elif item in known:
             chosen.add(item)
         elif item not in unknown:
             unknown.append(item)
     if unknown:
         raise ValueError(unknown)
-    return [e["id"] for e in catalogue if e["id"] in chosen]
+    return [e["id"] for e in catalog if e["id"] in chosen]
 
 
 def server_entry(entry: dict, project_root: Path) -> dict:
-    """The .mcp.json server for one `mcp` catalogue entry."""
+    """The .mcp.json server for one `mcp` catalog entry."""
     if entry["transport"] == "stdio":
         subs = {"PROJECT_ROOT": Path(project_root).as_posix()}
         return {
@@ -503,10 +513,10 @@ def mcp_json_indent(raw: bytes):
 
 
 def plan_connectors(project_root: Path, opts: Options, plan: Plan) -> None:
-    catalogue = {entry["id"]: entry for entry in load_catalogue()}
+    catalog = {entry["id"]: entry for entry in load_catalog()}
     desired: dict[str, dict] = {}
     for cid in opts.connectors:
-        entry = catalogue[cid]
+        entry = catalog[cid]
         if entry["kind"] == "mcp":
             desired[cid] = server_entry(entry, project_root)
         else:
@@ -572,6 +582,682 @@ def apply_mcp_json(project_root: Path, action: str, servers: dict) -> bool:
     return True
 
 
+# --- migration of a 0.1 lab --------------------------------------------------------------------------
+# Three kinds of plan line and no others: `rename <old> -> <new>`, `header <file>: <old> -> <new>` and
+# `rewrite <file>: <column>, <n> rows: <old> -> <new>`. Free-text cells and existing ids in rows are never edited.
+
+OLD_FOLDERS = {  # old folder under research_lab/ -> new folder
+    "00_project_knowledge": "project",  # legacy
+    "01_reference_registry": "literature",  # legacy
+    "02_findings_ledger": "findings",  # legacy
+    "03_experiments": "experiments",  # legacy
+    "04_reviews": "reviews",  # legacy
+    "05_access_requests": "requests",  # legacy
+    "06_decisions": "decisions",  # legacy
+    "07_project_management": "planning",  # legacy
+    "08_decision_log": "automation",  # legacy
+    "09_skill_vetting": "tool_vetting",  # legacy
+}
+OTHER_FOLDER_RENAMES = (
+    ("artifacts/store", "artifacts/archive"),  # legacy
+    (".scratch", ".working"),  # legacy
+)
+# Renames inside a renamed folder, in paths of the new layout (relative to research_lab/).
+INNER_RENAMES = (
+    ("literature/REGISTRY.csv", "literature/SOURCES.csv"),  # legacy
+    ("literature/evidence_cards", "literature/evidence_records"),  # legacy
+    ("literature/audits", "literature/search_logs"),  # legacy
+    ("findings/FINDINGS.md", "findings/FINDINGS_LOG.md"),  # legacy
+    ("findings/CANONICAL_NUMBERS.md", "findings/KEY_RESULTS.md"),  # legacy
+    ("experiments/protocols", "experiments/preregistrations"),  # legacy
+    ("decisions/DECISIONS.md", "decisions/DECISION_LOG.md"),  # legacy
+    ("planning/TASK_BOARD.md", "planning/WORK_PLAN.md"),  # legacy
+    ("migration/WHERE_WE_LEFT_OFF.md", "migration/HANDOVER_SUMMARY.md"),  # legacy
+    ("templates/H_CARD.md", "templates/HYPOTHESIS_RECORD.md"),  # legacy
+    ("templates/EVIDENCE_CARD.md", "templates/EVIDENCE_RECORD.md"),  # legacy
+    ("templates/HANDOFF.md", "templates/TASK_REPORT.md"),  # legacy
+    ("templates/DEVILS_ADVOCATE_TEMPLATE.md", "templates/ADVERSARIAL_REVIEW.md"),  # legacy
+    ("templates/REVIEW_ACADEMIC.md", "templates/INTERNAL_REVIEW.md"),  # legacy
+    ("templates/SESSION_KICKOFF.md", "templates/SESSION_OPENING.md"),  # legacy
+    ("templates/SESSION_STANDUP.md", "templates/SESSION_CLOSE.md"),  # legacy
+)
+MEETINGS_FOLDER = "decisions/lab_meetings"
+MEETING_SUFFIXES = (("_kickoff.md", "_opening.md"), ("_standup.md", "_close.md"))  # legacy
+ROLE_RENAMES = {  # old agent id -> new agent id
+    "lab-project-manager": "research-project-manager",  # legacy
+    "methods-researcher": "methods-innovation-researcher",  # legacy
+    "experiments-lead": "lab-experiments-lead",  # legacy
+    "findings-curator": "findings-records-curator",  # legacy
+    "paper-author": "academic-paper-author",  # legacy
+    "scientific-reviewer": "scientific-peer-reviewer",  # legacy
+    "citation-auditor": "citation-reference-auditor",  # legacy
+}
+OLD_BRIEF_IMPORT = "research_lab/00_project_knowledge/"  # legacy
+GITATTRIBUTES_OLD_PREFIX = "store/"  # legacy
+GITATTRIBUTES_NEW_PREFIX = "archive/"
+STAGE_NAMES = {
+    "G0": "Question",  # legacy
+    "G1": "Literature",  # legacy
+    "G2": "Preregistration",  # legacy
+    "G3": "Execution",  # legacy
+    "G4": "Results",  # legacy
+    "G5": "Reporting",  # legacy
+    "G6": "Publication",  # legacy
+}
+SOURCE_STATUSES = {
+    "ADMITTED": "citable",  # legacy
+    "ADMITTED_EXCEPTION": "citable by exception",  # legacy
+    "DOI_VERIFIED": "metadata matched",  # legacy
+    "PENDING_FULLTEXT": "awaiting full text",  # legacy
+    "PENDING_APPROVAL": "awaiting approval",  # legacy
+    "CANDIDATE_DOI": "candidate",  # legacy
+    "EXCLUDED_PREPRINT": "excluded: preprint",  # legacy
+    "EXCLUDED_RETRACTED": "excluded: retracted",  # legacy
+    "REJECTED_MISMATCH": "rejected: mismatch",  # legacy
+}
+SOURCE_CLASSES = {
+    "A": "peer-reviewed matched doi",  # legacy
+    "B": "peer-reviewed no doi",  # legacy
+    "C": "not peer-reviewed",  # legacy
+    "X": "retracted",  # legacy
+}
+DOI_STATUSES = {
+    "VERIFIED": "matched",  # legacy
+    "RESOLVES_UNCHECKED": "resolves unchecked",  # legacy
+    "NO_DOI": "no doi",  # legacy
+    "MISMATCH": "mismatch",  # legacy
+    "UNRESOLVED": "unresolved",  # legacy
+    "RETRACTED": "retracted",  # legacy
+    "CONCERN": "concern",  # legacy
+    "PREPRINT": "preprint",  # legacy
+    "ERROR": "error",  # legacy
+}
+REQUEST_TYPES = {
+    "FULLTEXT": "full-text request",  # legacy
+    "CONFIRM_DOI": "DOI confirmation",  # legacy
+    "APPROVAL": "exception approval",  # legacy
+}
+REQUEST_PRIORITIES = {
+    "P1": "blocks a stage",  # legacy
+    "P2": "this cycle",  # legacy
+    "P3": "background",  # legacy
+}
+OUTPUT_STYLE_SOURCE = PLUGIN_ROOT / "output-styles" / "scholarly-explanatory.md"
+OUTPUT_STYLE_REL = ".claude/output-styles/scholarly-explanatory.md"
+OUTPUT_STYLE_SETTING = '"outputStyle": "Scholarly Explanatory"'
+
+
+def lowercase_of(*words: str):
+    """A token rewrite that only lower-cases the listed words (a status written in capitals)."""
+    wanted = {word.lower() for word in words}
+    return lambda value: value.lower() if value.lower() in wanted else value
+
+
+def table_of(table: dict):
+    return lambda value: table.get(value, value)
+
+
+def finding_status(value: str) -> str:
+    match = re.fullmatch(r"(superseded by|refuted by)(\s+)(\S+)", value, re.IGNORECASE)
+    if match:
+        return f"{match.group(1).lower()}{match.group(2)}{match.group(3)}"
+    return lowercase_of("tentative", "verified")(value)
+
+
+@dataclass(frozen=True)
+class TableSpec:
+    path: str  # the file in the new layout, relative to research_lab/
+    kind: str  # "md" or "csv"
+    headers: dict  # old column name -> new column name
+    tokens: dict  # new column name -> a function from an old token to a new token
+
+
+TABLES = (
+    TableSpec(
+        "findings/FINDINGS_LOG.md",
+        "md",
+        {"F-id": "FND-id (finding)", "Scope / caveats": "Scope and caveats"},  # legacy
+        {"Status": finding_status},
+    ),
+    TableSpec("findings/KEY_RESULTS.md", "md", {"F-id": "FND-id (finding)"}, {}),  # legacy
+    TableSpec(
+        "literature/SOURCES.csv",
+        "csv",
+        {
+            "ref_id": "source_id",  # legacy
+            "lab_status": "status",  # legacy
+            "tier": "source_class",  # legacy
+            "verify_status": "doi_status",  # legacy
+            "evidence_cards": "evidence_records",  # legacy
+        },
+        {
+            "status": table_of(SOURCE_STATUSES),
+            "source_class": table_of(SOURCE_CLASSES),
+            "doi_status": table_of(DOI_STATUSES),
+        },
+    ),
+    TableSpec(
+        "experiments/EXPERIMENT_REGISTER.md",
+        "md",
+        {
+            "Experiment id": "EXP-id (experiment)",  # legacy
+            "Protocol": "Preregistration",  # legacy
+            "Code / config": "Code and config",  # legacy
+            "Seeds / splits (where applicable)": "Seeds and partitions",  # legacy
+        },
+        {"Status": lowercase_of("planned", "registered", "running", "completed", "failed", "aborted")},
+    ),
+    TableSpec(
+        "reviews/REVIEW_LOG.md",
+        "md",
+        {
+            "RV-id": "REV-id (review)",  # legacy
+            "Artifact (path / version)": "Artifact",  # legacy
+            "Gate": "Stage",  # legacy
+            "Reviewer role": "Reviewer",  # legacy
+            "Verdict": "Outcome",  # legacy
+        },
+        {"Stage": table_of(STAGE_NAMES)},
+    ),
+    TableSpec(
+        "requests/ACCESS_REQUESTS.md",
+        "md",
+        {"REQ-id": "REQ-id (request)"},
+        {
+            "Type": table_of(REQUEST_TYPES),
+            "Priority": table_of(REQUEST_PRIORITIES),
+            "Status": lowercase_of("open", "fulfilled", "approved", "declined", "unavailable"),
+        },
+    ),
+    TableSpec(
+        "decisions/DECISION_LOG.md",
+        "md",
+        {"D-id": "DEC-id (decision)", "Evidence ids": "Evidence"},  # legacy
+        {},
+    ),
+    TableSpec(
+        "planning/WORK_PLAN.md",
+        "md",
+        {"Task": "TASK-id (task)", "Gate": "Stage"},  # legacy
+        {"Stage": table_of(STAGE_NAMES)},
+    ),
+    TableSpec("planning/RISK_REGISTER.md", "md", {"R-id": "RSK-id (risk)"}, {}),  # legacy
+)
+BOM = chr(0xFEFF)  # a byte order mark in front of the first CSV field
+_SEPARATOR_ROW = re.compile(r"^\s*\|[\s:|-]+\|\s*$")
+_CELL_SPLIT = re.compile(r"(?<!\\)\|")
+
+
+def _split_eol(line: str) -> tuple[str, str]:
+    body = line.rstrip("\r\n")
+    return body, line[len(body):]
+
+
+def _swap_cell(cell: str, new: str) -> str:
+    lead = cell[: len(cell) - len(cell.lstrip())]
+    trail = cell[len(cell.rstrip()):]
+    return f"{lead}{new}{trail}"
+
+
+def _tally(counts: dict, column: str, old: str, new: str) -> None:
+    counts[(column, old, new)] = counts.get((column, old, new), 0) + 1
+
+
+def transform_md_table(text: str, spec: TableSpec):
+    """Rewrite the first table of a Markdown file: (new text, [(old, new) header changes], [(column, n, old, new)])."""
+    lines = text.splitlines(keepends=True)
+    start = next(
+        (
+            i
+            for i in range(len(lines) - 1)
+            if lines[i].lstrip().startswith("|") and _SEPARATOR_ROW.match(lines[i + 1].rstrip("\r\n"))
+        ),
+        None,
+    )
+    if start is None:
+        return text, [], []
+    body, eol = _split_eol(lines[start])
+    cells = _CELL_SPLIT.split(body)
+    header_changes: list[tuple[str, str]] = []
+    for index in range(1, len(cells) - 1):
+        name = cells[index].strip()
+        if name in spec.headers:
+            header_changes.append((name, spec.headers[name]))
+            cells[index] = _swap_cell(cells[index], spec.headers[name])
+    lines[start] = "|".join(cells) + eol
+    names = [cell.strip() for cell in cells]
+    columns = {column: names.index(column) for column in spec.tokens if column in names}
+    counts: dict = {}
+    order: list[tuple] = []
+    row = start + 2
+    while row < len(lines) and lines[row].lstrip().startswith("|"):
+        body, eol = _split_eol(lines[row])
+        row_cells = _CELL_SPLIT.split(body)
+        if len(row_cells) == len(cells):
+            for column, index in columns.items():
+                value = row_cells[index].strip()
+                new = spec.tokens[column](value) if value else value
+                if new != value:
+                    if (column, value, new) not in counts:
+                        order.append((column, value, new))
+                    _tally(counts, column, value, new)
+                    row_cells[index] = _swap_cell(row_cells[index], new)
+            lines[row] = "|".join(row_cells) + eol
+        row += 1
+    rewrites = [(column, counts[(column, old, new)], old, new) for column, old, new in order]
+    rewrites.sort(key=lambda item: names.index(item[0]))
+    return "".join(lines), header_changes, rewrites
+
+
+def split_csv_records(text: str) -> list[tuple[list[str], str]]:
+    """Records as (raw fields, line ending); joining the fields with commas and the ending restores the text."""
+    records: list[tuple[list[str], str]] = []
+    fields: list[str] = []
+    buf: list[str] = []
+    quoted = False
+    i = 0
+    while i < len(text):
+        ch = text[i]
+        if quoted:
+            buf.append(ch)
+            if ch == '"':
+                if i + 1 < len(text) and text[i + 1] == '"':
+                    buf.append('"')
+                    i += 1
+                else:
+                    quoted = False
+        elif ch == '"':
+            buf.append(ch)
+            quoted = True
+        elif ch == ",":
+            fields.append("".join(buf))
+            buf = []
+        elif ch in "\r\n":
+            eol = ch
+            if ch == "\r" and i + 1 < len(text) and text[i + 1] == "\n":
+                eol = "\r\n"
+                i += 1
+            fields.append("".join(buf))
+            records.append((fields, eol))
+            fields, buf = [], []
+        else:
+            buf.append(ch)
+        i += 1
+    if buf or fields:
+        fields.append("".join(buf))
+        records.append((fields, ""))
+    return records
+
+
+def _csv_value(raw: str) -> str:
+    raw = raw.lstrip(BOM)
+    if len(raw) >= 2 and raw.startswith('"') and raw.endswith('"'):
+        return raw[1:-1].replace('""', '"')
+    return raw
+
+
+def _csv_swap(raw: str, new: str) -> str:
+    bom = BOM if raw.startswith(BOM) else ""
+    quoted = raw.lstrip(BOM).startswith('"')
+    return f'{bom}"{new}"' if quoted else f"{bom}{new}"
+
+
+def transform_csv_table(text: str, spec: TableSpec):
+    records = split_csv_records(text)
+    if not records:
+        return text, [], []
+    head, eol = records[0]
+    header_changes: list[tuple[str, str]] = []
+    names: list[str] = []
+    for index, raw in enumerate(head):
+        name = _csv_value(raw)
+        if name in spec.headers:
+            header_changes.append((name, spec.headers[name]))
+            head[index] = _csv_swap(raw, spec.headers[name])
+            name = spec.headers[name]
+        names.append(name)
+    columns = {column: names.index(column) for column in spec.tokens if column in names}
+    counts: dict = {}
+    order: list[tuple] = []
+    for fields, _ in records[1:]:
+        if len(fields) != len(head):
+            continue
+        for column, index in columns.items():
+            value = _csv_value(fields[index])
+            new = spec.tokens[column](value) if value else value
+            if new != value:
+                if (column, value, new) not in counts:
+                    order.append((column, value, new))
+                _tally(counts, column, value, new)
+                fields[index] = _csv_swap(fields[index], new)
+    rewrites = [(column, counts[(column, old, new)], old, new) for column, old, new in order]
+    rewrites.sort(key=lambda item: names.index(item[0]))
+    return "".join(",".join(fields) + end for fields, end in records), header_changes, rewrites
+
+
+def transform_table(text: str, spec: TableSpec):
+    return (transform_csv_table if spec.kind == "csv" else transform_md_table)(text, spec)
+
+
+def transform_frontmatter(text: str):
+    """A memory entry's frontmatter keys: (new text, [(column, n, old, new)]); the body is never touched."""
+    lines = text.splitlines(keepends=True)
+    if not lines or lines[0].rstrip("\r\n") != "---":
+        return text, []
+    end = next((i for i in range(1, len(lines)) if lines[i].rstrip("\r\n") == "---"), None)
+    if end is None:
+        return text, []
+    has_basis = any(re.match(r"\s*basis:", line) for line in lines[1:end])
+    rewrites: list[tuple[str, int, str, str]] = []
+    for i in range(1, end):
+        body, eol = _split_eol(lines[i])
+        key = re.match(r"(\s*)evidence:(.*)$", body)  # legacy
+        if key and not has_basis:
+            lines[i] = f"{key.group(1)}basis:{key.group(2)}{eol}"
+            rewrites.append(("evidence", 1, "evidence", "basis"))  # legacy
+            continue
+        kind = re.match(r"(\s*type:\s*)gotcha(\s*)$", body)  # legacy
+        if kind:
+            lines[i] = f"{kind.group(1)}pitfall{kind.group(2)}{eol}"
+            rewrites.append(("type", 1, "gotcha", "pitfall"))  # legacy
+    rewrites.sort(key=lambda item: item[0])  # the key `evidence` before the key `type`
+    return "".join(lines), rewrites
+
+
+def transform_gitattributes(text: str):
+    """Patterns that name the old archive folder now name the new one: (new text, count of lines)."""
+    lines = text.splitlines(keepends=True)
+    count = 0
+    for i, line in enumerate(lines):
+        if line.startswith(GITATTRIBUTES_OLD_PREFIX):
+            lines[i] = GITATTRIBUTES_NEW_PREFIX + line[len(GITATTRIBUTES_OLD_PREFIX):]
+            count += 1
+    return "".join(lines), count
+
+
+def transform_lab_json(raw: bytes):
+    """The migrated lab.json: (new bytes or None, [(column, n, old, new)]); None when nothing changes."""
+    data = parse_lab_json(raw)
+    rewrites: list[tuple[str, int, str, str]] = []
+    jev = data.get("jev")
+    if isinstance(jev, dict) and "blockedPaths" in jev:  # legacy
+        paths = jev.pop("blockedPaths")  # legacy
+        scope = data.get("scope")
+        if not isinstance(scope, dict):
+            scope = data["scope"] = {}
+        have = scope.get("restrictedFolders") if isinstance(scope.get("restrictedFolders"), list) else []
+        listed = paths if isinstance(paths, list) else []
+        scope["restrictedFolders"] = list(have) + [p for p in listed if p not in have]
+        if not jev:
+            del data["jev"]
+        rewrites.append(("jev.blockedPaths", len(listed), "jev.blockedPaths", "scope.restrictedFolders"))  # legacy
+    roles = data.get("roles")
+    if isinstance(roles, dict):
+        renamed: dict = {}
+        for name, value in roles.items():
+            new = ROLE_RENAMES.get(name)
+            if new is not None and new not in roles:
+                renamed[new] = value
+                rewrites.append(("roles", 1, name, new))
+            else:
+                renamed[name] = value
+        if renamed != roles or list(renamed) != list(roles):
+            data["roles"] = renamed
+    if "idPrefixes" not in data:
+        template = json.loads((TEMPLATE_ROOT / "lab.json").read_text(encoding="utf-8"))
+        data["idPrefixes"] = template["idPrefixes"]
+        rewrites.append(("idPrefixes", 1, "absent", "added"))
+    if not rewrites:
+        return None, []
+    rewrites.sort(key=lambda item: ("jev.blockedPaths", "roles", "idPrefixes").index(item[0]))  # legacy
+    return (json.dumps(data, indent=mcp_json_indent(raw), ensure_ascii=False) + "\n").encode("utf-8"), rewrites
+
+
+def detect_old_layout(project_root: Path) -> list[str]:
+    """The numbered folders of the 0.1 layout present under research_lab/."""
+    lab = Path(project_root) / "research_lab"
+    return [name for name in OLD_FOLDERS if (lab / name).is_dir()]
+
+
+def _before_renames(rel: str, renames: list[tuple[str, str]]) -> str:
+    """The path (relative to the project root) that holds `rel` before the planned renames run."""
+    for old, new in reversed(renames):
+        if rel == new:
+            rel = old
+        elif rel.startswith(new + "/"):
+            rel = old + rel[len(new):]
+    return rel
+
+
+def plan_migration(project_root: Path, plan: Plan) -> None:
+    """Plan the migration of a 0.1 lab: fills plan.migration (the shown lines) and the steps apply_migration runs."""
+    project_root = Path(project_root)
+    if not detect_old_layout(project_root):
+        return
+    lab = project_root / "research_lab"
+    renames: list[tuple[str, str]] = []  # project-relative (old, new), in the order they run
+
+    def exists(rel: str) -> bool:
+        return os.path.lexists(project_root / rel)
+
+    def try_rename(old: str, new: str) -> bool:
+        if not exists(old):
+            return False
+        if exists(new):
+            plan.warn.append(f"unexpected layout: {old} and {new} both exist; nothing was moved for it")
+            return False
+        renames.append((old, new))
+        plan.migration.append(f"rename {old} -> {new}")
+        return True
+
+    for old_name, new_name in OLD_FOLDERS.items():
+        try_rename(f"research_lab/{old_name}", f"research_lab/{new_name}")
+    for old, new in OTHER_FOLDER_RENAMES:
+        try_rename(f"research_lab/{old}", f"research_lab/{new}")
+    renamed_to = {new for _, new in renames}
+    for folder in OLD_FOLDERS.values():
+        if f"research_lab/{folder}" not in renamed_to and any(
+            exists(f"research_lab/{old}") for old, target in OLD_FOLDERS.items() if target == folder
+        ):
+            plan.migration_skip_folders.append(folder)
+    for old, new in INNER_RENAMES:
+        folder = new.split("/")[0]
+        if folder in plan.migration_skip_folders:
+            continue
+        source = _before_renames(f"research_lab/{old}", renames)
+        if not exists(source):
+            continue
+        if exists(_before_renames(f"research_lab/{new}", renames)):
+            plan.warn.append(f"unexpected layout: research_lab/{old} and research_lab/{new} both exist; nothing was moved for it")
+            continue
+        renames.append((f"research_lab/{old}", f"research_lab/{new}"))
+        plan.migration.append(f"rename research_lab/{old} -> research_lab/{new}")
+    meetings = project_root / _before_renames(f"research_lab/{MEETINGS_FOLDER}", renames)
+    if meetings.is_dir():
+        for entry in sorted(meetings.iterdir()):
+            for old_suffix, new_suffix in MEETING_SUFFIXES:
+                if entry.is_file() and entry.name.endswith(old_suffix):
+                    old = f"research_lab/{MEETINGS_FOLDER}/{entry.name}"
+                    new = f"research_lab/{MEETINGS_FOLDER}/{entry.name[: -len(old_suffix)]}{new_suffix}"
+                    if exists(_before_renames(new, renames)):
+                        plan.warn.append(f"unexpected layout: {old} and {new} both exist; nothing was moved for it")
+                    else:
+                        renames.append((old, new))
+                        plan.migration.append(f"rename {old} -> {new}")
+    plan.migration_renames = renames
+
+    headers: list[str] = []
+    rewrites: list[str] = []
+    for spec in TABLES:
+        rel = f"research_lab/{spec.path}"
+        if spec.path.split("/")[0] in plan.migration_skip_folders:
+            continue
+        path = project_root / _before_renames(rel, renames)
+        text = _read_text(path)
+        if text is None:
+            continue
+        _, header_changes, token_changes = transform_table(text, spec)
+        headers += [f"header {rel}: {old} -> {new}" for old, new in header_changes]
+        rewrites += [f"rewrite {rel}: {column}, {n} rows: {old} -> {new}" for column, n, old, new in token_changes]
+    plan.migration += headers + rewrites
+
+    memory = lab / "memory"
+    if memory.is_dir():
+        for path in sorted(memory.rglob("*.md")):
+            text = _read_text(path)
+            if text is None:
+                continue
+            _, changes = transform_frontmatter(text)
+            rel = path.relative_to(project_root).as_posix()
+            plan.migration += [f"rewrite {rel}: {column}, {n} rows: {old} -> {new}" for column, n, old, new in changes]
+
+    lab_json = lab / "lab.json"
+    if lab_json.is_file() and not is_symlink(lab_json):
+        raw = read_bytes_or_none(lab_json)
+        try:
+            new_raw, changes = transform_lab_json(raw if raw is not None else b"")
+        except ValueError as exc:
+            plan.warn.append(f"research_lab/lab.json is not valid JSON ({exc}); it was left unchanged")
+        else:
+            if new_raw is not None:
+                plan.lab_json_migrated = new_raw
+                plan.migration += [
+                    f"rewrite {LAB_JSON_REL}: {column}, {n} rows: {old} -> {new}" for column, n, old, new in changes
+                ]
+    attributes = project_root / _before_renames(GITATTRIBUTES_REL, renames)
+    text = _read_text(attributes)
+    if text is not None:
+        _, count = transform_gitattributes(text)
+        if count:
+            plan.migration.append(
+                f"rewrite {GITATTRIBUTES_REL}: patterns, {count} lines: "
+                f"{GITATTRIBUTES_OLD_PREFIX} -> {GITATTRIBUTES_NEW_PREFIX}"
+            )
+
+    for rel in INSTRUCTION_FILES:
+        raw = read_bytes_or_none(project_root / rel)
+        if raw is not None and OLD_BRIEF_IMPORT.encode("utf-8") in raw:
+            plan.warn.append(
+                f"{rel} imports {OLD_BRIEF_IMPORT}PROJECT_BRIEF.md; change the import to "
+                "research_lab/project/PROJECT_BRIEF.md by hand"
+            )
+
+
+def _read_text(path: Path) -> str | None:
+    if is_symlink(path) or not path.is_file():
+        return None
+    raw = read_bytes_or_none(path)
+    if raw is None:
+        return None
+    try:
+        return raw.decode("utf-8")
+    except UnicodeDecodeError:
+        return None
+
+
+def _git_tracked(project_root: Path, rel: str) -> bool:
+    result = run_git(["ls-files", "--", rel], project_root)
+    return result is not None and result.returncode == 0 and bool(result.stdout.strip())
+
+
+def _move(project_root: Path, old: str, new: str, warn: list[str]) -> bool:
+    source, target = project_root / old, project_root / new
+    if not os.path.lexists(source):
+        return False
+    if os.path.lexists(target):
+        warn.append(f"unexpected layout: {old} and {new} both exist; nothing was moved for it")
+        return False
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if _git_tracked(project_root, old):
+        result = run_git(["mv", "--", old, new], project_root)
+        if result is not None and result.returncode == 0:
+            return True
+        warn.append(f"git mv failed for {old}; moved without git")
+    os.rename(source, target)
+    return True
+
+
+def _write_text(path: Path, text: str) -> None:
+    path.write_bytes(text.encode("utf-8"))
+
+
+def apply_migration(project_root: Path, plan: Plan, warn: list[str]) -> list[str]:
+    """Run the planned migration; returns the plan lines that were carried out."""
+    project_root = Path(project_root)
+    done: list[str] = []
+    if not plan.migration:
+        return done
+    for old, new in plan.migration_renames:
+        if _move(project_root, old, new, warn):
+            done.append(f"rename {old} -> {new}")
+    headers: list[str] = []
+    rewrites: list[str] = []
+    for spec in TABLES:
+        rel = f"research_lab/{spec.path}"
+        if spec.path.split("/")[0] in plan.migration_skip_folders:
+            continue
+        path = project_root / rel
+        text = _read_text(path)
+        if text is None:
+            continue
+        new_text, header_changes, token_changes = transform_table(text, spec)
+        if new_text != text:
+            _write_text(path, new_text)
+        headers += [f"header {rel}: {old} -> {new}" for old, new in header_changes]
+        rewrites += [f"rewrite {rel}: {column}, {n} rows: {old} -> {new}" for column, n, old, new in token_changes]
+    done += headers + rewrites
+    memory = project_root / "research_lab" / "memory"
+    if memory.is_dir():
+        for path in sorted(memory.rglob("*.md")):
+            text = _read_text(path)
+            if text is None:
+                continue
+            new_text, changes = transform_frontmatter(text)
+            if new_text != text:
+                _write_text(path, new_text)
+            rel = path.relative_to(project_root).as_posix()
+            done += [f"rewrite {rel}: {column}, {n} rows: {old} -> {new}" for column, n, old, new in changes]
+    lab_json = project_root / LAB_JSON_REL
+    if plan.lab_json_migrated is not None and lab_json.is_file():
+        raw = read_bytes_or_none(lab_json)
+        try:
+            new_raw, changes = transform_lab_json(raw if raw is not None else b"")
+        except ValueError:
+            new_raw, changes = None, []
+        if new_raw is not None:
+            lab_json.write_bytes(new_raw)
+            done += [f"rewrite {LAB_JSON_REL}: {column}, {n} rows: {old} -> {new}" for column, n, old, new in changes]
+    attributes = project_root / GITATTRIBUTES_REL
+    text = _read_text(attributes)
+    if text is not None:
+        new_text, count = transform_gitattributes(text)
+        if count:
+            _write_text(attributes, new_text)
+            done.append(
+                f"rewrite {GITATTRIBUTES_REL}: patterns, {count} lines: "
+                f"{GITATTRIBUTES_OLD_PREFIX} -> {GITATTRIBUTES_NEW_PREFIX}"
+            )
+    return done
+
+
+# --- the scholarly output style ----------------------------------------------------------------------
+
+
+def plan_output_style(project_root: Path, plan: Plan) -> None:
+    target = project_root / OUTPUT_STYLE_REL
+    if os.path.lexists(target):
+        plan.output_style = {"file": OUTPUT_STYLE_REL, "action": "skip"}
+    elif not OUTPUT_STYLE_SOURCE.is_file():
+        plan.warn.append("plugin file missing: output-styles/scholarly-explanatory.md; the output style was not planned")
+    else:
+        plan.output_style = {"file": OUTPUT_STYLE_REL, "action": "create", "setting": OUTPUT_STYLE_SETTING}
+
+
+def apply_output_style(project_root: Path) -> bool:
+    text = OUTPUT_STYLE_SOURCE.read_bytes().decode("utf-8").replace("\r\n", "\n")
+    return write_new(project_root / OUTPUT_STYLE_REL, text)
+
+
 # --- plan --------------------------------------------------------------------------------------------
 
 
@@ -579,8 +1265,14 @@ def build_plan(project_root: Path, opts: Options) -> Plan:
     project_root = Path(project_root)
     plan = Plan()
 
+    # 0: a 0.1 lab is migrated first; what the migration moves counts as present below.
+    plan_migration(project_root, plan)
+
     def present(rel: str) -> bool:
         return os.path.lexists(project_root / rel)
+
+    def present_after_migration(rel: str) -> bool:
+        return present(rel) or os.path.lexists(project_root / _before_renames(rel, plan.migration_renames))
 
     # 1 and 2: template files and the files copied from other skills.
     for rel, source in template_files().items():
@@ -588,6 +1280,8 @@ def build_plan(project_root: Path, opts: Options) -> Plan:
             continue  # merged below, once the connectors and permissions are planned
         if present(rel):
             plan.skip.append(rel)
+        elif present_after_migration(rel):
+            continue  # the migration moves it into place
         elif not source.is_file():
             try:
                 shown = source.relative_to(PLUGIN_ROOT).as_posix()
@@ -626,6 +1320,9 @@ def build_plan(project_root: Path, opts: Options) -> Plan:
     if present(LAB_JSON_REL):
         plan_lab_json(project_root, opts, plan)
 
+    # 4e: the scholarly output style.
+    plan_output_style(project_root, plan)
+
     # 5: .gitignore.
     ignore = project_root / ".gitignore"
     if not os.path.lexists(ignore):
@@ -653,7 +1350,7 @@ def build_plan(project_root: Path, opts: Options) -> Plan:
     # 8: git-lfs.
     if not git_lfs_available(project_root):
         plan.warn.append(
-            "git-lfs is not installed; the artifact store needs it for files at or above "
+            "git-lfs is not installed; the artifact archive needs it for files at or above "
             f"lfs.thresholdMB ({opts.lfs_threshold_mb} MB): install it before saving large artifacts"
         )
     # 9: duplicates of plugin agents and skills: reported, never touched.
@@ -790,7 +1487,7 @@ def git_commit_scaffold(project_root: Path, created: list[str], left: list[str],
     if result.returncode != 0:
         warn.append(f"git init failed: {result.stderr.strip() or result.stdout.strip()}")
         return
-    # research_lab/ is the lab's own folder (its ignored .scratch stays out); anywhere else only the exact
+    # research_lab/ is the lab's own folder (its ignored .working stays out); anywhere else only the exact
     # files init created are added, never a whole folder such as .claude/ that may hold personal files.
     paths: list[str] = []
     for rel in created:
@@ -834,13 +1531,16 @@ def apply_plan(plan: Plan, project_root: Path, opts: Options) -> dict:
         "duplicates": list(plan.duplicates),
         "permissions": dict(plan.permissions),
         "written": [],
+        "migration": [],
+        "outputStyle": dict(plan.output_style),
     }
+    report["migration"] = apply_migration(project_root, plan, report["warn"])
     permissions_written = False
     items = [(rel, "create") for rel in plan.create] + [(rel, "append") for rel in plan.append]
     items.sort(key=lambda item: _order(item[0]))
     existed = {rel: os.path.lexists(project_root / rel) for rel, _ in items}
     created: list[str] = []  # files init made, whatever the plan called them
-    left: list[str] = []  # files outside research_lab/ that init only appended to: your human partner commits them
+    left: list[str] = []  # files outside research_lab/ that init only appended to: the researcher commits them
     git_planned = False
     for rel, action in items:
         if rel == GIT_REL:
@@ -863,6 +1563,15 @@ def apply_plan(plan: Plan, project_root: Path, opts: Options) -> dict:
                 created.append(rel)
             elif not rel.startswith("research_lab/"):
                 left.append(rel)
+    if plan.output_style.get("action") == "create":
+        try:
+            if apply_output_style(project_root):
+                report["written"].append(OUTPUT_STYLE_REL)
+                created.append(OUTPUT_STYLE_REL)
+            else:
+                report["outputStyle"]["action"] = "skip"
+        except OSError as exc:
+            report["warn"].append(f"could not write {OUTPUT_STYLE_REL}: {exc}")
     if git_planned:
         git_commit_scaffold(project_root, created, left, report["warn"])
         if os.path.isdir(project_root / ".git"):
@@ -886,14 +1595,14 @@ def positive_int(text: str) -> int:
 def parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="init_lab.py",
-        description="Scaffold a research lab in a project folder. Prints the plan; --yes applies it.",
+        description="Set up a research lab in a project folder. Prints the plan; --yes applies it.",
     )
     parser.add_argument("--project-root", help="project folder (default: the git top-level, else the cwd)")
     parser.add_argument("--name", required=True, help="the project's name")
     parser.add_argument("--short-name", help="short name (default: a lowercase slug of the name)")
     parser.add_argument("--description", default="", help="one or two sentences")
-    parser.add_argument("--lfs-threshold-mb", type=positive_int, default=10, help="LFS threshold in MB (default 10)")
-    parser.add_argument("--git-init", action="store_true", help="git init and commit the scaffold when there is no repository")
+    parser.add_argument("--lfs-threshold-mb", type=positive_int, default=10, help="Git Large File Storage (LFS) threshold in MB (default 10)")
+    parser.add_argument("--git-init", action="store_true", help="git init and commit the lab set-up when there is no repository")
     parser.add_argument(
         "--connectors",
         default="",
@@ -936,8 +1645,15 @@ def resolve_root(given: str | None, parser_error) -> Path:
 def render(report: dict, as_json: bool, dry_run: bool = False) -> str:
     if as_json:
         return json.dumps(report, indent=2, ensure_ascii=False)
-    lines = [f"{verb} {path}" for verb in ("create", "append", "skip") for path in report[verb]]
+    lines = list(report.get("migration") or [])
+    lines += [f"{verb} {path}" for verb in ("create", "append", "skip") for path in report[verb]]
     lines += [f"warn {text}" for text in report["warn"]]
+    style = report.get("output_style") or report.get("outputStyle") or {}
+    if style.get("file"):
+        lines.append(f"output-style {style['file']}: {style['action']}")
+        if style["action"] == "create":
+            lines.append("settings line to add to .claude/settings.json:")
+            lines.append(f"  {style['setting']}")
     permissions = report.get("permissions") or {}
     if permissions.get("action") == "skip":
         lines.append(f"rules to merge into {permissions['file']}:")
@@ -999,7 +1715,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     plan = build_plan(root, opts)
     if not opts.yes:
-        out = {**plan.__dict__, "projectRoot": root.as_posix()}
+        internal = ("migration_renames", "migration_skip_folders", "lab_json_migrated")
+        out = {**{k: v for k, v in plan.__dict__.items() if k not in internal}, "projectRoot": root.as_posix()}
         if not opts.json_output:
             # the order the applied report lists them in
             out["create"] = sorted(plan.create, key=_order)

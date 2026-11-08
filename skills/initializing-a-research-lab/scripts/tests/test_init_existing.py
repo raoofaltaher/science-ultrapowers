@@ -18,7 +18,7 @@ FINDINGS = "# Findings\n\n| id | claim |\n|----|-------|\n| F-0001 | a recorded 
 CARD = "my own evidence card\n"
 DOT_CLAUDE = "# Project rules\n\nKeep it small.\n"
 DUPLICATES = [
-    ".claude/agents/citation-auditor.md",
+    ".claude/agents/citation-reference-auditor.md",
     ".claude/skills/doi-verified-evidence",
     ".claude/skills/peer-review",
 ]
@@ -28,13 +28,13 @@ def make_existing_lab(root: Path) -> None:
     lab = root / "research_lab"
     for folder in RECORD_FOLDERS:
         (lab / folder).mkdir(parents=True)
-    (lab / "02_findings_ledger" / "FINDINGS.md").write_text(FINDINGS, encoding="utf-8")
+    (lab / "findings" / "FINDINGS_LOG.md").write_text(FINDINGS, encoding="utf-8")
     (lab / "templates").mkdir()
-    (lab / "templates" / "EVIDENCE_CARD.md").write_text(CARD, encoding="utf-8")
+    (lab / "templates" / "EVIDENCE_RECORD.md").write_text(CARD, encoding="utf-8")
     claude = root / ".claude"
     (claude / "agents").mkdir(parents=True)
     (claude / "CLAUDE.md").write_text(DOT_CLAUDE, encoding="utf-8")
-    (claude / "agents" / "citation-auditor.md").write_text("my agent\n", encoding="utf-8")
+    (claude / "agents" / "citation-reference-auditor.md").write_text("my agent\n", encoding="utf-8")
     for skill in ("doi-verified-evidence", "peer-review"):
         (claude / "skills" / skill).mkdir(parents=True)
         (claude / "skills" / skill / "SKILL.md").write_text(f"my {skill}\n", encoding="utf-8")
@@ -70,23 +70,23 @@ class ExistingCase(unittest.TestCase):
 
 class TestExistingProject(ExistingCase):
     def test_existing_files_are_skipped_and_untouched(self):
-        findings = self.proj / "research_lab" / "02_findings_ledger" / "FINDINGS.md"
-        card = self.proj / "research_lab" / "templates" / "EVIDENCE_CARD.md"
+        findings = self.proj / "research_lab" / "findings" / "FINDINGS_LOG.md"
+        card = self.proj / "research_lab" / "templates" / "EVIDENCE_RECORD.md"
         before = (findings.read_bytes(), card.read_bytes())
         report = self.report()
         self.assertEqual((findings.read_bytes(), card.read_bytes()), before)
-        self.assertIn("research_lab/02_findings_ledger/FINDINGS.md", report["skip"])
-        self.assertIn("research_lab/templates/EVIDENCE_CARD.md", report["skip"])
-        self.assertNotIn("research_lab/02_findings_ledger/FINDINGS.md", report["create"])
+        self.assertIn("research_lab/findings/FINDINGS_LOG.md", report["skip"])
+        self.assertIn("research_lab/templates/EVIDENCE_RECORD.md", report["skip"])
+        self.assertNotIn("research_lab/findings/FINDINGS_LOG.md", report["create"])
 
     def test_missing_pieces_are_created(self):
         report = self.report()
         lab = self.proj / "research_lab"
-        self.assertTrue((lab / "artifacts" / "store").is_dir())
+        self.assertTrue((lab / "artifacts" / "archive").is_dir())
         self.assertTrue((lab / "artifacts" / ".gitattributes").is_file())
         self.assertTrue((lab / "memory" / "MEMORY.md").is_file())
         self.assertTrue((lab / "lab.json").is_file())
-        self.assertTrue((lab / ".scratch" / ".gitkeep").is_file())
+        self.assertTrue((lab / ".working" / ".gitkeep").is_file())
         self.assertEqual(len(list((lab / "templates").iterdir())), 12)
         self.assertIn("research_lab/lab.json", report["create"])
 
@@ -99,7 +99,7 @@ class TestExistingProject(ExistingCase):
         self.assertTrue(text.startswith(DOT_CLAUDE + "\n" + BEGIN))
         self.assertEqual(text.count(BEGIN), 1)
         self.assertEqual(text.count(END), 1)
-        self.assertIn("@../research_lab/00_project_knowledge/PROJECT_BRIEF.md", text)
+        self.assertIn("@../research_lab/project/PROJECT_BRIEF.md", text)
         self.assertIn("@../research_lab/memory/MEMORY.md", text)
         self.assertNotIn("@research_lab/", text)
 
@@ -111,7 +111,7 @@ class TestExistingProject(ExistingCase):
         self.assertNotIn(".claude/CLAUDE.md", report["append"])
         root = (self.proj / "CLAUDE.md").read_text(encoding="utf-8")
         self.assertEqual(root.count(BEGIN), 1)
-        self.assertIn("@research_lab/00_project_knowledge/PROJECT_BRIEF.md", root)
+        self.assertIn("@research_lab/project/PROJECT_BRIEF.md", root)
         self.assertNotIn("@../", root)
         self.assertEqual((self.proj / ".claude" / "CLAUDE.md").read_bytes(), dot_before)
 

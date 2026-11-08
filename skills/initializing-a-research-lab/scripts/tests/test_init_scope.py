@@ -34,14 +34,14 @@ class ScopeCase(unittest.TestCase):
         return json.loads(result.stdout)
 
     def brief(self):
-        return (self.lab / "00_project_knowledge" / "PROJECT_BRIEF.md").read_text(encoding="utf-8")
+        return (self.lab / "project" / "PROJECT_BRIEF.md").read_text(encoding="utf-8")
 
     def lab_json(self):
         return json.loads((self.lab / "lab.json").read_text(encoding="utf-8"))
 
     def section_7(self):
         text = self.brief()
-        start = text.index("## 7. Out of scope")
+        start = text.index("## 7. Restricted folders")
         end = text.index("## 8.")
         return text[start:end]
 
@@ -53,12 +53,12 @@ class TestOutOfScope(ScopeCase):
         self.assertIn("- `private_data`\n", section)
         self.assertIn("- `archive/old`\n", section)
         self.assertNotIn(PROMPT, section)
-        self.assertEqual(self.lab_json()["jev"]["blockedPaths"], ["private_data", "archive/old"])
+        self.assertEqual(self.lab_json()["scope"]["restrictedFolders"], ["private_data", "archive/old"])
 
     def test_without_the_flag_the_prompt_stays_and_blocked_paths_are_empty(self):
         self.report()
         self.assertIn(PROMPT, self.section_7())
-        self.assertEqual(self.lab_json()["jev"]["blockedPaths"], [])
+        self.assertEqual(self.lab_json()["scope"]["restrictedFolders"], [])
 
     def test_folders_are_cleaned_and_deduplicated(self):
         self.report(
@@ -66,7 +66,7 @@ class TestOutOfScope(ScopeCase):
             "--out-of-scope", "./data/raw",
             "--out-of-scope", "other",
         )
-        self.assertEqual(self.lab_json()["jev"]["blockedPaths"], ["data/raw", "other"])
+        self.assertEqual(self.lab_json()["scope"]["restrictedFolders"], ["data/raw", "other"])
         self.assertIn("- `data/raw`\n", self.section_7())
 
     def test_an_empty_or_multiline_folder_exits_2_before_writing(self):
@@ -80,7 +80,7 @@ class TestOutOfScope(ScopeCase):
         self.report("--out-of-scope", "first")
         brief = self.brief()
         again = self.report("--out-of-scope", "second", "--out-of-scope", "first")
-        self.assertEqual(self.lab_json()["jev"]["blockedPaths"], ["first", "second"])
+        self.assertEqual(self.lab_json()["scope"]["restrictedFolders"], ["first", "second"])
         self.assertIn("research_lab/lab.json", again["append"])
         self.assertEqual(self.brief(), brief)
 

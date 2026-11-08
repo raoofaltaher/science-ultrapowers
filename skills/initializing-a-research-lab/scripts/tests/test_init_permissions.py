@@ -123,7 +123,7 @@ class TestPermissions(PermissionsCase):
 
     def test_no_permissions_flag_writes_no_settings(self):
         report = self.report()
-        self.assertFalse((self.proj / ".claude").exists())
+        self.assertFalse(self.settings.exists())
         self.assertFalse(report["permissions"])
         self.assertFalse(self.lab_json()["permissions"]["written"])
         plan = self.report(yes=False)
@@ -202,7 +202,7 @@ class TestPermissions(PermissionsCase):
         self.assertIn("research_lab/lab.json", files)
         self.assertNotIn(".claude/settings.local.json", files)
         self.assertNotIn(".claude/agents/x.md", files)
-        self.assertFalse([f for f in files if f.startswith("research_lab/.scratch/")], files)
+        self.assertFalse([f for f in files if f.startswith("research_lab/.working/")], files)
 
 
 if __name__ == "__main__":

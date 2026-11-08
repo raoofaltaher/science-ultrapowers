@@ -50,7 +50,7 @@ class TestDefaultRoot(unittest.TestCase):
             with self.subTest(shell=shell):
                 result = self.run_shell(shell)
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-                self.assertIn("Dry run: nothing was changed.", result.stdout)
+                self.assertIn("Preview: nothing was changed.", result.stdout)
                 self.assertIn(str(self.folder.resolve()).lower(), result.stdout.lower())
 
 

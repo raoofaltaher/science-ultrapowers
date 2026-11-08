@@ -122,7 +122,7 @@ class TestLabJsonMerge(LabJsonCase):
 
     def test_permissions_stay_unwritten_when_settings_already_exist(self):
         self.report()
-        self.settings.parent.mkdir()
+        self.settings.parent.mkdir(exist_ok=True)
         self.settings.write_text("{}", encoding="utf-8")
         again = self.report("--permissions")
         self.assertNotIn(LAB_JSON, again["append"])

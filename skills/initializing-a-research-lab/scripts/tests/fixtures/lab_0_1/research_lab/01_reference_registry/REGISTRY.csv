@@ -1,0 +1,3 @@
+ref_id,lab_status,tier,doi,other_id,first_author,year,title,venue,local_file,verify_status,verified_on,retraction_status,evidence_cards,notes
+ref_0001,ADMITTED,A,10.1000/fixture.1,,"Doe, J.",2020,"A title, with a comma",Journal of Fixtures,references/Doe_2020_Title.pdf,VERIFIED,2026-01-02,none,EC-0001,"Free text, kept exactly"
+ref_0002,PENDING_FULLTEXT,C,,,Roe,2021,Another title,,,NO_DOI,,,,Needs the full text

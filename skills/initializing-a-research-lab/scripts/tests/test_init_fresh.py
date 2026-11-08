@@ -24,16 +24,16 @@ GIT_IDENTITY = {
 BEGIN = "<!-- science-ultrapowers:begin -->"
 END = "<!-- science-ultrapowers:end -->"
 RECORD_FOLDERS = [
-    "00_project_knowledge",
-    "01_reference_registry",
-    "02_findings_ledger",
-    "03_experiments",
-    "04_reviews",
-    "05_access_requests",
-    "06_decisions",
-    "07_project_management",
-    "08_decision_log",
-    "09_skill_vetting",
+    "project",
+    "literature",
+    "findings",
+    "experiments",
+    "reviews",
+    "requests",
+    "decisions",
+    "planning",
+    "automation",
+    "tool_vetting",
 ]
 
 
@@ -89,7 +89,7 @@ class TestFreshFolder(FreshFolderCase):
             "research_lab/lab.json",
             "research_lab/artifacts/.gitattributes",
             "research_lab/memory/MEMORY.md",
-            "research_lab/templates/HANDOFF.md",
+            "research_lab/templates/TASK_REPORT.md",
             "CLAUDE.md",
         ):
             self.assertIn(item, plan["create"])
@@ -114,7 +114,7 @@ class TestFreshFolder(FreshFolderCase):
 
     def test_dry_run_prints_the_warnings_too(self):
         (self.proj / ".claude" / "agents").mkdir(parents=True)
-        (self.proj / ".claude" / "agents" / "citation-auditor.md").write_text("mine", encoding="utf-8")
+        (self.proj / ".claude" / "agents" / "citation-reference-auditor.md").write_text("mine", encoding="utf-8")
         lines = self.init(yes=False, as_json=False).stdout.splitlines()
         self.assertTrue(any(l.startswith("warn same names as the plugin's agents or skills") for l in lines), lines)
 
@@ -133,14 +133,14 @@ class TestFreshFolder(FreshFolderCase):
         for folder in RECORD_FOLDERS:
             self.assertTrue((lab / folder).is_dir(), folder)
         self.assertEqual(len(list((lab / "templates").iterdir())), 12)
-        self.assertTrue((lab / "artifacts" / "store").is_dir())
+        self.assertTrue((lab / "artifacts" / "archive").is_dir())
         self.assertTrue((lab / "memory" / "project").is_dir())
         self.assertTrue((lab / "memory" / "artifact").is_dir())
-        self.assertTrue((lab / ".scratch" / ".gitkeep").is_file())
+        self.assertTrue((lab / ".working" / ".gitkeep").is_file())
         self.assertTrue((lab / "memory" / "MEMORY.md").is_file())
         self.assertTrue((lab / "memory" / "README.md").is_file())
         self.assertFalse((lab / "memory" / "entry.md").exists())
-        for name in ("LAB_MEETING.md", "SESSION_KICKOFF.md", "SESSION_STANDUP.md"):
+        for name in ("LAB_MEETING.md", "SESSION_OPENING.md", "SESSION_CLOSE.md"):
             self.assertTrue((lab / "templates" / name).is_file(), name)
         self.assertTrue((self.proj / "references").is_dir())
         data = self.lab_json()
@@ -154,13 +154,13 @@ class TestFreshFolder(FreshFolderCase):
         claude = (self.proj / "CLAUDE.md").read_text(encoding="utf-8")
         self.assertEqual(claude.count(BEGIN), 1)
         self.assertEqual(claude.count(END), 1)
-        self.assertIn("@research_lab/00_project_knowledge/PROJECT_BRIEF.md", claude)
+        self.assertIn("@research_lab/project/PROJECT_BRIEF.md", claude)
         ignore = (self.proj / ".gitignore").read_text(encoding="utf-8").splitlines()
-        for line in ("/research_lab/.scratch/", "/.venv-lab-skills/", "/references/"):
+        for line in ("/research_lab/.working/", "/.venv-lab-skills/", "/references/"):
             self.assertIn(line, ignore)
         attrs = (lab / "artifacts" / ".gitattributes").read_text(encoding="utf-8").splitlines()
-        self.assertTrue(attrs[0].startswith("# science-ultrapowers artifact store"))
-        self.assertIn("store/** -text", attrs)
+        self.assertTrue(attrs[0].startswith("# science-ultrapowers artifact archive"))
+        self.assertIn("archive/** -text", attrs)
         self.assertIn("*.jsonl text eol=lf", attrs)
         report = json.loads(result.stdout)
         self.assertIn("research_lab/lab.json", report["written"])
@@ -201,7 +201,7 @@ class TestFreshFolder(FreshFolderCase):
     def test_placeholders_substituted(self):
         result = self.init("--description", "A study of things")
         self.assertEqual(result.returncode, 0, result.stderr)
-        brief = self.proj / "research_lab" / "00_project_knowledge" / "PROJECT_BRIEF.md"
+        brief = self.proj / "research_lab" / "project" / "PROJECT_BRIEF.md"
         self.assertEqual(brief.read_text(encoding="utf-8").splitlines()[0], "# Demo study project brief")
         for path in self.proj.rglob("*"):
             if path.is_file():
@@ -283,18 +283,18 @@ class TestFreshFolder(FreshFolderCase):
         for path in self.proj.rglob("*"):
             if path.is_file():
                 self.assertNotIn(b"\r", path.read_bytes(), path.as_posix())
-        jev = self.proj / "research_lab" / "08_decision_log" / "JEV_CALLS.jsonl"
+        jev = self.proj / "research_lab" / "automation" / "JEV_CALLS.jsonl"
         self.assertEqual(jev.read_bytes(), b"")
 
     def test_existing_files_are_never_overwritten(self):
         lab = self.proj / "research_lab"
-        (lab / "06_decisions").mkdir(parents=True)
-        mine = lab / "06_decisions" / "DECISIONS.md"
+        (lab / "decisions").mkdir(parents=True)
+        mine = lab / "decisions" / "DECISION_LOG.md"
         mine.write_text("my own decisions\n", encoding="utf-8")
         result = self.init()
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(mine.read_text(encoding="utf-8"), "my own decisions\n")
-        self.assertIn("research_lab/06_decisions/DECISIONS.md", json.loads(result.stdout)["skip"])
+        self.assertIn("research_lab/decisions/DECISION_LOG.md", json.loads(result.stdout)["skip"])
 
     def test_existing_claude_md_gets_the_section_appended(self):
         claude = self.proj / "CLAUDE.md"
@@ -331,17 +331,17 @@ class TestFreshFolder(FreshFolderCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(
             ignore.read_text(encoding="utf-8").splitlines(),
-            ["node_modules/", "references/", "/research_lab/.scratch/", "/.venv-lab-skills/"],
+            ["node_modules/", "references/", "/research_lab/.working/", "/.venv-lab-skills/"],
         )
 
     def test_unanchored_existing_line_counts_as_present(self):
         ignore = self.proj / ".gitignore"
-        ignore.write_bytes(b"research_lab/.scratch/\n")
+        ignore.write_bytes(b"research_lab/.working/\n")
         result = self.init()
         self.assertEqual(result.returncode, 0, result.stderr)
         lines = ignore.read_text(encoding="utf-8").splitlines()
-        self.assertEqual(lines.count("research_lab/.scratch/"), 1)
-        self.assertNotIn("/research_lab/.scratch/", lines)
+        self.assertEqual(lines.count("research_lab/.working/"), 1)
+        self.assertNotIn("/research_lab/.working/", lines)
         self.assertIn("/references/", lines)
 
     @unittest.skipUnless(HAVE_GIT, "git is not installed")
@@ -361,16 +361,16 @@ class TestFreshFolder(FreshFolderCase):
         self.assertEqual(ignored("paper/references/refs.bib"), 1)
         self.assertEqual(ignored("references/x.pdf"), 0)
 
-    def test_existing_store_gitattributes_gets_missing_rules(self):
+    def test_existing_archive_gitattributes_gets_missing_rules(self):
         store = self.proj / "research_lab" / "artifacts"
         store.mkdir(parents=True)
-        (store / ".gitattributes").write_text("store/** -text\n", encoding="utf-8")
+        (store / ".gitattributes").write_text("archive/** -text\n", encoding="utf-8")
         plan = json.loads(self.init(yes=False).stdout)
         self.assertIn("research_lab/artifacts/.gitattributes", plan["append"])
         result = self.init()
         self.assertEqual(result.returncode, 0, result.stderr)
         lines = (store / ".gitattributes").read_text(encoding="utf-8").splitlines()
-        self.assertEqual(lines[0], "store/** -text")
+        self.assertEqual(lines[0], "archive/** -text")
         self.assertIn("*.jsonl text eol=lf", lines)
 
     def test_unreadable_existing_lab_json_is_a_warning_not_a_crash(self):
@@ -398,7 +398,7 @@ class TestFreshFolder(FreshFolderCase):
         ).stdout.splitlines()
         self.assertIn("research_lab/lab.json", files)
         self.assertIn("CLAUDE.md", files)
-        self.assertFalse([f for f in files if f.startswith("research_lab/.scratch/")], files)
+        self.assertFalse([f for f in files if f.startswith("research_lab/.working/")], files)
         self.assertFalse([f for f in files if f.startswith("references/")], files)
 
     def tracked(self):

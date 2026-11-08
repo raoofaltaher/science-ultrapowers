@@ -1,0 +1,40 @@
+{
+  "name": "Fixture study",
+  "shortName": "fixture-study",
+  "description": "A minimal 0.1 lab.",
+  "pluginVersion": "0.1.1",
+  "scaffoldedAt": "2026-01-01",
+  "roles": {
+    "academic-reviewer": true,
+    "academic-supervisor": true,
+    "citation-auditor": true,
+    "data-evaluation-researcher": true,
+    "decision-systems-specialist": true,
+    "documentation-writer": true,
+    "experiments-lead": true,
+    "findings-curator": true,
+    "lab-project-manager": true,
+    "literature-researcher": true,
+    "methods-researcher": true,
+    "paper-author": true,
+    "research-engineer": true,
+    "scientific-reviewer": true
+  },
+  "lfs": {
+    "thresholdMB": 10,
+    "budgetWarnMB": 800
+  },
+  "memory": {
+    "indexBudget": 150
+  },
+  "connectors": [],
+  "jev": {
+    "blockedPaths": [
+      "data/private"
+    ]
+  },
+  "claudeScience": null,
+  "permissions": {
+    "written": false
+  }
+}
