@@ -1,11 +1,11 @@
-# Prepares a machine for the lab's vendored figure and poster skills and for Jev:
+# Completes the lab set-up on this machine for the adopted figure and poster skills and for Jev:
 #   1. a Python environment, .venv-lab-skills in the project root, with the packages the bundled scripts need;
 #   2. Tesseract OCR, which figure-qa uses for its raster text checks;
 #   3. the Jev key, TYPESAFE_API_KEY, from hidden input.
 # Run it with:
 #   pwsh -File "<plugin>/skills/initializing-a-research-lab/scripts/setup_lab_env.ps1" -ProjectRoot <project> [-DryRun] [-SetUserEnv]
 # -ProjectRoot defaults to the Git repository you are in, else the current directory.
-# -DryRun changes nothing, starts no installer and asks nothing: it prints what each step would do.
+# -DryRun previews: it changes nothing, starts no installer and asks nothing, and prints what each step would do.
 # -SetUserEnv lets the script set TESSDATA_PREFIX, your Path entry and TYPESAFE_API_KEY for your Windows account.
 # Every change outside the project folder asks first, each behind its own yes.
 # The key is read as hidden input, never printed, never written to a file and never taken as a parameter.
@@ -132,5 +132,5 @@ if ($DryRun -or -not $SetUserEnv) {
   }
 }
 
-if ($DryRun) { Write-Host 'Dry run: nothing was changed.' }
-else { Write-Host 'Done. Restart Claude Code so new user environment variables take effect.' }
+if ($DryRun) { Write-Host 'Preview: nothing was changed. Run the script again without -DryRun to complete the lab set-up.' }
+else { Write-Host 'Done: the lab set-up on this machine is complete. Restart Claude Code so new user environment variables take effect.' }
