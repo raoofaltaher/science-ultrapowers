@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
-# The fourteen adopted skills with an addendum: shape, lab addendum, cleanliness, provenance hashes.
+# Two lists of adopted skills with an addendum: NAMES (the fourteen adopted before 0.2.0) and NAMES_0_2 (adopted in 0.2.0):
+# shape, lab addendum, cleanliness, provenance hashes.
 # The one adopted skill copied verbatim (typesafe-ai, no addendum): shape, cleanliness, provenance hashes.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
 NAMES="peer-review scientific-writing hypothesis-generation scientific-critical-thinking scholar-evaluation pptx-posters debugging implementation-planning pr-review-toolkit paper-review figure-qa svg-primitives figure-bible manuscript-formatting"
+NAMES_0_2="investigating-anomalous-results establishing-feasibility-first"
 VERBATIM="typesafe-ai"
 
 fail() { echo "vendored-skills: $1: $2" >&2; exit 1; }
@@ -50,7 +52,7 @@ check_hash_table() {
   [ "$rows" -gt 0 ] || fail "$name" "PROVENANCE.md hash table has no rows"
 }
 
-for name in $NAMES $VERBATIM; do
+for name in $NAMES $NAMES_0_2 $VERBATIM; do
   dir="skills/$name"
   overlaid=1; case " $VERBATIM " in *" $name "*) overlaid=0 ;; esac
   [ -d "$dir" ] || fail "$name" "missing folder $dir"
@@ -77,8 +79,11 @@ for name in $NAMES $VERBATIM; do
     grep -qF '**Tools in Claude Code:**' "$skill" || fail "$name" "SKILL.md lacks the Tools in Claude Code item"
     grep -qF "\${CLAUDE_PLUGIN_ROOT}/skills/$name/" "$skill" \
       || fail "$name" "SKILL.md lacks \${CLAUDE_PLUGIN_ROOT}/skills/$name/"
-    grep -E '^- 2026-11-07 science-ultrapowers:.*Claude-Science-only overlay items removed' "$prov" >/dev/null \
-      || fail "$name" "PROVENANCE.md lacks the 2026-11-07 overlay-removal line"
+    case " $NAMES_0_2 " in
+      *" $name "*) ;;
+      *) grep -E '^- 2026-11-07 science-ultrapowers:.*Claude-Science-only overlay items removed' "$prov" >/dev/null \
+           || fail "$name" "PROVENANCE.md lacks the 2026-11-07 overlay-removal line" ;;
+    esac
     grep -E '^- 2026-11-08 science-ultrapowers:.*LAB ADDENDUM' "$prov" >/dev/null \
       || fail "$name" "PROVENANCE.md lacks the 2026-11-08 addendum line"
   fi

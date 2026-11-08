@@ -47,12 +47,26 @@ sentences=(
   'recording-findings|A bare claim of checking counts as unchecked'
   'requesting-reference-access|Use shadow libraries or pirate sites'
   'deciding-with-jev|A Jev output is never evidence'
+  'preregistering-the-protocol|NO CONFIRMATORY CLAIM WITHOUT A REGISTERED PREDICTION FIRST'
+  'preregistering-the-protocol|It is never relabeled'
+  'preregistering-the-protocol|A deviation from the registered protocol makes the affected finding exploratory'
+  'running-the-lab|No outcome is loaded, computed, fitted or plotted before the framing is approved'
+  'running-the-lab|NO ADJUSTMENT WITHOUT ROOT CAUSE FIRST'
+  'running-the-lab|Nothing is feasible until it has run'
+  'running-the-lab|A deviation from the registered protocol makes the affected finding exploratory'
+  'running-the-lab|the protocol-adherence review runs before the rigor review'
+  'running-the-lab|Never assign many specifications and report the survivor'
+  'running-the-lab|Raw inputs are read-only'
+  'recording-findings|A finding is confirmatory only with a registered protocol whose registration check is clear'
+  'recording-findings|A null result needs an effect size and an interval'
+  'recording-findings|Input checksums'
 )
 for entry in "${sentences[@]}"; do
   skill=${entry%%|*}
   s=${entry#*|}
   grep -qF -- "$s" "skills/$skill/SKILL.md" || fail "skills/$skill/SKILL.md lacks the sentence: $s"
 done
+n=$(wc -c < skills/running-the-lab/SKILL.md); [ "$n" -lt 18000 ] || fail "running-the-lab is $n bytes, limit under 18000"
 
 # The plugin's own skills: folders without PROVENANCE.md.
 own=()
@@ -82,7 +96,7 @@ done
 # (g) every science-ultrapowers:<skill> reference resolves to a skill folder. PENDING lists the
 #     skills later plans create; remove each name when its folder lands. The CLAUDE.md section
 #     markers (<!-- science-ultrapowers:begin --> and :end) are not references.
-PENDING=""
+PENDING="framing-a-research-question synthesizing-the-literature reviewing-a-manuscript writing-for-publication presenting-research"
 for ref in $(grep -rhoE --include='*.md' '(<!-- )?science-ultrapowers:[a-z0-9-]+' skills | grep -v '^<!-- ' | sort -u); do
   name=${ref#science-ultrapowers:}
   if [ -f "skills/$name/SKILL.md" ]; then
