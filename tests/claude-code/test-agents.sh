@@ -303,6 +303,26 @@ check_lead_session_line() {
   done
 }
 
+# 21. the lifecycle duties: the adopted skills, the registration skill and the lifecycle phrases each role carries
+check_lifecycle_duties() {
+  local domains='alternative explanation / confound / leakage / split or metric artifact / seed or confidence-interval fragility / overreach / unchecked assumptions / researcher degrees of freedom / multiplicity / reproducibility from raw and seed'
+  lerr() { echo "agents: agents/$1.md: lacks $2"; exit 1; }
+  need() {
+    local role=$1 text=$2
+    [ -f "agents/$role.md" ] || lerr "$role" "the file"
+    tr -d '\r' < "agents/$role.md" | grep -qF -- "$text" || lerr "$role" "'$text'"
+  }
+  need lab-experiments-lead '`science-ultrapowers:establishing-feasibility-first`'
+  need lab-experiments-lead '`science-ultrapowers:investigating-anomalous-results`'
+  need data-evaluation-researcher 'protocol-adherence review'
+  need data-evaluation-researcher 'A clean number is not a correct number'
+  need scientific-peer-reviewer "$domains"
+  need findings-records-curator 'Basis'
+  need research-project-manager 'preregistering-the-protocol'
+  need academic-paper-author 'RESPONSE_MATRIX.md'
+  need literature-researcher 'SYNTHESIS_MATRIX.md'
+}
+
 if [ "$with_manifest" = 1 ]; then
   for id in "${NEW_IDS[@]}"; do
     [ -f "agents/$id.md" ] || fail "agents/$id.md does not exist"
@@ -320,6 +340,7 @@ for f in "${files[@]}"; do
 done
 
 check_lead_session_line
+check_lifecycle_duties
 
 if [ "$with_manifest" = 1 ]; then
   manifest=.claude-plugin/plugin.json
