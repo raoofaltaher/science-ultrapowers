@@ -35,6 +35,7 @@ Built from obra/superpowers v7.0.2 (MIT) as the template; see LICENSE.
 ## Table of contents
 
 - [Install](#install)
+- [Your first session](#your-first-session)
 - [Start a lab](#start-a-lab)
 - [Continue from Claude Science](#continue-from-claude-science)
 - [The team](#the-team)
@@ -79,6 +80,59 @@ Requirements:
 - git-lfs, for the artifact archives of your projects.
 - PowerShell 7 (`pwsh`), only for the optional environment script `setup_lab_env.ps1`.
 - `jq`, for development of the plugin only.
+
+## Your first session
+
+Three questions come first for every researcher who tries the plugin: how does Claude know this folder is a lab, what do I type to continue my project, and what do I type to start a new one. The answers are short.
+
+**Nothing to type to begin.** The plugin registers a session-start hook. When you open Claude Code in a project where it is installed, the hook loads the session primer (`science-ultrapowers:using-science-ultrapowers`) before your first message: Claude then knows the folder is a lab, which skill handles which situation, and that every session opens with a session opening. You never pick a role or a skill yourself. You say what you have in hand, the primer routes it to the right track, and the lead session acts as the Research Project Manager and assigns the roles. Your part is to answer its questions and to make the approvals the stages reserve for you.
+
+### Continue a project that has a lab
+
+Open Claude Code in the project root and ask for the session opening:
+
+```
+Open the session: where does the project stand, and what is the recommended next action?
+```
+
+The lead session reads the project brief, the work plan, the last lab-meeting note, the open requests and lab memory, writes the opening note in `research_lab/decisions/lab_meetings/`, and presents it. That note is the handover: the open tasks by stage, the blocked items, what needs you, and the recommended next action. Then say what to do, in your words ("Go with the recommended plan", "Assign TASK-0098", "Run the two reviews of the protocol"). The lead session writes the task assignment, assigns the role, and after each task report saves the deliverables and commits `research_lab/`. End with:
+
+```
+Close the session.
+```
+
+The close note is written and the next session opens from it. You can stop at any point and resume later without loss, because the records carry the state, not the conversation.
+
+### Start a new project from an idea
+
+Install the plugin in the new folder (a git repository) as [Install](#install) shows, open Claude Code there, and say what you have:
+
+```
+I have an idea for a paper: <one or two sentences>. Start the research lab here and frame the question.
+```
+
+The folder has no `research_lab/`, so `science-ultrapowers:initializing-a-research-lab` runs first. It asks once for the lab's name, the connectors, the restricted folders and the track (say "the idea track" for a paper that starts from an idea, or "the whole lab" when you will run experiments here), shows its plan, and writes after your yes. Then the idea track, `science-ultrapowers:framing-a-research-question`, holds a dialogue of one question per message: the phenomenon, the population and the unit of analysis, the comparison, and the decision the answer will change. It writes two or three framings with their contribution relative to prior work, the hypothesis record, and the survey of prior work with every source verified by DOI, and it ends at the Question approval: yours first, then the Academic Supervisor's. No outcome is loaded, computed, fitted or plotted before that approval. After it, the work goes to the study track (a dataset and experiments), the literature track (a survey), or a pilot and feasibility study when nobody knows yet whether the method runs.
+
+What stays with you in a new project: fill `research_lab/project/PROJECT_BRIEF.md`, approve `.mcp.json` and sign in to the connectors with `/mcp`, and approve or return the hypothesis record.
+
+### The commands, when you want to steer
+
+Plain words are enough; every skill is also a slash command, `/science-ultrapowers:<skill>`.
+
+| Situation | Command |
+|---|---|
+| Open or close a session, ask where the project stands | `/science-ultrapowers:holding-lab-meetings` |
+| Address the team, assign a task, approve a stage | `/science-ultrapowers:running-the-lab` |
+| A new idea or topic, before any data is touched | `/science-ultrapowers:framing-a-research-question` |
+| Start, join or upgrade a lab in a folder | `/science-ultrapowers:initializing-a-research-lab` |
+| A survey, a matrix or a meta-analysis | `/science-ultrapowers:synthesizing-the-literature` |
+| A protocol to register before a confirmatory run | `/science-ultrapowers:preregistering-the-protocol` |
+| A manuscript to referee | `/science-ultrapowers:reviewing-a-manuscript` |
+| A manuscript or thesis to write, a journal to pick | `/science-ultrapowers:writing-for-publication` |
+| Slides, a poster, a figure | `/science-ultrapowers:presenting-research` |
+| A result that looks wrong | `/science-ultrapowers:investigating-anomalous-results` |
+
+The other skills (the DOI verifier, the findings log, the artifact archive, lab memory) are called by the lab during a task; you rarely type them. For readers who know ultrapowers: `framing-a-research-question` is the research counterpart of `brainstorming`, `preregistering-the-protocol` and the Execution stage are the counterpart of a written plan executed as written, and the stage reviews are the counterpart of code review, assigned by the lab to a role that did not do the work.
 
 ## Start a lab
 
