@@ -30,7 +30,7 @@ class QueryTest(unittest.TestCase):
 
     def _save1(self, s, path, **kw):
         kw.setdefault("role", "paper-author")
-        kw.setdefault("command", "pytest")
+        kw.setdefault("task", "TASK-0001")
         return s.save([path], **kw)[0]
 
     def _link1(self, s, path, **kw):
@@ -57,7 +57,7 @@ class QueryTest(unittest.TestCase):
         self.assertEqual(v["agent_name"], "analyst")
         self.assertEqual(v["status"], "ok")
         self.assertEqual(s.rows("artifacts")[0]["filename"], "outputs/run.json")
-        self.assertFalse(s.store.exists())
+        self.assertFalse(s.archive.exists())
 
     def test_link_outside_project_is_refused(self):
         s, proj = self._store()
@@ -171,9 +171,9 @@ class QueryTest(unittest.TestCase):
     def test_path_of_replaced_version_raises(self):
         s, proj = self._store()
         f = write_file(proj / "work" / "state.json", "{}\n")
-        r1 = self._save1(s, f, destination="working_data")
+        r1 = self._save1(s, f, destination="working")
         write_file(f, '{"a": 1}\n')
-        self._save1(s, f, destination="working_data", version_of=r1["artifact_id"])
+        self._save1(s, f, destination="working", version_of=r1["artifact_id"])
         with self.assertRaises(artifacts.StoreError) as cm:
             s.path(r1["version_id"])
         self.assertIn("replaced", str(cm.exception))
@@ -259,11 +259,11 @@ class QueryTest(unittest.TestCase):
 
     # ---- lineage and graph --------------------------------------------
 
-    def test_lineage_lists_inputs_and_checks(self):
+    def test_provenance_lists_inputs_and_findings(self):
         s, proj = self._store()
         ra = self._save1(s, write_file(proj / "work" / "a.csv", "a\n"))
         rr = self._save1(s, write_file(proj / "work" / "report.md", "r\n"), inputs=[ra["version_id"]])
-        lin = s.lineage(rr["version_id"])
+        lin = s.provenance(rr["version_id"])
         self.assertEqual(lin["version"]["id"], rr["version_id"])
         self.assertEqual(lin["artifact"]["filename"], "work/report.md")
         self.assertEqual(
@@ -275,14 +275,14 @@ class QueryTest(unittest.TestCase):
                 "exists": True,
             }],
         )
-        self.assertEqual(lin["checks"], [])
+        self.assertEqual(lin["findings"], [])
 
-    def test_lineage_missing_input_does_not_raise(self):
+    def test_provenance_missing_input_does_not_raise(self):
         s, proj = self._store()
         raw = write_file(proj / "data" / "raw.csv", "x\n")
         rr = self._save1(s, write_file(proj / "work" / "report.md", "r\n"), inputs=["data/raw.csv"])
         raw.unlink()
-        lin = s.lineage(rr["version_id"])
+        lin = s.provenance(rr["version_id"])
         self.assertEqual(len(lin["inputs"]), 1)
         self.assertIs(lin["inputs"][0]["exists"], False)
         self.assertEqual(lin["inputs"][0]["filename"], "data/raw.csv")
@@ -333,14 +333,14 @@ class QueryTest(unittest.TestCase):
 
     # ---- CLI -----------------------------------------------------------
 
-    def test_cli_link_search_lineage_graph_print_json(self):
+    def test_cli_link_search_provenance_graph_print_json(self):
         s, proj = self._store()
         lab = str(s.lab)
         ra = self._save1(s, write_file(proj / "work" / "a.md", "a\n"))
         write_file(proj / "outputs" / "run.json", "{}\n")
         code, out, err = run_cli([
             "--lab", lab, "link", str(proj / "outputs" / "run.json"),
-            "--role", "analyst", "--command", "c", "--inputs", ra["version_id"], "--no-stage",
+            "--role", "analyst", "--task", "c", "--inputs", ra["version_id"], "--no-stage",
         ])
         self.assertEqual(code, 0, err)
         linked = json.loads(out)
@@ -348,7 +348,7 @@ class QueryTest(unittest.TestCase):
         code, out, err = run_cli(["--lab", lab, "search", "run"])
         self.assertEqual(code, 0, err)
         self.assertIsInstance(json.loads(out), list)
-        code, out, err = run_cli(["--lab", lab, "lineage", linked[0]["version_id"]])
+        code, out, err = run_cli(["--lab", lab, "provenance", linked[0]["version_id"]])
         self.assertEqual(code, 0, err)
         self.assertIsInstance(json.loads(out), dict)
         code, out, err = run_cli(["--lab", lab, "graph", linked[0]["version_id"]])

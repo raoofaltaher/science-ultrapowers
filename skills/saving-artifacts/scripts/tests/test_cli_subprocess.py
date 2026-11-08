@@ -34,7 +34,7 @@ class CliSubprocessTest(unittest.TestCase):
         lab = make_lab(self.t)
         proj = lab.parent
         f = write_file(proj / "work" / "report.md", "r\n")
-        saved = self._run(lab, "save", str(f), "--role", "r", "--command", "c",
+        saved = self._run(lab, "save", str(f), "--role", "r", "--task", "c",
                           "--description", DESCRIPTION, "--no-stage")
         self.assertEqual(saved.returncode, 0, saved.stderr.decode("utf-8", "replace"))
         version_id = json.loads(saved.stdout.decode("utf-8"))[0]["version_id"]

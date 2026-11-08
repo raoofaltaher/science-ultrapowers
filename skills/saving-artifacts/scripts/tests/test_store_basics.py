@@ -48,7 +48,7 @@ class StoreBasicsTest(unittest.TestCase):
             self.assertEqual(s.lab, make_lab(t).resolve())
             self.assertEqual(s.project_root, s.lab.parent)
             self.assertEqual(s.root, s.lab / "artifacts")
-            self.assertEqual(s.store, s.root / "store")
+            self.assertEqual(s.archive, s.root / "archive")
 
     def test_append_and_rows_roundtrip(self):
         with tmpdir() as t:
@@ -86,14 +86,14 @@ class StoreBasicsTest(unittest.TestCase):
             s = LabStore(make_lab(t))
             proj = s.project_root
             desc = "a b c\u0085d\x0ce\x1cf"
-            s.save([write_file(proj / "work" / "one.md", "1\n")], role="r", command="c", description=desc)
+            s.save([write_file(proj / "work" / "one.md", "1\n")], role="r", task="c", description=desc)
             self.assertEqual(s.rows("versions")[0]["code_description"], desc)
-            s.save([write_file(proj / "work" / "two.md", "2\n")], role="r", command="c")
+            s.save([write_file(proj / "work" / "two.md", "2\n")], role="r", task="c")
             self.assertEqual(len(s.rows("versions")), 2)
             self.assertEqual(s.rows("versions")[0]["code_description"], desc)
             self.assertEqual([r["filename"] for r in s.search("a b")], ["work/one.md"])
             first = s.rows("versions")[0]["id"]
-            s.check_add(first, claim="c", verdict="pass", reviewer_role="r", evidence="x\u0085y")
+            s.finding_add(first, claim="c", verdict="pass", reviewer_role="r", evidence="x\u0085y")
             self.assertEqual(s.rows("verification_checks")[0]["evidence"], "x\u0085y")
 
     def test_unknown_ledger_raises_store_error(self):

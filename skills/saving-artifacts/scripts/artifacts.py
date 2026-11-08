@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-"""Project-local artifact store for a research lab.
+"""Project-local artifact archive for a research lab.
 
-A versioned artifact store committed to git: the workspace is scratch, every
-save is a full-copy version, inputs become dependency edges, and reviewer checks
-attach to versions.
+A versioned artifact archive committed to git: the workspace is working space, every
+save is a full-copy version, inputs become dependency edges, and reviewer findings
+attach to versions. Copies at or above lfs.thresholdMB are tracked with Git Large File Storage (LFS).
 
 Usage:
     python artifacts.py [--lab PATH] <subcommand> ...
 
-    python artifacts.py save FILES... --role R --command C [--session S] [--version-of ID]
-        [--checkpoint] [--intermediate] [--destination {snapshot,working_data}]
+    python artifacts.py save FILES... --role R --task TASK_ID [--session S] [--version-of ID]
+        [--checkpoint] [--intermediate] [--destination {milestone,working}]
         [--description T] [--environment T] [--no-stage] [--force] [--inputs ID_OR_PATH ...]
 
-    python artifacts.py link PATHS... --role R --command C [--session S]
+    python artifacts.py link PATHS... --role R --task TASK_ID [--session S]
         [--description T] [--no-stage] [--force] [--inputs ID_OR_PATH ...]
 
     --inputs takes one or more values; put it after the files or repeat it.
@@ -21,18 +21,21 @@ Usage:
 
     python artifacts.py search [TEXT] [--include-intermediate]
     python artifacts.py path REF [--no-stage]
-    python artifacts.py lineage REF
+    python artifacts.py provenance REF
     python artifacts.py graph REF
     python artifacts.py lfs-check
 
-    python artifacts.py check add --version REF --claim C --verdict {pass,warn,fail,inconclusive}
+    python artifacts.py findings add --version REF --claim C --verdict VERDICT
         --reviewer R [--severity S] [--evidence E] [--rebuttal T] [--no-stage]
-    python artifacts.py check list [REF] [--all]
-    python artifacts.py check review CHECK_ID --status {resolved,unaddressed} --reviewer R
+    python artifacts.py findings list [REF] [--all]
+    python artifacts.py findings review FINDING_ID --status {closed,re-opened} --reviewer R
         [--note N] [--no-stage]
-    python artifacts.py mark-addressed CHECK_ID --note N [--no-stage]
+    python artifacts.py respond FINDING_ID --note N [--no-stage]
 
     python artifacts.py resolve FILE [--write]
+
+A lab that still has the 0.1 layout (the old artifact folder or a numbered folder, and no
+artifacts/archive/) exits 2 and names the migration.
 """
 from __future__ import annotations
 
@@ -53,8 +56,19 @@ from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath, PureWindowsPath
 
 DEFAULT_CONFIG = {"lfs": {"thresholdMB": 10, "budgetWarnMB": 800}}
-LEDGERS = ("artifacts", "versions", "dependencies", "verification_checks")
-CHECK_VERDICTS = ("pass", "warn", "fail", "inconclusive")
+TABLES = ("artifacts", "versions", "dependencies", "verification_checks")
+FINDING_VERDICTS = ("pass", "warn", "fail", "inconclusive")
+OUTSTANDING_VERDICTS = FINDING_VERDICTS[1:3]
+FINDING_STATUSES = ("open", "author-responded", "re-opened", "closed")
+REVIEW_STATUSES = ("closed", "re-opened")
+DESTINATIONS = ("milestone", "working")
+FINDING_STATUS_LEGACY = {"claimed": "author-responded", "unaddressed": "re-opened", "resolved": "closed"}  # legacy
+DESTINATION_LEGACY = {"snapshot": "milestone", "working_data": "working"}  # legacy
+OLD_LAYOUT_MESSAGE = (
+    "this lab uses the 0.1 layout; run science-ultrapowers:initializing-a-research-lab to migrate it"
+)
+OLD_STORE_PREFIX = "artifacts/store/"  # legacy
+ARCHIVE_PREFIX = "artifacts/archive/"
 REQUIRED_KEYS = {
     "artifacts": ("id",),
     "versions": ("id",),
@@ -63,9 +77,9 @@ REQUIRED_KEYS = {
 }
 
 GITATTRIBUTES_HEADER = (
-    "# science-ultrapowers artifact store: stored copies are byte-exact; "
+    "# science-ultrapowers artifact archive: stored copies are byte-exact; "
     "one LFS line per file at or above lfs.thresholdMB",
-    "store/** -text",
+    "archive/** -text",
     "*.jsonl text eol=lf",
 )
 SECRET_NAME_PATTERNS = (".env*", "*.pem", "id_*")
@@ -84,6 +98,10 @@ class StoreError(Exception):
 
 class LabNotFound(StoreError):
     pass
+
+
+class OldLayout(StoreError):
+    """The lab still has the 0.1 layout; the CLI prints the message as is and exits 2."""
 
 
 class AmbiguousId(StoreError):
@@ -119,6 +137,41 @@ def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
 
+def finding_status(status):
+    """The current word for a reviewer-finding status; a legacy word is read as its new word."""
+    return FINDING_STATUS_LEGACY.get(status, status)
+
+
+def destination_word(destination):
+    """The current word for a destination; a legacy word is read as its new word."""
+    return DESTINATION_LEGACY.get(destination, destination)
+
+
+def report_finding(row: dict) -> dict:
+    """A copy of a reviewer-finding row with every status in the current words."""
+    out = dict(row)
+    out["status"] = finding_status(row.get("status"))
+    resolution = out.get("resolution")
+    if isinstance(resolution, dict) and isinstance(resolution.get("review"), dict):
+        review = dict(resolution["review"])
+        review["status"] = finding_status(review.get("status"))
+        out["resolution"] = {**resolution, "review": review}
+    return out
+
+
+def is_old_layout(lab: Path) -> bool:
+    """True when the lab has the 0.1 layout: no artifacts/archive/, and either the old artifact
+    folder or a numbered folder."""
+    if (lab / "artifacts" / "archive").is_dir():
+        return False
+    if (lab / "artifacts" / "store").is_dir():  # legacy
+        return True
+    try:
+        return any(d.is_dir() and re.fullmatch(r"\d\d_.+", d.name) for d in lab.iterdir())
+    except OSError:
+        return False
+
+
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
     with open(path, "rb") as fh:
@@ -151,8 +204,10 @@ class LabStore:
     def __init__(self, lab: Path) -> None:
         self.lab = Path(lab).resolve()
         self.project_root = self.lab.parent
+        if is_old_layout(self.lab):
+            raise OldLayout(OLD_LAYOUT_MESSAGE)
         self.root = self.lab / "artifacts"
-        self.store = self.root / "store"
+        self.archive = self.root / "archive"
         self.config = copy.deepcopy(DEFAULT_CONFIG)
         lab_json = self.lab / "lab.json"
         if lab_json.is_file():
@@ -173,13 +228,13 @@ class LabStore:
             raise StoreError(f"invalid lfs.{key} in {lab_json}: {value!r}")
         return int(value * 1024 * 1024)
 
-    def _ledger_path(self, ledger: str) -> Path:
-        if ledger not in LEDGERS:
-            raise StoreError(f"unknown ledger: {ledger}")
-        return self.root / f"{ledger}.jsonl"
+    def _table_path(self, table: str) -> Path:
+        if table not in TABLES:
+            raise StoreError(f"unknown table: {table}")
+        return self.root / f"{table}.jsonl"
 
-    def rows(self, ledger: str) -> list[dict]:
-        path = self._ledger_path(ledger)
+    def rows(self, table: str) -> list[dict]:
+        path = self._table_path(table)
         if not path.is_file():
             return []
         out: list[dict] = []
@@ -188,14 +243,14 @@ class LabStore:
                 row = json.loads(line)
             except json.JSONDecodeError as exc:
                 raise StoreError(f"{path.name} line {n}: {exc.msg}") from exc
-            if not isinstance(row, dict) or not all(key in row for key in REQUIRED_KEYS[ledger]):
-                raise StoreError(f"{path.name} line {n}: not a {ledger} row")
+            if not isinstance(row, dict) or not all(key in row for key in REQUIRED_KEYS[table]):
+                raise StoreError(f"{path.name} line {n}: not a {table} row")
             out.append(row)
         return out
 
     @staticmethod
     def _numbered_lines(path: Path) -> list[tuple[int, str]]:
-        """(line number, text) of each non-empty ledger line. Only a line feed separates lines:
+        """(line number, text) of each non-empty table line. Only a line feed separates lines:
         str.splitlines would also split on U+2028, U+0085 and friends, which
         json.dumps(ensure_ascii=False) leaves raw inside strings."""
         text = path.read_text(encoding="utf-8")
@@ -213,19 +268,26 @@ class LabStore:
             fh.write("".join(line + "\n" for line in lines))
         os.replace(tmp, path)
 
-    def append(self, ledger: str, row: dict) -> None:
-        path = self._ledger_path(ledger)
+    def append(self, table: str, row: dict) -> None:
+        path = self._table_path(table)
         lines: list[str] = []
         if path.is_file():
             lines = [line for _, line in self._numbered_lines(path)]
         lines.append(json.dumps(row, ensure_ascii=False))
         self._write_lines(path, lines)
 
-    def rewrite(self, ledger: str, rows: list[dict]) -> None:
-        path = self._ledger_path(ledger)
+    def rewrite(self, table: str, rows: list[dict]) -> None:
+        path = self._table_path(table)
         self._write_lines(path, [json.dumps(r, ensure_ascii=False) for r in rows])
 
     # ---- lookups -------------------------------------------------------
+
+    def _copy_path(self, row: dict) -> Path:
+        """Where a copy's bytes live. A migrated row may still name the old folder; it is read from the archive."""
+        rel = row["storage_path"]
+        if rel.startswith(OLD_STORE_PREFIX):
+            rel = ARCHIVE_PREFIX + rel[len(OLD_STORE_PREFIX):]
+        return self.lab / rel
 
     def _artifact(self, aid: str) -> dict:
         for row in self.rows("artifacts"):
@@ -287,7 +349,7 @@ class LabStore:
         self._write_lines(self._attributes_path, lines)
 
     def ensure_gitattributes(self) -> bool:
-        """Make sure the store's .gitattributes carries the two byte-exact rules.
+        """Make sure the archive's .gitattributes carries the two byte-exact rules.
 
         A missing file is created with the header. An existing file keeps its own lines, in order;
         whichever of the two rules is missing is appended. True when the file was written."""
@@ -348,7 +410,7 @@ class LabStore:
 
     def _lfs_covered(self, stored: Path, patterns: set[str]) -> bool:
         """True when an LFS line names the stored copy itself or folds its whole artifact."""
-        return self._lfs_pattern(stored) in patterns or f"store/{stored.parent.name}/**" in patterns
+        return self._lfs_pattern(stored) in patterns or f"archive/{stored.parent.name}/**" in patterns
 
     def lfs_line_if_needed(self, stored: Path) -> bool:
         """Append the LFS line for `stored` when it is at or above the threshold; True when tracked."""
@@ -372,7 +434,7 @@ class LabStore:
         return sum(
             v["size_bytes"]
             for v in self._lfs_versions()
-            if self._lfs_covered(self.lab / v["storage_path"], present)
+            if self._lfs_covered(self._copy_path(v), present)
         )
 
     def lfs_filter_configured(self) -> bool | None:
@@ -398,10 +460,10 @@ class LabStore:
     def lfs_check(self) -> dict:
         present = set(self._lfs_patterns())
         missing = [
-            (self.lab / v["storage_path"]).relative_to(self.root).as_posix()
+            self._copy_path(v).relative_to(self.root).as_posix()
             for v in self._lfs_versions()
             if v["size_bytes"] >= self.threshold_bytes
-            and not self._lfs_covered(self.lab / v["storage_path"], present)
+            and not self._lfs_covered(self._copy_path(v), present)
         ]
         total = self.lfs_total()
         line_count = len(self._lfs_patterns())
@@ -409,7 +471,7 @@ class LabStore:
         if line_count >= 1000:
             suggestion = (
                 f"{line_count} LFS lines: fold each artifact's lines into one pattern, "
-                f"store/<aid>/** {LFS_ATTRIBUTES}"
+                f"archive/<aid>/** {LFS_ATTRIBUTES}"
             )
         return {
             "missing_lines": missing,
@@ -446,9 +508,9 @@ class LabStore:
             first = (added.stderr.splitlines() or [""])[0]
             print(f"warning: git add failed: {first}", file=sys.stderr)
 
-    def _store_leaf(self, art: dict) -> str:
-        """The file-name part of an artifact's stored copies, checked against the ledger row:
-        the id must be a plain token and the copy must land inside the store."""
+    def _archive_leaf(self, art: dict) -> str:
+        """The file-name part of an artifact's stored copies, checked against the table row:
+        the id must be a plain token and the copy must land inside the archive."""
         aid = art["id"]
         leaf = re.split(r"[\\/]", str(art["filename"]))[-1]
         problem = (
@@ -457,10 +519,10 @@ class LabStore:
             or leaf in ("", ".", "..")
         )
         if not problem:
-            stored = (self.store / aid / f"v001_{leaf}").resolve()
-            problem = not stored.is_relative_to(self.store.resolve())
+            stored = (self.archive / aid / f"v001_{leaf}").resolve()
+            problem = not stored.is_relative_to(self.archive.resolve())
         if problem:
-            raise StoreError(f"ledger row {aid} names a path outside the store")
+            raise StoreError(f"table row {aid} names a path outside the archive")
         return leaf
 
     def _version_of_target(self, ref: str) -> dict:
@@ -490,7 +552,7 @@ class LabStore:
             except OSError:
                 suspicious = False
         if suspicious:
-            raise StoreError(f"{rel} looks like a secret or ignored file; pass --force to save it anyway")
+            raise StoreError(f"{rel} looks like a secret or ignored file; use --force to save it anyway")
 
     def _project_file(self, f) -> Path:
         """Resolve `f` (relative paths against the project root) to a regular file inside the project."""
@@ -507,7 +569,7 @@ class LabStore:
         return p
 
     def _classify_inputs(self, inputs: list[str], *, force: bool = False) -> list[tuple[str, object]]:
-        """Pass 1 over inputs: ("version", id) for a known id, ("path", Path) for a file to link.
+        """Step 1 over inputs: ("version", id) for a known id, ("path", Path) for a file to link.
 
         Writes nothing; every entry that cannot be used raises here, before anything is saved."""
         classified: list[tuple[str, object]] = []
@@ -537,17 +599,17 @@ class LabStore:
         return classified
 
     def _link_pending(
-        self, classified: list[tuple[str, object]], *, role: str, command: str, session: str | None,
+        self, classified: list[tuple[str, object]], *, role: str, task: str, session: str | None,
         force: bool = False,
     ) -> list[str]:
-        """Pass 2: link the path inputs; return distinct dependency version ids, first-seen order."""
+        """Step 2: link the path inputs; return distinct dependency version ids, first-seen order."""
         dep_ids: list[str] = []
         for kind, value in classified:
             if kind == "version":
                 dep = value
             else:
                 dep = self.link(
-                    [value], role=role, command=command, session=session, stage=False, force=force
+                    [value], role=role, task=task, session=session, stage=False, force=force
                 )[0]["version_id"]
             if dep not in dep_ids:
                 dep_ids.append(dep)
@@ -566,12 +628,21 @@ class LabStore:
 
     # ---- link ----------------------------------------------------------
 
+    @staticmethod
+    def _task_of(task: str | None, command: str | None) -> str:
+        """The producing task; the older keyword is accepted for the same value."""
+        value = task if task is not None else command
+        if value is None or not str(value).strip():
+            raise StoreError("a save needs the task that produced it (--task)")
+        return value
+
     def link(
         self,
         paths: list,
         *,
         role: str,
-        command: str,
+        task: str | None = None,
+        command: str | None = None,
         session: str | None = None,
         inputs: list[str] | None = None,
         description: str | None = None,
@@ -579,12 +650,13 @@ class LabStore:
         force: bool = False,
     ) -> list[dict]:
         """Record files that already live in the project without copying them."""
+        task = self._task_of(task, command)
         files = [self._project_file(f) for f in paths]
         for p in files:
             self._refuse_secret(p, force=force)
         classified = self._classify_inputs(inputs or [], force=force)
         self._filenames_of([v for k, v in classified if k == "version"])
-        dep_ids = self._link_pending(classified, role=role, command=command, session=session, force=force)
+        dep_ids = self._link_pending(classified, role=role, task=task, session=session, force=force)
         wrote: set[str] = set()
         results: list[dict] = []
         for p in files:
@@ -625,12 +697,12 @@ class LabStore:
                 "sha256": sha,
                 "storage_path": storage,
                 "agent_name": role,
-                "producing_command": command,
+                "producing_command": task,
                 "producing_session": session,
                 "code_description": description,
                 "is_intermediate": False,
                 "is_checkpoint": False,
-                "destination": "snapshot",
+                "destination": "milestone",
                 "environment": None,
                 "created_at": created,
                 "source": "lab",
@@ -646,7 +718,7 @@ class LabStore:
                     "is_ephemeral": False,
                     "superseded_by": None,
                     "retention": None,
-                    "destination": "snapshot",
+                    "destination": "milestone",
                     "created_at": created,
                     "source": "lab",
                 })
@@ -676,7 +748,7 @@ class LabStore:
                 "reused": False,
             })
         if stage and wrote:
-            self._stage([self._ledger_path(n) for n in LEDGERS if n in wrote])
+            self._stage([self._table_path(n) for n in TABLES if n in wrote])
         return results
 
     # ---- search --------------------------------------------------------
@@ -718,12 +790,12 @@ class LabStore:
     # ---- path ----------------------------------------------------------
 
     def _version_path(self, row: dict) -> Path | None:
-        """Where a version's bytes should be. A copy must lie inside the store and a relative link
-        inside the project; a ledger row that names anything else raises StoreError."""
+        """Where a version's bytes should be. A copy must lie inside the archive and a relative link
+        inside the project; a table row that names anything else raises StoreError."""
         if row["kind"] == "copy":
-            p = self.lab / row["storage_path"]
-            if not p.resolve().is_relative_to(self.store.resolve()):
-                raise StoreError(f"version {row['id']} names a path outside the store")
+            p = self._copy_path(row)
+            if not p.resolve().is_relative_to(self.archive.resolve()):
+                raise StoreError(f"version {row['id']} names a path outside the archive")
             return p
         if row["kind"] == "link":
             rest = row["storage_path"]
@@ -759,7 +831,7 @@ class LabStore:
         row = self._version_row(ref)
         vid = row["id"]
         if row["status"] == "replaced":
-            raise StoreError(f"replaced: version {vid} was superseded by a working_data save; its copy is gone")
+            raise StoreError(f"replaced: version {vid} was superseded by a working save; its copy is gone")
         try:
             p = self._version_path(row)
         except StoreError:
@@ -782,7 +854,7 @@ class LabStore:
         if new_status is not None:
             self._set_status(vid, new_status)
             if stage:
-                self._stage([self._ledger_path("versions")])
+                self._stage([self._table_path("versions")])
         return {"version_id": vid, "path": p.as_posix(), "status": result}
 
     def path(self, ref: str, *, stage: bool = True) -> Path:
@@ -800,9 +872,9 @@ class LabStore:
             )
         return Path(shown)
 
-    # ---- lineage and graph ---------------------------------------------
+    # ---- provenance and graph ------------------------------------------
 
-    def lineage(self, ref: str) -> dict:
+    def provenance(self, ref: str) -> dict:
         version = self._version_row(ref)
         artifact = self._artifact(version["artifact_id"])
         by_id = {v["id"]: v for v in self.rows("versions")}
@@ -822,8 +894,12 @@ class LabStore:
                 "path": p.as_posix() if p is not None else None,
                 "exists": p is not None and p.exists(),
             })
-        checks = [c for c in self.rows("verification_checks") if c.get("version_id") == version["id"]]
-        return {"version": version, "artifact": artifact, "inputs": inputs, "checks": checks}
+        findings = [
+            report_finding(c) for c in self.rows("verification_checks") if c.get("version_id") == version["id"]
+        ]
+        return {"version": version, "artifact": artifact, "inputs": inputs, "findings": findings}
+
+    lineage = provenance  # the 0.1 name
 
     def graph(self, ref: str) -> dict:
         root = self._version_row(ref)["id"]
@@ -853,9 +929,9 @@ class LabStore:
                     queue.append(to)
         return {"root": root, "nodes": nodes, "edges": edges}
 
-    # ---- reviewer checks -----------------------------------------------
+    # ---- reviewer findings ---------------------------------------------
 
-    def check_add(
+    def finding_add(
         self,
         ref: str,
         *,
@@ -867,13 +943,13 @@ class LabStore:
         rebuttal: str | None = None,
         stage: bool = True,
     ) -> dict:
-        """Attach a reviewer check to a version (an artifact reference means its latest version)."""
-        if verdict not in CHECK_VERDICTS:
-            raise StoreError(f"invalid verdict: {verdict} (pass, warn, fail or inconclusive)")
+        """Attach a reviewer finding to a version (an artifact reference means its latest version)."""
+        if verdict not in FINDING_VERDICTS:
+            raise StoreError(f"invalid verdict: {verdict} ({', '.join(FINDING_VERDICTS)})")
         if not claim or not claim.strip():
-            raise StoreError("a check needs a claim")
+            raise StoreError("a reviewer finding needs a claim")
         if not reviewer_role or not reviewer_role.strip():
-            raise StoreError("a check needs a reviewer role")
+            raise StoreError("a reviewer finding needs a reviewer role")
         version = self._version_row(ref)
         row = {
             "id": str(uuid.uuid4()),
@@ -891,73 +967,85 @@ class LabStore:
         }
         self.append("verification_checks", row)
         if stage:
-            self._stage([self._ledger_path("verification_checks")])
+            self._stage([self._table_path("verification_checks")])
         return row
 
-    def _check(self, check_id: str) -> dict:
-        """The check row for a full id or a unique prefix of at least 6 characters."""
+    check_add = finding_add  # the 0.1 name
+
+    def _finding(self, finding_id: str) -> dict:
+        """The reviewer-finding row for a full id or a unique prefix of at least 6 characters."""
         rows = self.rows("verification_checks")
         for row in rows:
-            if row["id"] == check_id:
+            if row["id"] == finding_id:
                 return row
-        if len(check_id) < 6:
-            raise UnknownId(f"unknown check {check_id} (a check id prefix needs at least 6 characters)")
-        matches = [r for r in rows if r["id"].startswith(check_id)]
+        if len(finding_id) < 6:
+            raise UnknownId(
+                f"unknown reviewer finding {finding_id} (a finding id prefix needs at least 6 characters)"
+            )
+        matches = [r for r in rows if r["id"].startswith(finding_id)]
         if len(matches) == 1:
             return matches[0]
         if matches:
-            raise AmbiguousId(f"ambiguous check id {check_id}: matches " + ", ".join(r["id"] for r in matches[:5]))
-        raise UnknownId(f"unknown check {check_id}")
+            raise AmbiguousId(
+                f"ambiguous finding id {finding_id}: matches " + ", ".join(r["id"] for r in matches[:5])
+            )
+        raise UnknownId(f"unknown reviewer finding {finding_id}")
 
-    def _update_check(self, check_id: str, changes: dict, *, stage: bool) -> dict:
+    def _update_finding(self, finding_id: str, changes: dict, *, stage: bool) -> dict:
         rows = self.rows("verification_checks")
         updated: dict | None = None
         for row in rows:
-            if row["id"] == check_id:
+            if row["id"] == finding_id:
                 row.update(changes)
                 updated = row
         if updated is None:
-            raise UnknownId(f"unknown check {check_id}")
+            raise UnknownId(f"unknown reviewer finding {finding_id}")
         self.rewrite("verification_checks", rows)
         if stage:
-            self._stage([self._ledger_path("verification_checks")])
-        return updated
+            self._stage([self._table_path("verification_checks")])
+        return report_finding(updated)
 
-    def mark_addressed(self, check_id: str, note: str, *, stage: bool = True) -> dict:
-        """The author says a check is fixed: open or unaddressed becomes claimed."""
-        check = self._check(check_id)
-        if check["status"] not in ("open", "unaddressed"):
+    def respond(self, finding_id: str, note: str, *, stage: bool = True) -> dict:
+        """The author responds to a reviewer finding: open or re-opened becomes author-responded."""
+        finding = self._finding(finding_id)
+        current = finding_status(finding["status"])
+        if current not in ("open", "re-opened"):
             raise StoreError(
-                f"check {check['id']} is {check['status']}; only open or unaddressed checks can be marked addressed"
+                f"reviewer finding {finding['id']} is {current}; only open or re-opened findings can receive a response"
             )
         if not note or not note.strip():
-            raise StoreError("mark-addressed needs a note saying what was changed")
+            raise StoreError("respond needs a note saying what was changed")
         resolution = {"note": note, "at": now_iso()}
-        previous = check.get("resolution")
+        previous = finding.get("resolution")
         if isinstance(previous, dict) and "review" in previous:
             resolution["review"] = previous["review"]
         elif isinstance(previous, str) and previous.strip():
             resolution["earlier_note"] = previous
-        return self._update_check(check["id"], {"status": "claimed", "resolution": resolution}, stage=stage)
+        return self._update_finding(
+            finding["id"], {"status": "author-responded", "resolution": resolution}, stage=stage
+        )
 
-    def check_review(
+    mark_addressed = respond  # the 0.1 name
+
+    def finding_review(
         self,
-        check_id: str,
+        finding_id: str,
         *,
         status: str,
         reviewer_role: str,
         note: str | None = None,
         stage: bool = True,
     ) -> dict:
-        """A reviewer confirms (resolved) or re-flags (unaddressed) a check."""
-        if status not in ("resolved", "unaddressed"):
-            raise StoreError(f"invalid review status: {status} (resolved or unaddressed)")
-        check = self._check(check_id)
-        if check["status"] == "resolved":
-            raise StoreError(f"check {check['id']} is already resolved")
+        """A reviewer closes a finding (closed) or re-opens it (re-opened)."""
+        status = finding_status(status)
+        if status not in REVIEW_STATUSES:
+            raise StoreError(f"invalid review status: {status} (closed or re-opened)")
+        finding = self._finding(finding_id)
+        if finding_status(finding["status"]) == "closed":
+            raise StoreError(f"reviewer finding {finding['id']} is already closed")
         if not reviewer_role or not reviewer_role.strip():
             raise StoreError("a review needs a reviewer role")
-        previous = check.get("resolution")
+        previous = finding.get("resolution")
         if isinstance(previous, dict):
             resolution = dict(previous)
         elif isinstance(previous, str) and previous.strip():
@@ -965,9 +1053,11 @@ class LabStore:
         else:
             resolution = {}
         resolution["review"] = {"status": status, "by": reviewer_role, "note": note, "at": now_iso()}
-        return self._update_check(check["id"], {"status": status, "resolution": resolution}, stage=stage)
+        return self._update_finding(finding["id"], {"status": status, "resolution": resolution}, stage=stage)
 
-    def _checks_for(self, ref: str | None) -> list[dict]:
+    check_review = finding_review  # the 0.1 name
+
+    def _findings_for(self, ref: str | None) -> list[dict]:
         rows = self.rows("verification_checks")
         if ref is None:
             return rows
@@ -978,15 +1068,17 @@ class LabStore:
             wanted = {rid}
         return [c for c in rows if c["version_id"] in wanted]
 
-    def checks(self, ref: str | None = None) -> list[dict]:
-        """Every check, narrowed to a version or to every version of an artifact."""
-        return self._checks_for(ref)
+    def findings(self, ref: str | None = None) -> list[dict]:
+        """Every reviewer finding, narrowed to a version or to every version of an artifact."""
+        return [report_finding(c) for c in self._findings_for(ref)]
+
+    checks = findings  # the 0.1 name
 
     def outstanding(self, ref: str | None = None) -> list[dict]:
-        """Open or unaddressed checks whose verdict is fail or warn, in ledger order."""
+        """Open or re-opened findings with a warning or failing verdict, in table order."""
         return [
-            c for c in self._checks_for(ref)
-            if c["status"] in ("open", "unaddressed") and c["verdict"] in ("fail", "warn")
+            report_finding(c) for c in self._findings_for(ref)
+            if finding_status(c["status"]) in ("open", "re-opened") and c["verdict"] in OUTSTANDING_VERDICTS
         ]
 
     def save(
@@ -994,7 +1086,8 @@ class LabStore:
         files: list,
         *,
         role: str,
-        command: str,
+        task: str | None = None,
+        command: str | None = None,
         session: str | None = None,
         version_of: str | None = None,
         inputs: list[str] | None = None,
@@ -1007,8 +1100,11 @@ class LabStore:
         force: bool = False,
     ) -> list[dict]:
         # Validate everything first; a failing call writes nothing.
-        if destination is not None and destination not in ("snapshot", "working_data"):
-            raise StoreError(f"invalid destination: {destination} (snapshot or working_data)")
+        task = self._task_of(task, command)
+        if destination is not None:
+            destination = destination_word(destination)
+            if destination not in DESTINATIONS:
+                raise StoreError(f"invalid destination: {destination} (milestone or working)")
         paths = [self._project_file(f) for f in files]
         for p in paths:
             self._refuse_secret(p, force=force)
@@ -1018,7 +1114,7 @@ class LabStore:
             if len(paths) != 1:
                 raise StoreError("--version-of takes exactly one file")
             target = self._version_of_target(version_of)
-            self._store_leaf(target)
+            self._archive_leaf(target)
             if any(v["kind"] == "link" for v in self._versions_of(target["id"])):
                 raise StoreError(f"{target['filename']} is a linked file; record a new state with link, not save")
 
@@ -1027,7 +1123,7 @@ class LabStore:
         # (path, artifact, latest version, destination, version rows this save replaces)
         plan: list[tuple[Path, dict | None, dict | None, str, list[dict]]] = []
         seen: set[str] = set()
-        store_root = self.store.resolve()
+        archive_root = self.archive.resolve()
         for p in paths:
             sha = sha256_file(p)
             if target is not None:
@@ -1036,37 +1132,37 @@ class LabStore:
                     raise StoreError(
                         f"identical to latest version of {target['filename']} ({latest['id']}); nothing saved"
                     )
-                dest = destination or target.get("destination", "snapshot")
+                dest = destination or destination_word(target.get("destination", "milestone"))
                 replaced: list[dict] = []
-                if dest == "working_data":
+                if dest == "working":
                     replaced = [
                         v for v in self._versions_of(target["id"])
                         if v["kind"] == "copy" and v["status"] == "ok"
-                        and v.get("destination", "snapshot") == "working_data"
+                        and destination_word(v.get("destination", "milestone")) == "working"
                     ]
                     for old in replaced:
-                        old_path = self.lab / old["storage_path"]
-                        if not old_path.resolve().is_relative_to(store_root):
-                            raise StoreError(f"refusing to delete {old_path}: outside the store")
+                        old_path = self._copy_path(old)
+                        if not old_path.resolve().is_relative_to(archive_root):
+                            raise StoreError(f"refusing to delete {old_path}: outside the archive")
                 plan.append((p, target, latest, dest, replaced))
                 continue
             rel = p.relative_to(self.project_root).as_posix()
             existing = by_name.get(rel)
             if existing is not None:
                 raise StoreError(
-                    f"artifact {rel} exists ({existing['id']}); pass --version-of {existing['id']} "
+                    f"artifact {rel} exists ({existing['id']}); use --version-of {existing['id']} "
                     "for a new state of the same file"
                 )
             if rel in seen:
                 raise StoreError(f"{rel} is named twice in this call")
             seen.add(rel)
-            plan.append((p, None, None, destination or "snapshot", []))
+            plan.append((p, None, None, destination or "milestone", []))
 
         classified = self._classify_inputs(inputs or [], force=force)
         self._filenames_of([v for k, v in classified if k == "version"])
 
         # Everything checks out: link the path inputs, then write.
-        dep_ids = self._link_pending(classified, role=role, command=command, session=session, force=force)
+        dep_ids = self._link_pending(classified, role=role, task=task, session=session, force=force)
         dep_names = self._filenames_of(dep_ids) if dep_ids else {}
         written: list[Path] = []
         results: list[dict] = []
@@ -1082,8 +1178,10 @@ class LabStore:
                 aid, filename = art["id"], art["filename"]
                 number, parent = latest["version_number"] + 1, latest["id"]
             vid = str(uuid.uuid4())
-            rel_store = f"artifacts/store/{aid}/v{number:03d}_{self._store_leaf({'id': aid, 'filename': filename})}"
-            stored = self.lab / rel_store
+            rel_archive = (
+                f"{ARCHIVE_PREFIX}{aid}/v{number:03d}_{self._archive_leaf({'id': aid, 'filename': filename})}"
+            )
+            stored = self.lab / rel_archive
             stored.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(p, stored)
             written.append(stored)
@@ -1099,9 +1197,9 @@ class LabStore:
                 "content_type": _MIME.guess_type(filename)[0] or "application/octet-stream",
                 "size_bytes": stored.stat().st_size,
                 "sha256": sha256_file(stored),
-                "storage_path": rel_store,
+                "storage_path": rel_archive,
                 "agent_name": role,
-                "producing_command": command,
+                "producing_command": task,
                 "producing_session": session,
                 "code_description": description,
                 "is_intermediate": bool(intermediate),
@@ -1150,13 +1248,13 @@ class LabStore:
                 "artifact_id": aid,
                 "version_id": vid,
                 "version_number": number,
-                "storage_path": rel_store,
+                "storage_path": rel_archive,
                 "lfs": lfs,
             })
 
-            # The ledger already says "replaced"; only now do the copies go.
+            # The table already says "replaced"; only now do the copies go.
             for old in replaced:
-                old_path = self.lab / old["storage_path"]
+                old_path = self._copy_path(old)
                 if self._remove_lfs_line(old_path):
                     attributes_touched = True
                 if old_path.exists():
@@ -1164,9 +1262,9 @@ class LabStore:
                 written.append(old_path)
 
         if stage:
-            ledgers = ["artifacts", "versions"] + (["dependencies"] if dep_ids else [])
+            tables = ["artifacts", "versions"] + (["dependencies"] if dep_ids else [])
             extra = [self._attributes_path] if attributes_touched else []
-            self._stage(written + extra + [self._ledger_path(n) for n in ledgers])
+            self._stage(written + extra + [self._table_path(n) for n in tables])
         tracked = [r["storage_path"] for r in results if r["lfs"]]
         if tracked and self.lfs_filter_configured() is False:
             hint = self.lfs_install_hint()
@@ -1240,7 +1338,7 @@ def _cmd_save(store: LabStore, args: argparse.Namespace) -> int:
     result = store.save(
         _cli_paths(args.files),
         role=args.role,
-        command=args.command,
+        task=args.task,
         session=args.session,
         version_of=args.version_of,
         inputs=_cli_inputs(args.inputs),
@@ -1260,7 +1358,7 @@ def _cmd_link(store: LabStore, args: argparse.Namespace) -> int:
     _print_json(store.link(
         _cli_paths(args.paths),
         role=args.role,
-        command=args.command,
+        task=args.task,
         session=args.session,
         inputs=_cli_inputs(args.inputs),
         description=args.description,
@@ -1298,8 +1396,8 @@ def _cmd_path(store: LabStore, args: argparse.Namespace) -> int:
     return 0
 
 
-def _cmd_lineage(store: LabStore, args: argparse.Namespace) -> int:
-    _print_json(store.lineage(args.ref))
+def _cmd_provenance(store: LabStore, args: argparse.Namespace) -> int:
+    _print_json(store.provenance(args.ref))
     return 0
 
 
@@ -1312,7 +1410,8 @@ COMMANDS["save"] = _cmd_save
 COMMANDS["link"] = _cmd_link
 COMMANDS["search"] = _cmd_search
 COMMANDS["path"] = _cmd_path
-COMMANDS["lineage"] = _cmd_lineage
+COMMANDS["provenance"] = _cmd_provenance
+COMMANDS["lineage"] = _cmd_provenance  # legacy
 COMMANDS["graph"] = _cmd_graph
 
 
@@ -1332,9 +1431,9 @@ def _cmd_lfs_check(store: LabStore, args: argparse.Namespace) -> int:
 COMMANDS["lfs-check"] = _cmd_lfs_check
 
 
-def _cmd_check(store: LabStore, args: argparse.Namespace) -> int:
-    if args.check_command == "add":
-        _print_json(store.check_add(
+def _cmd_findings(store: LabStore, args: argparse.Namespace) -> int:
+    if args.findings_command == "add":
+        _print_json(store.finding_add(
             args.version,
             claim=args.claim,
             verdict=args.verdict,
@@ -1344,11 +1443,11 @@ def _cmd_check(store: LabStore, args: argparse.Namespace) -> int:
             rebuttal=args.rebuttal,
             stage=not args.no_stage,
         ))
-    elif args.check_command == "list":
-        _print_json(store.checks(args.ref) if args.all else store.outstanding(args.ref))
+    elif args.findings_command == "list":
+        _print_json(store.findings(args.ref) if args.all else store.outstanding(args.ref))
     else:
-        _print_json(store.check_review(
-            args.check_id,
+        _print_json(store.finding_review(
+            args.finding_id,
             status=args.status,
             reviewer_role=args.reviewer,
             note=args.note,
@@ -1357,13 +1456,15 @@ def _cmd_check(store: LabStore, args: argparse.Namespace) -> int:
     return 0
 
 
-def _cmd_mark_addressed(store: LabStore, args: argparse.Namespace) -> int:
-    _print_json(store.mark_addressed(args.check_id, args.note, stage=not args.no_stage))
+def _cmd_respond(store: LabStore, args: argparse.Namespace) -> int:
+    _print_json(store.respond(args.finding_id, args.note, stage=not args.no_stage))
     return 0
 
 
-COMMANDS["check"] = _cmd_check
-COMMANDS["mark-addressed"] = _cmd_mark_addressed
+COMMANDS["findings"] = _cmd_findings
+COMMANDS["check"] = _cmd_findings  # legacy
+COMMANDS["respond"] = _cmd_respond
+COMMANDS["mark-addressed"] = _cmd_respond  # legacy
 
 
 def _cmd_resolve(store: LabStore, args: argparse.Namespace) -> int:
@@ -1388,23 +1489,78 @@ COMMANDS["resolve"] = _cmd_resolve
 
 
 INPUTS_HELP = "versions or files this one was made from; put --inputs after the files, or repeat it"
+TASK_HELP = "the task id (TASK-NNNN) of the task that produced the file"
+
+
+def _destination_arg(value: str) -> str:
+    word = destination_word(value)
+    if word not in DESTINATIONS:
+        raise argparse.ArgumentTypeError(f"invalid choice: {value!r} (choose milestone or working)")
+    return word
+
+
+def _review_status_arg(value: str) -> str:
+    word = finding_status(value)
+    if word not in REVIEW_STATUSES:
+        raise argparse.ArgumentTypeError(f"invalid choice: {value!r} (choose closed or re-opened)")
+    return word
+
+
+def _add_task(p: argparse.ArgumentParser) -> None:
+    p.add_argument("--task", metavar="TASK_ID", help=TASK_HELP)  # required: checked after parsing, because the hidden alias shares the value
+    p.add_argument("--command", dest="task", help=argparse.SUPPRESS)  # legacy
+
+
+def _add_findings_parser(sub, name: str, hidden: bool) -> None:
+    kwargs = {} if hidden else {"help": "reviewer findings attached to versions"}
+    findings = sub.add_parser(name, **kwargs)
+    findings_sub = findings.add_subparsers(dest="findings_command", required=True, metavar="<findings-subcommand>")
+
+    p = findings_sub.add_parser("add", help="attach a reviewer finding to a version")
+    p.add_argument("--version", required=True, metavar="REF")
+    p.add_argument("--claim", required=True)
+    p.add_argument("--verdict", required=True, choices=FINDING_VERDICTS)
+    p.add_argument("--reviewer", required=True)
+    p.add_argument("--severity")
+    p.add_argument("--evidence")
+    p.add_argument("--rebuttal")
+    p.add_argument("--no-stage", dest="no_stage", action="store_true")
+
+    p = findings_sub.add_parser("list", help="list outstanding findings (open or re-opened, with a warning or failing verdict)")
+    p.add_argument("ref", nargs="?", default=None, metavar="REF")
+    p.add_argument("--all", action="store_true", help="list every finding, whatever its status or verdict")
+
+    p = findings_sub.add_parser("review", help="a reviewer closes or re-opens a finding")
+    p.add_argument("finding_id", metavar="FINDING_ID")
+    p.add_argument("--status", required=True, type=_review_status_arg, metavar="{closed,re-opened}")
+    p.add_argument("--reviewer", required=True)
+    p.add_argument("--note")
+    p.add_argument("--no-stage", dest="no_stage", action="store_true")
+
+
+def _add_respond_parser(sub, name: str, hidden: bool) -> None:
+    kwargs = {} if hidden else {"help": "the author responds to a reviewer finding"}
+    p = sub.add_parser(name, **kwargs)
+    p.add_argument("finding_id", metavar="FINDING_ID")
+    p.add_argument("--note", required=True)
+    p.add_argument("--no-stage", dest="no_stage", action="store_true")
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="artifacts.py", description="Project-local artifact store.")
+    parser = argparse.ArgumentParser(prog="artifacts.py", description="Project-local artifact archive.")
     parser.add_argument("--lab", default=None, help="path to research_lab (default: found from the current directory)")
     sub = parser.add_subparsers(dest="subcommand", required=True, metavar="<subcommand>")
 
     p = sub.add_parser("save", help="save files as artifact versions")
     p.add_argument("files", nargs="+", metavar="FILES")
     p.add_argument("--role", required=True)
-    p.add_argument("--command", required=True)
+    _add_task(p)
     p.add_argument("--session")
     p.add_argument("--version-of", dest="version_of")
     p.add_argument("--inputs", action="extend", nargs="+", metavar="ID_OR_PATH", help=INPUTS_HELP)
     p.add_argument("--checkpoint", action="store_true")
     p.add_argument("--intermediate", action="store_true")
-    p.add_argument("--destination", choices=("snapshot", "working_data"), default=None)
+    p.add_argument("--destination", type=_destination_arg, default=None, metavar="{milestone,working}")
     p.add_argument("--description")
     p.add_argument("--environment")
     p.add_argument("--no-stage", dest="no_stage", action="store_true")
@@ -1413,7 +1569,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("link", help="record files already in the project, without copying them")
     p.add_argument("paths", nargs="+", metavar="PATHS")
     p.add_argument("--role", required=True)
-    p.add_argument("--command", required=True)
+    _add_task(p)
     p.add_argument("--session")
     p.add_argument("--inputs", action="extend", nargs="+", metavar="ID_OR_PATH", help=INPUTS_HELP)
     p.add_argument("--description")
@@ -1426,44 +1582,22 @@ def _build_parser() -> argparse.ArgumentParser:
 
     for name, helptext in (
         ("path", "print the absolute path of a version's bytes"),
-        ("lineage", "show a version's inputs and checks"),
+        ("provenance", "show a version's inputs and reviewer findings"),
         ("graph", "show a version's full ancestry"),
     ):
         p = sub.add_parser(name, help=helptext)
         p.add_argument("ref", metavar="REF")
         if name == "path":
             p.add_argument("--no-stage", dest="no_stage", action="store_true")
+    p = sub.add_parser("lineage")  # legacy
+    p.add_argument("ref", metavar="REF")
 
     sub.add_parser("lfs-check", help="report large stored copies that lack an LFS line, and the LFS total")
 
-    check = sub.add_parser("check", help="reviewer checks attached to versions")
-    check_sub = check.add_subparsers(dest="check_command", required=True, metavar="<check-command>")
-
-    p = check_sub.add_parser("add", help="attach a check to a version")
-    p.add_argument("--version", required=True, metavar="REF")
-    p.add_argument("--claim", required=True)
-    p.add_argument("--verdict", required=True, choices=CHECK_VERDICTS)
-    p.add_argument("--reviewer", required=True)
-    p.add_argument("--severity")
-    p.add_argument("--evidence")
-    p.add_argument("--rebuttal")
-    p.add_argument("--no-stage", dest="no_stage", action="store_true")
-
-    p = check_sub.add_parser("list", help="list outstanding checks (open or unaddressed, verdict fail or warn)")
-    p.add_argument("ref", nargs="?", default=None, metavar="REF")
-    p.add_argument("--all", action="store_true", help="list every check, whatever its status or verdict")
-
-    p = check_sub.add_parser("review", help="a reviewer confirms or re-flags a check")
-    p.add_argument("check_id", metavar="CHECK_ID")
-    p.add_argument("--status", required=True, choices=("resolved", "unaddressed"))
-    p.add_argument("--reviewer", required=True)
-    p.add_argument("--note")
-    p.add_argument("--no-stage", dest="no_stage", action="store_true")
-
-    p = sub.add_parser("mark-addressed", help="the author says a check is fixed")
-    p.add_argument("check_id", metavar="CHECK_ID")
-    p.add_argument("--note", required=True)
-    p.add_argument("--no-stage", dest="no_stage", action="store_true")
+    _add_findings_parser(sub, "findings", hidden=False)
+    _add_findings_parser(sub, "check", hidden=True)  # legacy
+    _add_respond_parser(sub, "respond", hidden=False)
+    _add_respond_parser(sub, "mark-addressed", hidden=True)  # legacy
 
     p = sub.add_parser("resolve", help="replace {{artifact:REF}} markers with relative Markdown links")
     p.add_argument("file", metavar="FILE")
@@ -1478,6 +1612,8 @@ def main(argv: list[str] | None = None) -> int:
             reconfigure(encoding="utf-8", errors="backslashreplace")
     parser = _build_parser()
     args = parser.parse_args(argv)
+    if args.subcommand in ("save", "link") and args.task is None:
+        parser.error("the following arguments are required: --task")
     try:
         if args.lab and not Path(args.lab).is_dir():
             raise StoreError(f"lab directory not found: {args.lab}")
@@ -1490,6 +1626,9 @@ def main(argv: list[str] | None = None) -> int:
         lab = Path(args.lab) if args.lab else find_lab(Path.cwd())
         store = LabStore(lab)
         return _dispatch(store, args)
+    except OldLayout:
+        print(OLD_LAYOUT_MESSAGE, file=sys.stderr)
+        return 2
     except StoreError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1

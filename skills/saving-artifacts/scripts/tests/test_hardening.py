@@ -1,4 +1,4 @@
-"""Review-pass fixes for the artifact store: ledger-derived paths, git absence, LFS hint, row shape, secrets."""
+"""Review-pass fixes for the artifact archive: table-derived paths, git absence, LFS hint, row shape, secrets."""
 import contextlib
 import io
 import json
@@ -35,13 +35,13 @@ class HardeningBase(unittest.TestCase):
 
 
 class LedgerPathTest(HardeningBase):
-    def test_version_of_refuses_ledger_path_escape(self):
+    def test_version_of_refuses_table_path_escape(self):
         s, proj = self._store()
         f = write_file(proj / "work" / "report.md", "one\n")
         r1 = self._save1(s, f)
         escaped = self.t / "escaped"
         write_file(f, "two\n")
-        # Case 1: the artifact id in the ledger climbs out of the store.
+        # Case 1: the artifact id in the table climbs out of the store.
         evil = "../../../../escaped"
         arts = s.rows("artifacts")
         arts[0]["id"] = evil
@@ -51,7 +51,7 @@ class LedgerPathTest(HardeningBase):
         s.rewrite("versions", vers)
         with self.assertRaises(artifacts.StoreError) as cm:
             self._save1(s, f, version_of=evil)
-        self.assertIn("names a path outside the store", str(cm.exception))
+        self.assertIn("names a path outside the archive", str(cm.exception))
         self.assertFalse(escaped.exists())
         # Case 2: the store leaf is not a single path component.
         arts = s.rows("artifacts")
@@ -63,7 +63,7 @@ class LedgerPathTest(HardeningBase):
         s.rewrite("versions", vers)
         with self.assertRaises(artifacts.StoreError) as cm:
             self._save1(s, f, version_of=r1["artifact_id"])
-        self.assertIn("names a path outside the store", str(cm.exception))
+        self.assertIn("names a path outside the archive", str(cm.exception))
         self.assertEqual(len(s.rows("versions")), 1)
 
     def test_copy_row_outside_the_store_is_refused_by_path(self):
@@ -75,11 +75,11 @@ class LedgerPathTest(HardeningBase):
         s.rewrite("versions", vers)
         with self.assertRaises(artifacts.StoreError) as cm:
             s.locate(r1["version_id"], stage=False)
-        self.assertIn("outside the store", str(cm.exception))
+        self.assertIn("outside the archive", str(cm.exception))
 
     def test_link_outside_project_is_reported_not_followed(self):
         s, proj = self._store()
-        r = s.link([write_file(proj / "data" / "raw.csv", "x\n")], role="r", command="c")[0]
+        r = s.link([write_file(proj / "data" / "raw.csv", "x\n")], role="r", task="c")[0]
         outside = write_file(self.t / "secret.txt", "secret\n")
         vers = s.rows("versions")
         vers[0]["storage_path"] = "link:../../secret.txt"
@@ -107,7 +107,7 @@ class LedgerPathTest(HardeningBase):
 
     def test_link_row_under_home_expands_tilde(self):
         s, proj = self._store()
-        r = s.link([write_file(proj / "data" / "raw.csv", "x\n")], role="r", command="c")[0]
+        r = s.link([write_file(proj / "data" / "raw.csv", "x\n")], role="r", task="c")[0]
         home = self.t / "home"
         host = write_file(home / "data" / "host.csv", "h\n")
         vers = s.rows("versions")
@@ -134,7 +134,7 @@ class GitMissingTest(HardeningBase):
         env = dict(os.environ)
         env["PATH"] = str(empty)
         done = subprocess.run(
-            [sys.executable, str(SCRIPT), "--lab", str(lab), "save", str(f), "--role", "r", "--command", "c"],
+            [sys.executable, str(SCRIPT), "--lab", str(lab), "save", str(f), "--role", "r", "--task", "c"],
             capture_output=True, env=env, text=True, encoding="utf-8",
         )
         self.assertEqual(done.returncode, 0, done.stderr)
@@ -194,7 +194,7 @@ class InputsHelpTest(HardeningBase):
 
 
 class RowShapeTest(HardeningBase):
-    def test_non_object_ledger_row_is_a_store_error(self):
+    def test_non_object_table_row_is_a_store_error(self):
         s, proj = self._store()
         s.root.mkdir(parents=True, exist_ok=True)
         (s.root / "artifacts.jsonl").write_text('{"id": "a"}\n[1, 2]\n', encoding="utf-8")
@@ -233,7 +233,7 @@ class SecretRefusalTest(HardeningBase):
             self._save1(s, f, **kw)
         self.assertEqual(
             str(cm.exception),
-            f"{rel_path} looks like a secret or ignored file; pass --force to save it anyway",
+            f"{rel_path} looks like a secret or ignored file; use --force to save it anyway",
         )
         self.assertFalse((s.root / "versions.jsonl").exists())
         return f
@@ -248,8 +248,8 @@ class SecretRefusalTest(HardeningBase):
         s, proj = self._store()
         f = write_file(proj / ".env", "KEY=1\n")
         with self.assertRaises(artifacts.StoreError) as cm:
-            s.link([f], role="r", command="c")
-        self.assertIn("looks like a secret or ignored file; pass --force to save it anyway", str(cm.exception))
+            s.link([f], role="r", task="c")
+        self.assertIn("looks like a secret or ignored file; use --force to save it anyway", str(cm.exception))
         self.assertFalse((s.root / "versions.jsonl").exists())
 
     def test_git_ignored_file_is_refused_and_force_overrides(self):
@@ -265,16 +265,16 @@ class SecretRefusalTest(HardeningBase):
         f = write_file(proj / ".env", "KEY=1\n")
         self.assertEqual(self._save1(s, f, force=True)["version_number"], 1)
         g = write_file(proj / "keys" / "id_x", "k\n")
-        self.assertEqual(s.link([g], role="r", command="c", force=True)[0]["version_number"], 1)
+        self.assertEqual(s.link([g], role="r", task="c", force=True)[0]["version_number"], 1)
 
     def test_cli_refusal_exits_1_and_force_flag_works(self):
         s, proj = self._store()
         f = write_file(proj / ".env", "KEY=1\n")
-        code, out, err = run_cli(["--lab", str(s.lab), "save", str(f), "--role", "r", "--command", "c", "--no-stage"])
+        code, out, err = run_cli(["--lab", str(s.lab), "save", str(f), "--role", "r", "--task", "c", "--no-stage"])
         self.assertEqual(code, 1)
-        self.assertIn("error: .env looks like a secret or ignored file; pass --force to save it anyway", err)
+        self.assertIn("error: .env looks like a secret or ignored file; use --force to save it anyway", err)
         code, out, err = run_cli(
-            ["--lab", str(s.lab), "save", str(f), "--role", "r", "--command", "c", "--no-stage", "--force"]
+            ["--lab", str(s.lab), "save", str(f), "--role", "r", "--task", "c", "--no-stage", "--force"]
         )
         self.assertEqual(code, 0, err)
 

@@ -16,8 +16,8 @@ from _helpers import make_git_lab, make_lab, run_cli, write_file
 LAB_JSON = {"lfs": {"thresholdMB": 1, "budgetWarnMB": 2}}
 BIG = b"x" * (3 * 1024 * 1024 // 2)
 HEADER = [
-    "# science-ultrapowers artifact store: stored copies are byte-exact; one LFS line per file at or above lfs.thresholdMB",
-    "store/** -text",
+    "# science-ultrapowers artifact archive: stored copies are byte-exact; one LFS line per file at or above lfs.thresholdMB",
+    "archive/** -text",
     "*.jsonl text eol=lf",
 ]
 LFS_TAIL = "filter=lfs diff=lfs merge=lfs -text"
@@ -47,7 +47,7 @@ class LfsTest(unittest.TestCase):
 
     def _save1(self, s, path, **kw):
         kw.setdefault("role", "analyst")
-        kw.setdefault("command", "pytest")
+        kw.setdefault("task", "TASK-0001")
         return s.save([path], **kw)[0]
 
     def _attrs(self, s) -> list[str]:
@@ -70,7 +70,7 @@ class LfsTest(unittest.TestCase):
         self._save1(s, write_file(proj / "work" / "small.txt", b"0123456789"))
         lines = self._attrs(s)
         self.assertEqual(lines[0], "# mine")
-        self.assertEqual(lines.count("store/** -text"), 1)
+        self.assertEqual(lines.count("archive/** -text"), 1)
         self.assertEqual(lines.count("*.jsonl text eol=lf"), 1)
         after_first = (s.root / ".gitattributes").read_bytes()
         self._save1(s, write_file(proj / "work" / "other.txt", b"abc"))
@@ -82,18 +82,18 @@ class LfsTest(unittest.TestCase):
         s.root.mkdir(parents=True, exist_ok=True)
         (s.root / ".gitattributes").write_bytes(b"# mine\n")
         res = self._save1(s, write_file(proj / "work" / "crlf.md", b"a\r\nb\r\n"))
-        shown = self._git(proj, "show", f":research_lab/artifacts/store/{res['artifact_id']}/v001_crlf.md").stdout
+        shown = self._git(proj, "show", f":research_lab/artifacts/archive/{res['artifact_id']}/v001_crlf.md").stdout
         self.assertEqual(shown, b"a\r\nb\r\n")
 
     def test_replaced_version_loses_its_lfs_line(self):
         s, proj = self._store()
         f = write_file(proj / "work" / "big.csv", BIG)
-        r1 = self._save1(s, f, destination="working_data")
+        r1 = self._save1(s, f, destination="working")
         aid = r1["artifact_id"]
         write_file(f, BIG + b"y")
         self._save1(s, f, version_of=aid)
         lines = self._attrs(s)
-        self.assertIn(f"store/{aid}/v002_big.csv {LFS_TAIL}", lines)
+        self.assertIn(f"archive/{aid}/v002_big.csv {LFS_TAIL}", lines)
         self.assertFalse([l for l in lines if "v001_big.csv" in l])
         self.assertEqual(s.lfs_check()["missing_lines"], [])
 
@@ -102,8 +102,8 @@ class LfsTest(unittest.TestCase):
         res = self._save1(s, write_file(proj / "work" / "big.csv", BIG))
         aid = res["artifact_id"]
         self.assertIs(res["lfs"], True)
-        self.assertIn(f"store/{aid}/v001_big.csv {LFS_TAIL}", self._attrs(s))
-        stored = f"research_lab/artifacts/store/{aid}/v001_big.csv"
+        self.assertIn(f"archive/{aid}/v001_big.csv {LFS_TAIL}", self._attrs(s))
+        stored = f"research_lab/artifacts/archive/{aid}/v001_big.csv"
         attr = self._git(proj, "check-attr", "filter", "--", stored).stdout.decode().strip()
         self.assertTrue(attr.endswith("filter: lfs"), attr)
         staged = self._git(proj, "diff", "--cached", "--name-only").stdout.decode().split()
@@ -115,9 +115,9 @@ class LfsTest(unittest.TestCase):
         res = self._save1(s, write_file(proj / "work" / "my data [v1].csv", BIG))
         aid = res["artifact_id"]
         lines = self._attrs(s)
-        self.assertIn(f"store/{aid}/v001_* {LFS_TAIL}", lines)
+        self.assertIn(f"archive/{aid}/v001_* {LFS_TAIL}", lines)
         self.assertFalse([l for l in lines if "my data" in l])
-        stored = f"research_lab/artifacts/store/{aid}/v001_my data [v1].csv"
+        stored = f"research_lab/artifacts/archive/{aid}/v001_my data [v1].csv"
         attr = self._git(proj, "check-attr", "filter", "--", stored).stdout.decode().strip()
         self.assertTrue(attr.endswith("filter: lfs"), attr)
 
@@ -127,7 +127,7 @@ class LfsTest(unittest.TestCase):
         small = self._save1(s, write_file(proj / "work" / "nine.csv", b"x" * (9 * 1024 * 1024)))
         lines = self._attrs(s)
         self.assertIs(big["lfs"], True)
-        self.assertIn(f"store/{big['artifact_id']}/v001_eleven.csv {LFS_TAIL}", lines)
+        self.assertIn(f"archive/{big['artifact_id']}/v001_eleven.csv {LFS_TAIL}", lines)
         self.assertIs(small["lfs"], False)
         self.assertFalse([l for l in lines if small["artifact_id"] in l])
 
@@ -140,7 +140,7 @@ class LfsTest(unittest.TestCase):
         lfs_lines = [l for l in self._attrs(s) if "filter=lfs" in l]
         self.assertEqual(
             lfs_lines,
-            [f"store/{aid}/v001_big.csv {LFS_TAIL}", f"store/{aid}/v002_big.csv {LFS_TAIL}"],
+            [f"archive/{aid}/v001_big.csv {LFS_TAIL}", f"archive/{aid}/v002_big.csv {LFS_TAIL}"],
         )
         self.assertIs(s.lfs_line_if_needed(s.lab / r1["storage_path"]), True)
         self.assertEqual([l for l in self._attrs(s) if "filter=lfs" in l], lfs_lines)
@@ -152,10 +152,10 @@ class LfsTest(unittest.TestCase):
         ga = s.root / ".gitattributes"
         kept = [l for l in self._attrs(s) if "filter=lfs" not in l]
         ga.write_bytes(("\n".join(kept) + "\n").encode("utf-8"))
-        self.assertEqual(s.lfs_check()["missing_lines"], [f"store/{aid}/v001_big.csv"])
+        self.assertEqual(s.lfs_check()["missing_lines"], [f"archive/{aid}/v001_big.csv"])
         code, out, _ = run_cli(["--lab", str(s.lab), "lfs-check"])
         self.assertEqual(code, 1)
-        self.assertEqual(json.loads(out)["missing_lines"], [f"store/{aid}/v001_big.csv"])
+        self.assertEqual(json.loads(out)["missing_lines"], [f"archive/{aid}/v001_big.csv"])
         s.lfs_line_if_needed(s.lab / res["storage_path"])
         code, out, _ = run_cli(["--lab", str(s.lab), "lfs-check"])
         self.assertEqual(code, 0)
@@ -163,11 +163,11 @@ class LfsTest(unittest.TestCase):
 
     def test_lfs_check_ignores_replaced_and_counts_ok_only(self):
         s, proj = self._store()
-        r1 = self._save1(s, write_file(proj / "work" / "big.csv", BIG), destination="working_data")
+        r1 = self._save1(s, write_file(proj / "work" / "big.csv", BIG), destination="working")
         aid = r1["artifact_id"]
         second = BIG + b"yy"
         write_file(proj / "work" / "big.csv", second)
-        self._save1(s, proj / "work" / "big.csv", version_of=aid, destination="working_data")
+        self._save1(s, proj / "work" / "big.csv", version_of=aid, destination="working")
         check = s.lfs_check()
         self.assertEqual(check["missing_lines"], [])
         self.assertEqual(check["total_bytes"], len(second))
@@ -191,7 +191,7 @@ class LfsTest(unittest.TestCase):
         s, proj = self._store(git=True)
         self._git(proj, "config", "core.autocrlf", "true")
         res = self._save1(s, write_file(proj / "work" / "crlf.md", b"a\r\nb\r\n"))
-        shown = self._git(proj, "show", f":research_lab/artifacts/store/{res['artifact_id']}/v001_crlf.md").stdout
+        shown = self._git(proj, "show", f":research_lab/artifacts/archive/{res['artifact_id']}/v001_crlf.md").stdout
         self.assertEqual(shown, b"a\r\nb\r\n")
         attr = self._git(proj, "check-attr", "eol", "--", "research_lab/artifacts/versions.jsonl").stdout.decode().strip()
         self.assertTrue(attr.endswith("eol: lf"), attr)
@@ -199,7 +199,7 @@ class LfsTest(unittest.TestCase):
     # ---- git-lfs filter state ------------------------------------------
 
     def _cli_save(self, s, f, *extra):
-        return run_cli(["--lab", str(s.lab), "save", str(f), "--role", "r", "--command", "c", *extra])
+        return run_cli(["--lab", str(s.lab), "save", str(f), "--role", "r", "--task", "c", *extra])
 
     def test_save_warns_when_lfs_filter_not_configured(self):
         s, proj = self._store(git=True)
@@ -208,7 +208,7 @@ class LfsTest(unittest.TestCase):
         aid = json.loads(out)[0]["artifact_id"]
         self.assertIn("git-lfs filter not configured", err)
         self.assertIn("run: git lfs install", err)
-        self.assertIn(f"research_lab/artifacts/store/{aid}/v001_big.csv", err)
+        self.assertIn(f"research_lab/artifacts/archive/{aid}/v001_big.csv", err)
 
     def test_save_does_not_warn_when_lfs_filter_configured(self):
         s, proj = self._store(git=True)
@@ -260,12 +260,12 @@ class LfsTest(unittest.TestCase):
         s, proj = self._store()
         self._save1(s, write_file(proj / "work" / "small.txt", b"0123456789"))
         for count, expect_suggestion in ((1000, True), (999, False)):
-            lines = HEADER + [f"store/a{i:04d}/v001_x.bin {LFS_TAIL}" for i in range(count)]
+            lines = HEADER + [f"archive/a{i:04d}/v001_x.bin {LFS_TAIL}" for i in range(count)]
             (s.root / ".gitattributes").write_bytes(("\n".join(lines) + "\n").encode("utf-8"))
             report = s.lfs_check()
             self.assertEqual(report["line_count"], count)
             if expect_suggestion:
-                self.assertIn("store/<aid>/**", report["suggestion"])
+                self.assertIn("archive/<aid>/**", report["suggestion"])
             else:
                 self.assertIsNone(report["suggestion"])
 
@@ -274,7 +274,7 @@ class LfsTest(unittest.TestCase):
         res = self._save1(s, write_file(proj / "work" / "big.csv", BIG))
         aid = res["artifact_id"]
         kept = [l for l in self._attrs(s) if "filter=lfs" not in l]
-        kept.append(f"store/{aid}/v001_big.csv   -text merge=lfs diff=lfs filter=lfs")
+        kept.append(f"archive/{aid}/v001_big.csv   -text merge=lfs diff=lfs filter=lfs")
         (s.root / ".gitattributes").write_bytes(("\n".join(kept) + "\n").encode("utf-8"))
         before = (s.root / ".gitattributes").read_bytes()
         self.assertEqual(s.lfs_check()["missing_lines"], [])
@@ -288,26 +288,26 @@ class LfsTest(unittest.TestCase):
         res = self._save1(s, f)
         aid = res["artifact_id"]
         kept = [l for l in self._attrs(s) if "filter=lfs" not in l]
-        kept.append(f"store/{aid}/** {LFS_TAIL}")
+        kept.append(f"archive/{aid}/** {LFS_TAIL}")
         (s.root / ".gitattributes").write_bytes(("\n".join(kept) + "\n").encode("utf-8"))
         self.assertEqual(s.lfs_check()["missing_lines"], [])
         self.assertEqual(s.lfs_total(), len(BIG))
         write_file(f, BIG + b"y")
         self._save1(s, f, version_of=aid)
-        self.assertEqual([l for l in self._attrs(s) if "filter=lfs" in l], [f"store/{aid}/** {LFS_TAIL}"])
+        self.assertEqual([l for l in self._attrs(s) if "filter=lfs" in l], [f"archive/{aid}/** {LFS_TAIL}"])
         self.assertEqual(s.lfs_check()["missing_lines"], [])
 
-    def test_folded_line_survives_working_data_replacement(self):
+    def test_folded_line_survives_working_replacement(self):
         s, proj = self._store()
         f = write_file(proj / "work" / "big.csv", BIG)
-        res = self._save1(s, f, destination="working_data")
+        res = self._save1(s, f, destination="working")
         aid = res["artifact_id"]
         kept = [l for l in self._attrs(s) if "filter=lfs" not in l]
-        kept.append(f"store/{aid}/** {LFS_TAIL}")
+        kept.append(f"archive/{aid}/** {LFS_TAIL}")
         (s.root / ".gitattributes").write_bytes(("\n".join(kept) + "\n").encode("utf-8"))
         write_file(f, BIG + b"y")
         self._save1(s, f, version_of=aid)
-        self.assertEqual([l for l in self._attrs(s) if "filter=lfs" in l], [f"store/{aid}/** {LFS_TAIL}"])
+        self.assertEqual([l for l in self._attrs(s) if "filter=lfs" in l], [f"archive/{aid}/** {LFS_TAIL}"])
 
     def test_gitattributes_comment_with_line_separator_survives(self):
         s, proj = self._store()
@@ -329,7 +329,7 @@ class LfsTest(unittest.TestCase):
         code, out, err = self._cli_save(s, write_file(proj / "work" / "big.csv", BIG))
         self.assertEqual(code, 0, err)
         aid = json.loads(out)[0]["artifact_id"]
-        shown = self._git(proj, "cat-file", "-p", f":research_lab/artifacts/store/{aid}/v001_big.csv").stdout
+        shown = self._git(proj, "cat-file", "-p", f":research_lab/artifacts/archive/{aid}/v001_big.csv").stdout
         self.assertTrue(shown.startswith(b"version https://git-lfs.github.com/spec/v1"), shown[:60])
 
 

@@ -31,7 +31,7 @@ class ChecksTest(unittest.TestCase):
 
     def _save1(self, s, path, **kw):
         kw.setdefault("role", "paper-author")
-        kw.setdefault("command", "pytest")
+        kw.setdefault("task", "TASK-0001")
         return s.save([path], **kw)[0]
 
     def _saved(self, git: bool = False):
@@ -43,11 +43,11 @@ class ChecksTest(unittest.TestCase):
         kw.setdefault("claim", "F1 matches the ledger")
         kw.setdefault("verdict", "warn")
         kw.setdefault("reviewer_role", REVIEWER)
-        return s.check_add(ref, **kw)
+        return s.finding_add(ref, **kw)
 
-    def test_check_add_defaults_to_open(self) -> None:
+    def test_finding_add_defaults_to_open(self) -> None:
         s, _, r = self._saved()
-        row = s.check_add(
+        row = s.finding_add(
             "art_" + r["artifact_id"],
             claim="F1 matches the ledger",
             verdict="warn",
@@ -59,14 +59,14 @@ class ChecksTest(unittest.TestCase):
         self.assertEqual(list(row), CHECK_FIELDS)
         self.assertEqual(len(s.rows("verification_checks")), 1)
 
-    def test_check_add_rejects_bad_verdict(self) -> None:
+    def test_finding_add_rejects_bad_verdict(self) -> None:
         s, _, r = self._saved()
         with self.assertRaises(artifacts.StoreError) as cm:
             self._add(s, r["version_id"], verdict="great")
         self.assertIn("invalid verdict", str(cm.exception))
         self.assertFalse((s.root / "verification_checks.jsonl").exists())
 
-    def test_check_add_requires_claim_and_reviewer(self) -> None:
+    def test_finding_add_requires_claim_and_reviewer(self) -> None:
         s, _, r = self._saved()
         with self.assertRaises(artifacts.StoreError):
             self._add(s, r["version_id"], claim="  ")
@@ -74,62 +74,62 @@ class ChecksTest(unittest.TestCase):
             self._add(s, r["version_id"], reviewer_role="")
         self.assertEqual(s.rows("verification_checks"), [])
 
-    def test_mark_addressed_moves_to_claimed_with_note(self) -> None:
+    def test_respond_moves_to_claimed_with_note(self) -> None:
         s, _, r = self._saved()
         c = self._add(s, r["version_id"])
-        row = s.mark_addressed(c["id"], "re-ran the ledger join")
-        self.assertEqual(row["status"], "claimed")
+        row = s.respond(c["id"], "re-ran the ledger join")
+        self.assertEqual(row["status"], "author-responded")
         self.assertEqual(row["resolution"]["note"], "re-ran the ledger join")
         self.assertRegex(row["resolution"]["at"], ISO_RE)
-        self.assertEqual(s.rows("verification_checks")[0]["status"], "claimed")
+        self.assertEqual(s.rows("verification_checks")[0]["status"], "author-responded")
 
-    def test_mark_addressed_needs_open_or_unaddressed(self) -> None:
+    def test_respond_needs_open_or_reopened(self) -> None:
         s, _, r = self._saved()
         c = self._add(s, r["version_id"])
         with self.assertRaises(artifacts.StoreError) as cm:
-            s.mark_addressed(c["id"], "   ")
+            s.respond(c["id"], "   ")
         self.assertIn("needs a note", str(cm.exception))
-        s.check_review(c["id"], status="resolved", reviewer_role=REVIEWER)
+        s.finding_review(c["id"], status="closed", reviewer_role=REVIEWER)
         with self.assertRaises(artifacts.StoreError) as cm:
-            s.mark_addressed(c["id"], "fixed")
-        self.assertIn("only open or unaddressed", str(cm.exception))
+            s.respond(c["id"], "fixed")
+        self.assertIn("only open or re-opened", str(cm.exception))
 
-    def test_check_review_resolves_and_reflags(self) -> None:
+    def test_finding_review_resolves_and_reflags(self) -> None:
         s, _, r = self._saved()
         c = self._add(s, r["version_id"])
-        s.mark_addressed(c["id"], "fixed it")
-        row = s.check_review(c["id"], status="unaddressed", reviewer_role=REVIEWER, note="still wrong")
-        self.assertEqual(row["status"], "unaddressed")
+        s.respond(c["id"], "fixed it")
+        row = s.finding_review(c["id"], status="re-opened", reviewer_role=REVIEWER, note="still wrong")
+        self.assertEqual(row["status"], "re-opened")
         self.assertEqual(row["resolution"]["review"]["by"], REVIEWER)
         self.assertEqual(row["resolution"]["review"]["note"], "still wrong")
-        self.assertEqual(row["resolution"]["review"]["status"], "unaddressed")
+        self.assertEqual(row["resolution"]["review"]["status"], "re-opened")
         self.assertRegex(row["resolution"]["review"]["at"], ISO_RE)
         self.assertEqual(row["resolution"]["note"], "fixed it")
-        self.assertEqual(s.mark_addressed(c["id"], "fixed again")["status"], "claimed")
+        self.assertEqual(s.respond(c["id"], "fixed again")["status"], "author-responded")
         self.assertEqual(
-            s.check_review(c["id"], status="resolved", reviewer_role=REVIEWER)["status"], "resolved"
+            s.finding_review(c["id"], status="closed", reviewer_role=REVIEWER)["status"], "closed"
         )
         with self.assertRaises(artifacts.StoreError) as cm:
-            s.check_review(c["id"], status="resolved", reviewer_role=REVIEWER)
-        self.assertIn("already resolved", str(cm.exception))
+            s.finding_review(c["id"], status="closed", reviewer_role=REVIEWER)
+        self.assertIn("already closed", str(cm.exception))
         c2 = self._add(s, r["version_id"])
         with self.assertRaises(artifacts.StoreError):
-            s.check_review(c2["id"], status="open", reviewer_role=REVIEWER)
+            s.finding_review(c2["id"], status="open", reviewer_role=REVIEWER)
         with self.assertRaises(artifacts.StoreError):
-            s.check_review(c2["id"], status="resolved", reviewer_role="")
+            s.finding_review(c2["id"], status="closed", reviewer_role="")
 
     def test_outstanding_filters_like_claude_science(self) -> None:
         s, _, r = self._saved()
         vid = r["version_id"]
         c1 = self._add(s, vid, claim="c1", verdict="warn")
         c2 = self._add(s, vid, claim="c2", verdict="fail")
-        s.mark_addressed(c2["id"], "tried")
-        s.check_review(c2["id"], status="unaddressed", reviewer_role=REVIEWER)
+        s.respond(c2["id"], "tried")
+        s.finding_review(c2["id"], status="re-opened", reviewer_role=REVIEWER)
         self._add(s, vid, claim="c3", verdict="pass")
         c4 = self._add(s, vid, claim="c4", verdict="fail")
-        s.check_review(c4["id"], status="resolved", reviewer_role=REVIEWER)
+        s.finding_review(c4["id"], status="closed", reviewer_role=REVIEWER)
         self.assertEqual([c["id"] for c in s.outstanding()], [c1["id"], c2["id"]])
-        self.assertEqual(len(s.checks()), 4)
+        self.assertEqual(len(s.findings()), 4)
 
     def test_outstanding_for_artifact_ref_covers_all_versions(self) -> None:
         s, proj, r1 = self._saved()
@@ -140,7 +140,7 @@ class ChecksTest(unittest.TestCase):
         self.assertEqual([c["id"] for c in s.outstanding(r1["artifact_id"])], want)
         self.assertEqual([c["id"] for c in s.outstanding("art_" + r1["artifact_id"])], want)
         self.assertEqual([c["id"] for c in s.outstanding(r2["version_id"])], [b["id"]])
-        self.assertEqual([c["id"] for c in s.checks(r1["version_id"])], [a["id"]])
+        self.assertEqual([c["id"] for c in s.findings(r1["version_id"])], [a["id"]])
 
     def _string_resolution_check(self, s, r):
         row = dict.fromkeys(CHECK_FIELDS)
@@ -152,28 +152,28 @@ class ChecksTest(unittest.TestCase):
         s.append("verification_checks", row)
         return row["id"]
 
-    def test_check_review_keeps_a_string_resolution_as_the_note(self) -> None:
+    def test_finding_review_keeps_a_string_resolution_as_the_note(self) -> None:
         s, _, r = self._saved()
         cid = self._string_resolution_check(s, r)
-        out = s.check_review(cid, status="resolved", reviewer_role=REVIEWER, note="confirmed")
+        out = s.finding_review(cid, status="closed", reviewer_role=REVIEWER, note="confirmed")
         self.assertEqual(out["resolution"]["note"], "fixed upstream")
         self.assertEqual(out["resolution"]["review"]["note"], "confirmed")
-        self.assertEqual(out["status"], "resolved")
+        self.assertEqual(out["status"], "closed")
 
-    def test_mark_addressed_keeps_a_string_resolution(self) -> None:
+    def test_respond_keeps_a_string_resolution(self) -> None:
         s, _, r = self._saved()
         cid = self._string_resolution_check(s, r)
-        out = s.mark_addressed(cid, "rewrote section 2")
+        out = s.respond(cid, "rewrote section 2")
         self.assertEqual(out["resolution"]["note"], "rewrote section 2")
         self.assertEqual(out["resolution"]["earlier_note"], "fixed upstream")
-        self.assertEqual(out["status"], "claimed")
+        self.assertEqual(out["status"], "author-responded")
 
     def test_check_id_prefixes(self) -> None:
         s, _, r = self._saved()
         c = self._add(s, r["version_id"])
-        self.assertEqual(s.mark_addressed(c["id"][:8], "fixed")["id"], c["id"])
+        self.assertEqual(s.respond(c["id"][:8], "fixed")["id"], c["id"])
         with self.assertRaises(artifacts.UnknownId) as cm:
-            s.mark_addressed(c["id"][:3], "x")
+            s.respond(c["id"][:3], "x")
         self.assertIn("6 characters", str(cm.exception))
         for suffix in ("11", "22"):
             row = dict.fromkeys(CHECK_FIELDS)
@@ -183,19 +183,19 @@ class ChecksTest(unittest.TestCase):
             )
             s.append("verification_checks", row)
         with self.assertRaises(artifacts.AmbiguousId):
-            s.mark_addressed("abcdef00", "x")
+            s.respond("abcdef00", "x")
         with self.assertRaises(artifacts.UnknownId):
-            s.mark_addressed("ffffff", "x")
+            s.respond("ffffff", "x")
 
-    def test_lineage_includes_checks(self) -> None:
+    def test_provenance_includes_findings(self) -> None:
         s, proj, r1 = self._saved()
         r2 = self._save1(s, write_file(proj / "f2.txt", "other"))
         c = self._add(s, r1["version_id"])
         self._add(s, r2["version_id"], claim="elsewhere")
-        got = s.lineage(r1["version_id"])["checks"]
+        got = s.provenance(r1["version_id"])["findings"]
         self.assertEqual([x["id"] for x in got], [c["id"]])
 
-    def test_check_add_is_staged(self) -> None:
+    def test_finding_add_is_staged(self) -> None:
         s, proj, r = self._saved(git=True)
         self._add(s, r["version_id"])
         out = subprocess.run(
@@ -203,11 +203,11 @@ class ChecksTest(unittest.TestCase):
         ).stdout.split()
         self.assertIn("research_lab/artifacts/verification_checks.jsonl", out)
 
-    def test_cli_check_commands(self) -> None:
+    def test_cli_findings_commands(self) -> None:
         s, _, r = self._saved()
         lab = str(s.lab)
         code, out, err = run_cli([
-            "--lab", lab, "check", "add", "--version", r["version_id"], "--claim", "F1 ok?",
+            "--lab", lab, "findings", "add", "--version", r["version_id"], "--claim", "F1 ok?",
             "--verdict", "fail", "--reviewer", REVIEWER, "--severity", "high",
             "--evidence", "ledger row 3", "--rebuttal", "none",
         ])
@@ -216,26 +216,26 @@ class ChecksTest(unittest.TestCase):
         self.assertEqual(row["status"], "open")
         self.assertEqual(row["severity"], "high")
         cid = row["id"]
-        code, out, err = run_cli(["--lab", lab, "check", "list"])
+        code, out, err = run_cli(["--lab", lab, "findings", "list"])
         self.assertEqual(code, 0, err)
         self.assertEqual(len(json.loads(out)), 1)
-        code, out, err = run_cli(["--lab", lab, "mark-addressed", cid, "--note", "fixed"])
+        code, out, err = run_cli(["--lab", lab, "respond", cid, "--note", "fixed"])
         self.assertEqual(code, 0, err)
-        self.assertEqual(json.loads(out)["status"], "claimed")
+        self.assertEqual(json.loads(out)["status"], "author-responded")
         code, out, err = run_cli([
-            "--lab", lab, "check", "review", cid, "--status", "resolved", "--reviewer", "r",
+            "--lab", lab, "findings", "review", cid, "--status", "closed", "--reviewer", "r",
         ])
         self.assertEqual(code, 0, err)
-        self.assertEqual(json.loads(out)["status"], "resolved")
-        code, out, err = run_cli(["--lab", lab, "check", "list"])
+        self.assertEqual(json.loads(out)["status"], "closed")
+        code, out, err = run_cli(["--lab", lab, "findings", "list"])
         self.assertEqual((code, json.loads(out)), (0, []))
-        code, out, err = run_cli(["--lab", lab, "check", "list", "--all"])
+        code, out, err = run_cli(["--lab", lab, "findings", "list", "--all"])
         self.assertEqual(code, 0, err)
         self.assertEqual(len(json.loads(out)), 1)
-        code, out, err = run_cli(["--lab", lab, "check", "list", r["artifact_id"], "--all"])
+        code, out, err = run_cli(["--lab", lab, "findings", "list", r["artifact_id"], "--all"])
         self.assertEqual(len(json.loads(out)), 1)
         code, out, err = run_cli([
-            "--lab", lab, "check", "add", "--version", r["version_id"], "--claim", "c",
+            "--lab", lab, "findings", "add", "--version", r["version_id"], "--claim", "c",
             "--verdict", "bad", "--reviewer", "r",
         ])
         self.assertEqual(code, 2)

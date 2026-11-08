@@ -43,13 +43,13 @@ class SaveTest(unittest.TestCase):
 
     def _save1(self, s, path, **kw):
         kw.setdefault("role", "paper-author")
-        kw.setdefault("command", "pytest")
+        kw.setdefault("task", "TASK-0001")
         return s.save([path], **kw)[0]
 
     def test_save_new_file_creates_artifact_and_version(self):
         s, proj = self._store()
         f = write_file(proj / "work" / "report.md", "# hello\n")
-        res = s.save([f], role="paper-author", command="pytest")
+        res = s.save([f], role="paper-author", task="pytest")
         self.assertEqual(len(res), 1)
         r = res[0]
         self.assertEqual(sorted(r), sorted(["artifact_id", "version_id", "version_number", "storage_path", "lfs"]))
@@ -61,7 +61,7 @@ class SaveTest(unittest.TestCase):
         self.assertEqual(list(a), ARTIFACT_FIELDS)
         self.assertEqual(list(v), VERSION_FIELDS)
         self.assertEqual(a["filename"], "work/report.md")
-        self.assertEqual(a["destination"], "snapshot")
+        self.assertEqual(a["destination"], "milestone")
         self.assertEqual(a["source"], "lab")
         self.assertEqual(a["latest_version_id"], v["id"])
         self.assertEqual(v["artifact_id"], a["id"])
@@ -70,7 +70,7 @@ class SaveTest(unittest.TestCase):
         self.assertEqual(v["kind"], "copy")
         self.assertEqual(v["content_type"], "text/markdown")
         self.assertEqual(v["sha256"], _sha(f.read_bytes()))
-        self.assertEqual(v["storage_path"], f"artifacts/store/{a['id']}/v001_report.md")
+        self.assertEqual(v["storage_path"], f"artifacts/archive/{a['id']}/v001_report.md")
         self.assertEqual(v["agent_name"], "paper-author")
         self.assertEqual(v["producing_command"], "pytest")
         self.assertEqual(v["status"], "ok")
@@ -92,7 +92,7 @@ class SaveTest(unittest.TestCase):
             self._save1(s, again)
         self.assertEqual(
             str(cm.exception),
-            f"artifact a/report.md exists ({r1['artifact_id']}); pass --version-of {r1['artifact_id']} "
+            f"artifact a/report.md exists ({r1['artifact_id']}); use --version-of {r1['artifact_id']} "
             "for a new state of the same file",
         )
         r3 = self._save1(s, again, version_of="a/report.md")
@@ -110,7 +110,7 @@ class SaveTest(unittest.TestCase):
         v2 = [v for v in s.rows("versions") if v["id"] == r2["version_id"]][0]
         self.assertEqual(v2["parent_version_id"], r1["version_id"])
         self.assertEqual(s.rows("artifacts")[0]["latest_version_id"], r2["version_id"])
-        d = s.store / r1["artifact_id"]
+        d = s.archive / r1["artifact_id"]
         self.assertTrue((d / "v001_report.md").is_file())
         self.assertTrue((d / "v002_report.md").is_file())
 
@@ -119,8 +119,8 @@ class SaveTest(unittest.TestCase):
         r1 = self._save1(s, write_file(proj / "work" / "report.md", "one\n"))
         other = write_file(proj / "work" / "report_final.md", "two\n")
         r2 = self._save1(s, other, version_of=r1["artifact_id"])
-        self.assertEqual(r2["storage_path"], f"artifacts/store/{r1['artifact_id']}/v002_report.md")
-        self.assertTrue((s.store / r1["artifact_id"] / "v002_report.md").is_file())
+        self.assertEqual(r2["storage_path"], f"artifacts/archive/{r1['artifact_id']}/v002_report.md")
+        self.assertTrue((s.archive / r1["artifact_id"] / "v002_report.md").is_file())
         self.assertEqual(s.rows("artifacts")[0]["filename"], "work/report.md")
 
     def test_save_same_filename_without_version_of_is_refused(self):
@@ -185,7 +185,7 @@ class SaveTest(unittest.TestCase):
 
     def test_save_refuses_version_of_a_link(self):
         s, proj = self._store()
-        link = s.link([write_file(proj / "outputs" / "run.json", "{}\n")], role="r", command="c")[0]
+        link = s.link([write_file(proj / "outputs" / "run.json", "{}\n")], role="r", task="c")[0]
         other = write_file(proj / "work" / "other.json", "{ }\n")
         with self.assertRaises(artifacts.StoreError) as cm:
             self._save1(s, other, version_of=link["artifact_id"])
@@ -193,7 +193,7 @@ class SaveTest(unittest.TestCase):
 
     def test_copy_and_link_names_do_not_collide(self):
         s, proj = self._store()
-        s.link([write_file(proj / "notes.md", "top\n")], role="r", command="c")
+        s.link([write_file(proj / "notes.md", "top\n")], role="r", task="c")
         r = self._save1(s, write_file(proj / "work" / "notes.md", "work\n"))
         arts = s.rows("artifacts")
         self.assertEqual(len(arts), 2)
@@ -238,9 +238,9 @@ class SaveTest(unittest.TestCase):
         with self.assertRaises(artifacts.StoreError) as cm:
             self._save1(s, f, inputs=["no-such-id-123"])
         self.assertIn("unknown input", str(cm.exception))
-        self.assertFalse(s.store.exists())
-        for ledger in artifacts.LEDGERS:
-            self.assertFalse((s.root / f"{ledger}.jsonl").exists())
+        self.assertFalse(s.archive.exists())
+        for table in artifacts.TABLES:
+            self.assertFalse((s.root / f"{table}.jsonl").exists())
 
     def test_save_outside_project_root_is_refused(self):
         s, proj = self._store()
@@ -248,7 +248,7 @@ class SaveTest(unittest.TestCase):
         with self.assertRaises(artifacts.StoreError) as cm:
             self._save1(s, f)
         self.assertIn("outside", str(cm.exception))
-        self.assertFalse(s.store.exists())
+        self.assertFalse(s.archive.exists())
 
     def test_save_requires_existing_files(self):
         s, proj = self._store()
@@ -263,74 +263,74 @@ class SaveTest(unittest.TestCase):
     def test_relative_paths_resolve_against_project_root(self):
         s, proj = self._store()
         write_file(proj / "work" / "report.md", "r\n")
-        res = s.save(["work/report.md"], role="r", command="c")
+        res = s.save(["work/report.md"], role="r", task="c")
         self.assertEqual(len(res), 1)
         self.assertEqual(s.rows("artifacts")[0]["filename"], "work/report.md")
 
-    def test_working_data_replaces_previous_bytes(self):
+    def test_working_replaces_previous_bytes(self):
         s, proj = self._store()
         f = write_file(proj / "work" / "state.json", "{}\n")
-        r1 = self._save1(s, f, destination="working_data")
+        r1 = self._save1(s, f, destination="working")
         write_file(f, '{"a": 1}\n')
-        r2 = self._save1(s, f, destination="working_data", version_of=r1["artifact_id"])
-        d = s.store / r1["artifact_id"]
+        r2 = self._save1(s, f, destination="working", version_of=r1["artifact_id"])
+        d = s.archive / r1["artifact_id"]
         self.assertFalse((d / "v001_state.json").exists())
         self.assertTrue((d / "v002_state.json").is_file())
         status = {v["id"]: v["status"] for v in s.rows("versions")}
         self.assertEqual(status[r1["version_id"]], "replaced")
         self.assertEqual(status[r2["version_id"]], "ok")
-        self.assertEqual(s.rows("artifacts")[0]["destination"], "working_data")
+        self.assertEqual(s.rows("artifacts")[0]["destination"], "working")
 
     def _changed(self, f, text):
         write_file(f, text)
         return f
 
-    def test_working_data_is_sticky(self):
+    def test_working_is_sticky(self):
         s, proj = self._store()
         f = write_file(proj / "work" / "state.json", "{}\n")
-        r1 = self._save1(s, f, destination="working_data")
+        r1 = self._save1(s, f, destination="working")
         r2 = self._save1(s, self._changed(f, '{"a": 1}\n'), version_of=r1["artifact_id"])
-        d = s.store / r1["artifact_id"]
+        d = s.archive / r1["artifact_id"]
         self.assertFalse((d / "v001_state.json").exists())
         self.assertTrue((d / "v002_state.json").is_file())
         status = {v["id"]: v["status"] for v in s.rows("versions")}
         self.assertEqual(status[r1["version_id"]], "replaced")
         v2 = [v for v in s.rows("versions") if v["id"] == r2["version_id"]][0]
-        self.assertEqual(v2["destination"], "working_data")
-        self.assertEqual(s.rows("artifacts")[0]["destination"], "working_data")
+        self.assertEqual(v2["destination"], "working")
+        self.assertEqual(s.rows("artifacts")[0]["destination"], "working")
 
-    def test_explicit_working_data_never_deletes_snapshots(self):
+    def test_explicit_working_never_deletes_milestones(self):
         s, proj = self._store()
         f = write_file(proj / "work" / "report.md", "one\n")
         r1 = self._save1(s, f)
         aid = r1["artifact_id"]
         for text in ("two\n", "three\n"):
             self._save1(s, self._changed(f, text), version_of=aid)
-        r4 = self._save1(s, self._changed(f, "four\n"), version_of=aid, destination="working_data")
-        d = s.store / aid
+        r4 = self._save1(s, self._changed(f, "four\n"), version_of=aid, destination="working")
+        d = s.archive / aid
         for n in (1, 2, 3):
             self.assertTrue((d / f"v{n:03d}_report.md").is_file())
         self.assertEqual([v["status"] for v in s.rows("versions")], ["ok"] * 4)
-        r5 = self._save1(s, self._changed(f, "five\n"), version_of=aid, destination="working_data")
+        r5 = self._save1(s, self._changed(f, "five\n"), version_of=aid, destination="working")
         status = {v["version_number"]: v["status"] for v in s.rows("versions")}
         self.assertEqual(status, {1: "ok", 2: "ok", 3: "ok", 4: "replaced", 5: "ok"})
         self.assertFalse((d / "v004_report.md").exists())
         for n in (1, 2, 3, 5):
             self.assertTrue((d / f"v{n:03d}_report.md").is_file())
-        self.assertEqual(s.rows("artifacts")[0]["destination"], "snapshot")
+        self.assertEqual(s.rows("artifacts")[0]["destination"], "milestone")
         self.assertEqual(r4["version_number"], 4)
         self.assertEqual(r5["version_number"], 5)
 
-    def test_snapshot_milestone_in_working_data_artifact_is_kept(self):
+    def test_milestone_in_working_artifact_is_kept(self):
         s, proj = self._store()
         f = write_file(proj / "work" / "state.json", "{}\n")
-        r1 = self._save1(s, f, destination="working_data")
+        r1 = self._save1(s, f, destination="working")
         aid = r1["artifact_id"]
-        self._save1(s, self._changed(f, '{"a": 1}\n'), version_of=aid, destination="snapshot")
+        self._save1(s, self._changed(f, '{"a": 1}\n'), version_of=aid, destination="milestone")
         self._save1(s, self._changed(f, '{"a": 2}\n'), version_of=aid)
         status = {v["version_number"]: v["status"] for v in s.rows("versions")}
         self.assertEqual(status, {1: "replaced", 2: "ok", 3: "ok"})
-        d = s.store / aid
+        d = s.archive / aid
         self.assertTrue((d / "v002_state.json").is_file())
         self.assertFalse((d / "v001_state.json").exists())
 
@@ -339,12 +339,12 @@ class SaveTest(unittest.TestCase):
         f = write_file(proj / "work" / "state.json", "{}\n")
         with self.assertRaises(artifacts.StoreError):
             self._save1(s, f, destination="elsewhere")
-        self.assertFalse(s.store.exists())
+        self.assertFalse(s.archive.exists())
 
-    def test_replacement_marks_ledger_before_unlinking(self):
+    def test_replacement_marks_table_before_unlinking(self):
         s, proj = self._store()
         f = write_file(proj / "work" / "state.json", "{}\n")
-        r1 = self._save1(s, f, destination="working_data")
+        r1 = self._save1(s, f, destination="working")
         self._changed(f, '{"a": 1}\n')
         with mock.patch.object(artifacts.Path, "unlink", side_effect=OSError("locked")):
             with self.assertRaises(OSError):
@@ -358,7 +358,7 @@ class SaveTest(unittest.TestCase):
         ghost.update({
             "id": "ghostversion0001", "artifact_id": "ghostartifact0001", "version_number": 1,
             "kind": "copy", "content_type": "text/plain", "size_bytes": 1, "sha256": "0" * 64,
-            "storage_path": "artifacts/store/ghostartifact0001/v001_x.txt", "agent_name": "r",
+            "storage_path": "artifacts/archive/ghostartifact0001/v001_x.txt", "agent_name": "r",
             "producing_command": "c", "is_intermediate": False, "is_checkpoint": False,
             "destination": "snapshot", "created_at": artifacts.now_iso(), "source": "lab", "status": "ok",
         })
@@ -390,7 +390,7 @@ class SaveTest(unittest.TestCase):
     def test_replacement_never_deletes_outside_the_store(self):
         s, proj = self._store()
         f = write_file(proj / "work" / "state.json", "{}\n")
-        r1 = self._save1(s, f, destination="working_data")
+        r1 = self._save1(s, f, destination="working")
         outside = write_file(s.lab / "outside.txt", "precious\n")
         rows = s.rows("versions")
         rows[0]["storage_path"] = "outside.txt"
@@ -399,7 +399,7 @@ class SaveTest(unittest.TestCase):
         self._changed(f, '{"a": 1}\n')
         with self.assertRaises(artifacts.StoreError) as cm:
             self._save1(s, f, version_of=r1["artifact_id"])
-        self.assertIn("outside the store", str(cm.exception))
+        self.assertIn("outside the archive", str(cm.exception))
         self.assertTrue(outside.is_file())
         self.assertEqual(s.rows("versions"), before)
 
@@ -422,7 +422,7 @@ class SaveTest(unittest.TestCase):
         s, proj = self._store()
         f1 = write_file(proj / "work" / "a.md", "a\n")
         f2 = write_file(proj / "work" / "b.md", "b\n")
-        res = s.save([f1, f2], role="r", command="c")
+        res = s.save([f1, f2], role="r", task="c")
         self.assertEqual(len(res), 2)
         self.assertNotEqual(res[0]["artifact_id"], res[1]["artifact_id"])
         names = {a["id"]: a["filename"] for a in s.rows("artifacts")}
@@ -438,22 +438,22 @@ class SaveTest(unittest.TestCase):
         f = write_file(proj / "work" / "report.md", "r\n")
         r = self._save1(s, f)
         staged = self._cached(proj)
-        self.assertIn(f"research_lab/artifacts/store/{r['artifact_id']}/v001_report.md", staged)
+        self.assertIn(f"research_lab/artifacts/archive/{r['artifact_id']}/v001_report.md", staged)
         self.assertIn("research_lab/artifacts/artifacts.jsonl", staged)
         self.assertIn("research_lab/artifacts/versions.jsonl", staged)
 
-    def test_working_data_replacement_is_staged(self):
+    def test_working_replacement_is_staged(self):
         s, proj = self._store(git=True)
         f = write_file(proj / "work" / "state.json", "{}\n")
-        r1 = self._save1(s, f, destination="working_data")
+        r1 = self._save1(s, f, destination="working")
         write_file(f, '{"a": 1}\n')
-        self._save1(s, f, destination="working_data", version_of=r1["artifact_id"])
+        self._save1(s, f, destination="working", version_of=r1["artifact_id"])
         p = subprocess.run(
-            ["git", "ls-files", "research_lab/artifacts/store"], cwd=proj, capture_output=True, text=True
+            ["git", "ls-files", "research_lab/artifacts/archive"], cwd=proj, capture_output=True, text=True
         )
         listed = p.stdout.split()
-        self.assertIn(f"research_lab/artifacts/store/{r1['artifact_id']}/v002_state.json", listed)
-        self.assertNotIn(f"research_lab/artifacts/store/{r1['artifact_id']}/v001_state.json", listed)
+        self.assertIn(f"research_lab/artifacts/archive/{r1['artifact_id']}/v002_state.json", listed)
+        self.assertNotIn(f"research_lab/artifacts/archive/{r1['artifact_id']}/v001_state.json", listed)
         self._cached(proj)
 
     def test_resolve_id_forms(self):
@@ -488,7 +488,7 @@ class SaveTest(unittest.TestCase):
         lab = make_lab(self.t)
         f = write_file(lab.parent / "work" / "report.md", "r\n")
         code, out, err = run_cli(
-            ["--lab", str(lab), "save", str(f), "--role", "r", "--command", "c", "--no-stage"]
+            ["--lab", str(lab), "save", str(f), "--role", "r", "--task", "c", "--no-stage"]
         )
         self.assertEqual(code, 0, err)
         data = json.loads(out)
@@ -499,13 +499,13 @@ class SaveTest(unittest.TestCase):
     def test_cli_error_has_no_traceback(self):
         lab = make_lab(self.t)
         code, out, err = run_cli(
-            ["--lab", str(lab), "save", str(lab.parent / "nope.md"), "--role", "r", "--command", "c"]
+            ["--lab", str(lab), "save", str(lab.parent / "nope.md"), "--role", "r", "--task", "c"]
         )
         self.assertEqual(code, 1)
         self.assertTrue(err.startswith("error:"), err)
         self.assertNotIn("Traceback", err)
         code, out, err = run_cli(
-            ["--lab", str(self.t / "nowhere"), "save", "x", "--role", "r", "--command", "c"]
+            ["--lab", str(self.t / "nowhere"), "save", "x", "--role", "r", "--task", "c"]
         )
         self.assertEqual(code, 1)
         self.assertIn("lab directory not found", err)
@@ -515,7 +515,7 @@ class SaveTest(unittest.TestCase):
         proj = lab.parent
         f = write_file(proj / "work" / "report.md", "r\n")
         code, out, err = run_cli(
-            ["--lab", str(proj), "save", str(f), "--role", "r", "--command", "c", "--no-stage"]
+            ["--lab", str(proj), "save", str(f), "--role", "r", "--task", "c", "--no-stage"]
         )
         self.assertEqual(code, 1)
         self.assertIn("not a research_lab", err)
@@ -528,7 +528,7 @@ class SaveTest(unittest.TestCase):
         boom = PermissionError(13, "Permission denied", "versions.jsonl")
         with mock.patch.object(artifacts.os, "replace", side_effect=boom):
             code, out, err = run_cli(
-                ["--lab", str(lab), "save", str(f), "--role", "r", "--command", "c", "--no-stage"]
+                ["--lab", str(lab), "save", str(f), "--role", "r", "--task", "c", "--no-stage"]
             )
         self.assertEqual(code, 1)
         self.assertTrue(err.startswith("error: Permission denied"), err)
@@ -538,7 +538,7 @@ class SaveTest(unittest.TestCase):
         s, proj = self._store()
         f1 = write_file(proj / "a" / "report.md", "one\n")
         f2 = write_file(proj / "b" / "report.md", "two\n")
-        res = s.save([f1, f2], role="r", command="c")
+        res = s.save([f1, f2], role="r", task="c")
         self.assertEqual(len(res), 2)
         self.assertNotEqual(res[0]["artifact_id"], res[1]["artifact_id"])
         self.assertEqual([a["filename"] for a in s.rows("artifacts")], ["a/report.md", "b/report.md"])
@@ -547,7 +547,7 @@ class SaveTest(unittest.TestCase):
         s, proj = self._store()
         f1 = write_file(proj / "a" / "report.md", "one\n")
         with self.assertRaises(artifacts.StoreError) as cm:
-            s.save([f1, f1], role="r", command="c")
+            s.save([f1, f1], role="r", task="c")
         self.assertIn("a/report.md is named twice in this call", str(cm.exception))
         self.assertEqual(s.rows("versions"), [])
 
@@ -558,7 +558,7 @@ class SaveTest(unittest.TestCase):
         write_file(proj / "work" / "new.md", "n\n")
         with contextlib.chdir(proj / "work"):
             code, out, err = run_cli(
-                ["--lab", str(lab), "save", "new.md", "--inputs", "sub", "--role", "r", "--command", "c", "--no-stage"]
+                ["--lab", str(lab), "save", "new.md", "--inputs", "sub", "--role", "r", "--task", "c", "--no-stage"]
             )
         self.assertEqual(code, 1)
         self.assertIn("not a file", err)
@@ -615,10 +615,10 @@ class SaveTest(unittest.TestCase):
         ids = []
         for name in ("a.csv", "b.csv"):
             f = write_file(proj / "data" / name, name + "\n")
-            ids.append(s.link([f], role="r", command="c")[0]["version_id"])
+            ids.append(s.link([f], role="r", task="c")[0]["version_id"])
         target = write_file(proj / "work" / "report.md", "r\n")
         code, out, err = run_cli([
-            "--lab", lab, "save", str(target), "--role", "r", "--command", "c", "--no-stage",
+            "--lab", lab, "save", str(target), "--role", "r", "--task", "c", "--no-stage",
             "--inputs", ids[0], "--inputs", ids[1],
         ])
         self.assertEqual(code, 0, err)
@@ -642,14 +642,14 @@ class SaveTest(unittest.TestCase):
 
         with mock.patch.object(artifacts.LabStore, "append", autospec=True, side_effect=spy_append), \
                 mock.patch.object(artifacts.LabStore, "rewrite", autospec=True, side_effect=spy_rewrite):
-            s.link([f], role="r", command="c")
+            s.link([f], role="r", task="c")
         self.assertEqual(calls[0], "artifacts")
         self.assertIn("versions", calls)
 
     def test_comma_separated_inputs_get_a_hint(self):
         s, proj = self._store()
         ids = [
-            s.link([write_file(proj / "data" / name, name + "\n")], role="r", command="c")[0]["version_id"]
+            s.link([write_file(proj / "data" / name, name + "\n")], role="r", task="c")[0]["version_id"]
             for name in ("a.csv", "b.csv")
         ]
         before = s.rows("versions")
