@@ -405,7 +405,8 @@ def cmd_check(repo, protocol, outputs) -> dict:
         checks["unaltered"] = item("not clear", "the protocol file is missing")
     elif strip_timestamp(head_data) != baseline:
         checks["unaltered"] = item("not clear", "the protocol at the branch head differs from the registered version")
-    elif strip_timestamp(work_data) != baseline:
+    elif _run(repo, ("diff", "--quiet", "HEAD", "--", protocol)).returncode != 0:
+        # git applies the line-ending filters, so a CRLF checkout of an LF blob is not an edit
         checks["unaltered"] = item("not clear", "the protocol has uncommitted edits")
     else:
         checks["unaltered"] = item("clear", "the protocol equals the registered version")

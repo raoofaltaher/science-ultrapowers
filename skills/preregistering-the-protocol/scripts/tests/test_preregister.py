@@ -222,6 +222,20 @@ class PreregisterTests(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertEqual(report["checks"]["unaltered"]["status"], "not clear")
 
+    def test_check_unaltered_is_clear_on_an_autocrlf_checkout(self):
+        # core.autocrlf true: the working copy carries CRLF while the blob carries LF; the
+        # working-copy comparison must go through git's filters, or a clean tree reads as edited.
+        git(self.repo, "config", "core.autocrlf", "true")
+        write(self.repo, PROTOCOL, PROTOCOL_TEXT)
+        register(self.repo)
+        (self.repo / PROTOCOL).unlink()
+        git(self.repo, "checkout", "--", PROTOCOL)
+        self.assertIn(b"\r\n", (self.repo / PROTOCOL).read_bytes())
+        code, report = check(self.repo)
+        self.assertEqual(report["checks"]["unaltered"]["status"], "clear", report["checks"]["unaltered"])
+        self.assertEqual(report["checks"]["timestamp"]["status"], "clear", report["checks"]["timestamp"])
+        self.assertEqual(code, 0, report)
+
     def test_check_chronology_is_not_clear_when_output_predates_registration(self):
         write(self.repo, "results/EXP-0001/x.txt", "an early output\n")
         commit_all(self.repo, "early output", "results/EXP-0001/x.txt")
