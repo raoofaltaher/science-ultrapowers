@@ -379,7 +379,8 @@ It prints one line per finding, "<CODE> <path>: <message>", and checks:
   each entry's frontmatter: name, description, date, and the metadata keys
     type (pitfall, decision, lesson, directive or vocabulary), entity (project
     or artifact:<id>), basis (stated, observed or inferred), learned_by and
-    origin; the legacy key evidence and the legacy type gotcha are still read
+    origin; entries written before 0.2.0 with the old type name or the evidence
+    key are still read
   each entry's body: it must state a fact, not only cite a lab record
 
   --budget N   the index limit in lines (default: memory.indexBudget in

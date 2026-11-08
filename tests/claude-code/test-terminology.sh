@@ -56,7 +56,23 @@ done
 
 # ---- the matcher: one awk over a numbered file ("N<TAB>text" per line) -------
 cat > "$tmp/match.awk" <<'AWK'
-function isw(c) { return c ~ /^[A-Za-z0-9_\/-]$/ }  # a hyphen or slash joins a word: file names and paths are not hits
+function isw(c) { return c ~ /^[A-Za-z0-9_]$/ }
+# A slash always joins a word (a path is not a hit). A hyphen joins a word only when the
+# whitespace-delimited token that holds the match also holds ".", "/", ":", "<", ">" or a
+# backtick (a file name, a path, a placeholder, a code span); a hyphenated compound in
+# prose ("gate-keeping") is a hit. Trailing sentence punctuation does not count.
+function tokjoin(s, p, n,   l, r, tok) {
+  l = p; while (l > 1 && substr(s, l - 1, 1) !~ /[ \t]/) l--
+  r = p + n - 1; while (r < length(s) && substr(s, r + 1, 1) !~ /[ \t]/) r++
+  tok = substr(s, l, r - l + 1)
+  sub(/[.,;:!?]+$/, "", tok)
+  return tok ~ /[.\/:<>`]/
+}
+function joins(c, s, p, n) {
+  if (c == "/") return 1
+  if (c == "-") return tokjoin(s, p, n)
+  return isw(c)
+}
 function hasword(s, t,   p, i, n, b, a) {
   n = length(t); i = 1
   if (n == 0) return 0
@@ -64,7 +80,7 @@ function hasword(s, t,   p, i, n, b, a) {
     p = p + i - 1
     b = (p == 1) ? "" : substr(s, p - 1, 1)
     a = substr(s, p + n, 1)
-    if (!isw(b) && !isw(a)) return 1
+    if (!joins(b, s, p, n) && !joins(a, s, p, n)) return 1
     i = p + 1
   }
   return 0
@@ -158,18 +174,76 @@ for ln, _, _, piece in out:
     print(str(ln) + TAB + piece)
 ' "$1"
 }
-prep_literals() { # .mjs and .ps1: the quoted literals, "line<TAB>text"
+cat > "$tmp/ticks.awk" <<'AWK'
+# The backtick (template) literals of a JavaScript file, "line<TAB>text", one record per
+# physical line of a literal, each labeled with its own line number. The ${...} parts are
+# code and are skipped. Quoted strings, regular expressions and comments outside a literal
+# are skipped so that a backtick inside them never opens a literal.
+BEGIN { tick = 0; depth = 0; cmt = 0; OFS = "\t" }
+{
+  line = $0; n = length(line); out = ""; i = 1; prev = ""
+  while (i <= n) {
+    c = substr(line, i, 1); d = substr(line, i + 1, 1)
+    if (cmt) {
+      if (c == "*" && d == "/") { cmt = 0; i += 2 } else i++
+      continue
+    }
+    if (tick) {
+      if (depth > 0) {
+        if (c == "{") depth++
+        else if (c == "}") depth--
+        i++
+      } else if (c == "\\") { out = out ((d == "n" || d == "t" || d == "r") ? " " : d); i += 2 }
+      else if (c == "$" && d == "{") { depth = 1; i += 2 }
+      else if (c == "`") { print NR, out; out = ""; tick = 0; prev = "`"; i++ }
+      else { out = out c; i++ }
+      continue
+    }
+    if (c == "'" || c == "\"") {
+      j = i + 1
+      while (j <= n) { e = substr(line, j, 1); if (e == "\\") { j += 2; continue } if (e == c) break; j++ }
+      i = j + 1; prev = c; continue
+    }
+    if (c == "`") { tick = 1; out = ""; i++; continue }
+    if (c == "/" && d == "/") break
+    if (c == "/" && d == "*") { cmt = 1; i += 2; continue }
+    if (c == "/" && (prev == "" || index("(,=:[!&|?{};+-*%<>~^", prev) > 0)) {
+      j = i + 1; cls = 0
+      while (j <= n) {
+        e = substr(line, j, 1)
+        if (e == "\\") { j += 2; continue }
+        if (e == "[") cls = 1
+        else if (e == "]") cls = 0
+        else if (e == "/" && !cls) break
+        j++
+      }
+      i = j + 1; prev = "/"; continue
+    }
+    if (c != " " && c != "\t") prev = c
+    i++
+  }
+  if (tick) print NR, out
+}
+AWK
+prep_literals() { # .mjs and .ps1: the quoted literals; .mjs also the backtick literals, "line<TAB>text"
   awk -v re="$legacy_re" '{ sub(/\r$/, ""); t = $0; if (t ~ re) t = ""; print t }' "$1" > "$tmp/lit.src"
-  grep -n -o -E "\"[^\"]*\"|'[^']*'" "$tmp/lit.src" | sed 's/^\([0-9][0-9]*\):/\1\t/' || true
+  {
+    grep -n -o -E "\"[^\"]*\"|'[^']*'" "$tmp/lit.src" | sed 's/^\([0-9][0-9]*\):/\1\t/' || true
+    case "$1" in *.mjs) awk -f "$tmp/ticks.awk" "$tmp/lit.src" | tr -d '\r' ;; esac
+  } | sort -n -s -t "$tab" -k1,1
 }
 
 # ---- the scanned set: "kind<TAB>path" ----------------------------------------
 kept=" systematic-debugging test-driven-development verification-before-completion requesting-code-review receiving-code-review dispatching-parallel-agents writing-skills "
+# Adopted skills whose whole body was reworded into the standard at the researcher's request: scanned in full.
+reworded=" investigating-anomalous-results establishing-feasibility-first "
 {
   for d in skills/*/; do
     n=$(basename "$d")
     [ -f "skills/$n/SKILL.md" ] || continue
-    if [ -f "skills/$n/PROVENANCE.md" ]; then
+    if [ -f "skills/$n/PROVENANCE.md" ] && case "$reworded" in *" $n "*) true;; *) false;; esac; then
+      printf 'plain\t%s\n' "skills/$n/SKILL.md"
+    elif [ -f "skills/$n/PROVENANCE.md" ]; then
       printf 'blockquote\t%s\n' "skills/$n/SKILL.md"
     else
       case "$kept" in *" $n "*) ;; *) printf 'plain\t%s\n' "skills/$n/SKILL.md";; esac
@@ -184,7 +258,10 @@ kept=" systematic-debugging test-driven-development verification-before-completi
     if [ -f "$f" ]; then printf 'plain\t%s\n' "$f"; fi
   done
   if [ -d hooks/lib ]; then find hooks/lib -maxdepth 1 -type f | sort | sed 's/^/plain\t/'; fi
-  for f in skills/*/scripts/*.py; do if [ -f "$f" ] && [ ! -f "${f%/scripts/*}/PROVENANCE.md" ]; then printf 'py\t%s\n' "$f"; fi; done
+  # The Python files under skills/*/scripts/ at any depth, except a tests/ folder and the adopted skills.
+  find skills -mindepth 3 -type f -name '*.py' -path 'skills/*/scripts/*' ! -path '*/tests/*' | LC_ALL=C sort | while IFS= read -r f; do
+    if [ ! -f "${f%%/scripts/*}/PROVENANCE.md" ]; then printf 'py\t%s\n' "$f"; fi
+  done
   for f in skills/*/scripts/*.mjs skills/*/scripts/*.ps1; do
     if [ -f "$f" ]; then printf 'literals\t%s\n' "$f"; fi
   done
@@ -213,7 +290,7 @@ while IFS="$tab" read -r kind path; do
     py) prep_py "$path" > "$tmp/num" || { echo "FAIL: cannot extract the string constants of $path"; fail=1; continue; } ;;
     literals) prep_literals "$path" > "$tmp/num" ;;
   esac
-  match_numbered "$path" "$tmp/num" > "$tmp/hits"
+  match_numbered "$path" "$tmp/num" | awk '!seen[$0]++' > "$tmp/hits"
   if is_allowed "$path"; then
     while IFS= read -r _; do echo "$path" >> "$tmp/allowed_hits"; done < "$tmp/hits"
   elif [ -s "$tmp/hits" ]; then
@@ -249,6 +326,20 @@ if [ "$ctl_ok" = 1 ]; then
     sed 's/^/  /' "$tmp/control.hits"
     ctl_ok=0
   fi
+fi
+# The second control: a hyphen joins a word only inside a file name or a path.
+if cut -f1,2 "$tmp/lists" | grep -qix -E "N${tab}gate"; then
+  printf '%s\n' 'the gate-keeping step' 'see `ledger-based.md`' > "$tmp/control2.txt"
+  prep_plain "$tmp/control2.txt" > "$tmp/control2.num"
+  match_numbered control2 "$tmp/control2.num" > "$tmp/control2.hits"
+  n=$(wc -l < "$tmp/control2.hits" | tr -d ' ')
+  if [ "$n" != 1 ] || ! grep -q "^control2:1: not-approved term 'gate'" "$tmp/control2.hits"; then
+    echo "FAIL: the hyphen control expected one hit ('gate' on line 1, none on line 2) and found $n:"
+    sed 's/^/  /' "$tmp/control2.hits"
+    ctl_ok=0
+  fi
+else
+  echo "FAIL: the hyphen control needs 'gate' on the not-approved list"; ctl_ok=0
 fi
 [ "$ctl_ok" = 1 ] || fail=1
 

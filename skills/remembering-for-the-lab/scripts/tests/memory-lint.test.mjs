@@ -695,6 +695,9 @@ test('--help prints the usage in the new words and exits 0', () => {
   assert.match(r.stdout, /Usage: node memory-lint\.mjs <store-dir> \[--budget N\]/);
   assert.match(r.stdout, /consistency check/);
   assert.match(r.stdout, /basis/);
+  // The help text names no retired entry type; it says what is still read.
+  assert.doesNotMatch(r.stdout, /gotcha/);
+  assert.match(r.stdout, /entries written before 0\.2\.0 with the old type name or the evidence\s+key are still read/);
   // The script's own file name is the only place the old word may stay.
   assert.doesNotMatch(r.stdout.replaceAll('memory-lint.mjs', ''), /lint/i);
 });
