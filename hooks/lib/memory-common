@@ -1,0 +1,158 @@
+#!/usr/bin/env bash
+# Shared helpers for hooks/memory-nudge and hooks/memory-postcompact. Sourced
+# by those two scripts, never executed.
+#
+# The nudge hook runs on every prompt in every repository, so these helpers
+# stay in bash: no node, and no fork per directory level.
+
+# read_hook_input: the hook's stdin JSON. Waits at most one second, so a
+# harness that keeps stdin open cannot stall the prompt; empty on a terminal.
+read_hook_input() {
+  local input=""
+  if [ ! -t 0 ]; then
+    IFS= read -r -d '' -t 1 input || true
+  fi
+  printf '%s' "$input"
+}
+
+# json_string_field <json> <key>: the first string value of <key>, or the
+# first element when the value is an array of strings. Returns 1 when the key
+# is missing or the value uses an escape other than \" \\ \/. The value is
+# capped at 4096 characters.
+json_string_field() {
+  local json="$1" key="$2" rest value="" ch
+  case "$json" in
+    *"\"$key\""*) ;;
+    *) return 1 ;;
+  esac
+  rest="${json#*\"$key\"}"
+  rest="${rest#"${rest%%[![:space:]]*}"}"
+  [ "${rest:0:1}" = ":" ] || return 1
+  rest="${rest:1}"
+  rest="${rest#"${rest%%[![:space:]]*}"}"
+  if [ "${rest:0:1}" = "[" ]; then
+    rest="${rest:1}"
+    rest="${rest#"${rest%%[![:space:]]*}"}"
+  fi
+  [ "${rest:0:1}" = '"' ] || return 1
+  rest="${rest:1:4096}"
+  while [ -n "$rest" ]; do
+    ch="${rest:0:1}"
+    case "$ch" in
+      '"')
+        printf '%s' "$value"
+        return 0
+        ;;
+      '\')
+        case "${rest:1:1}" in
+          '"' | '\' | '/') value+="${rest:1:1}" ;;
+          *) return 1 ;;
+        esac
+        rest="${rest:2}"
+        ;;
+      *)
+        value+="$ch"
+        rest="${rest:1}"
+        ;;
+    esac
+  done
+  return 1
+}
+
+# hook_cwd <json>: the "cwd" field of the hook input, else $PWD.
+hook_cwd() {
+  local dir
+  dir="$(json_string_field "$1" cwd || true)"
+  [ -n "$dir" ] || dir="$PWD"
+  printf '%s' "$dir"
+}
+
+# nudge_off: returns 0 (off) when SCIENCE_ULTRAPOWERS_NO_MEMORY_NUDGE is set
+# to anything except empty, 0, false, no or off (case-insensitive); in those
+# cases, and when it is unset, it returns 1 and the hooks stay on. It governs
+# both memory hooks.
+nudge_off() {
+  # Case patterns, not ${var,,}: macOS ships bash 3.2.
+  case "${SCIENCE_ULTRAPOWERS_NO_MEMORY_NUDGE:-}" in
+    "" | 0 | [Ff][Aa][Ll][Ss][Ee] | [Nn][Oo] | [Oo][Ff][Ff]) return 1 ;;
+  esac
+  return 0
+}
+
+# find_memory_store <dir>: prints where the nearest research_lab/memory/ that
+# holds a MEMORY.md at or above <dir> is. Returns 1 and prints nothing when
+# there is none or <dir> does not exist. Windows backslashes are accepted.
+# Two walks, because the printed text is read relative to the logical cwd:
+#  1. The logical path (plain pwd, junctions and symlinks not resolved). A hit
+#     prints the relative path ("research_lab/memory/", "../research_lab/memory/",
+#     ...), which is right for the directory the session is in.
+#  2. Only when the logical walk found nothing and the physical path (pwd -P)
+#     differs: the physical path. Counting ../ there would be wrong, so a hit
+#     prints the store as an absolute path, through the one cygpath call
+#     (C:/... form) when cygpath is on PATH. This is the only case that forks.
+find_memory_store() {
+  local start="$1" dir logical phys parent prefix="" found
+  start="${start//\\//}"
+  logical="$(cd "$start" 2>/dev/null && pwd)" || return 1
+  dir="$logical"
+  while :; do
+    if [ -f "${dir%/}/research_lab/memory/MEMORY.md" ]; then
+      printf '%sresearch_lab/memory/' "$prefix"
+      return 0
+    fi
+    [ "$dir" = "/" ] && break
+    parent="${dir%/*}"
+    [ -n "$parent" ] || parent="/"
+    dir="$parent"
+    prefix="../${prefix}"
+  done
+  phys="$(cd "$start" 2>/dev/null && pwd -P)" || return 1
+  [ "$phys" != "$logical" ] || return 1
+  dir="$phys"
+  while :; do
+    if [ -f "${dir%/}/research_lab/memory/MEMORY.md" ]; then
+      found="${dir%/}"
+      if command -v cygpath >/dev/null 2>&1; then
+        found="$(cygpath -m "$found")"
+        found="${found%/}"
+      fi
+      printf '%s/research_lab/memory/' "$found"
+      return 0
+    fi
+    [ "$dir" = "/" ] && return 1
+    parent="${dir%/*}"
+    [ -n "$parent" ] || parent="/"
+    dir="$parent"
+  done
+}
+
+# escape_for_json <s>: same passes as hooks/session-start.
+escape_for_json() {
+  local s="$1"
+  s="${s//\\/\\\\}"
+  s="${s//\"/\\\"}"
+  s="${s//$'\n'/\\n}"
+  s="${s//$'\r'/\\r}"
+  s="${s//$'\t'/\\t}"
+  printf '%s' "$s"
+}
+
+# emit_json mirrors session-start: it absorbs EPIPE without a pipe through
+# `cat`. On Windows + Git Bash the harness can close the hook's stdout before
+# printf finishes, and Git Bash's printf reports that EPIPE as "printf: write
+# error: Permission denied", which `set -euo pipefail` would let escape as a
+# diagnostic. SIGPIPE is ignored so other platforms see the same EPIPE error
+# instead of a signal; the error message is dropped and the status ignored. No
+# external command is involved, so a broken PATH changes nothing.
+emit_json() {
+  trap '' PIPE
+  # shellcheck disable=SC2059 # every caller passes a literal format string
+  printf "$@" 2>/dev/null || true
+}
+
+# emit_context <hookEventName> <text>: print the hookSpecificOutput JSON.
+emit_context() {
+  local event="$1" text="$2" escaped
+  escaped="$(escape_for_json "$text")"
+  emit_json '{\n  "hookSpecificOutput": {\n    "hookEventName": "%s",\n    "additionalContext": "%s"\n  }\n}\n' "$event" "$escaped"
+}

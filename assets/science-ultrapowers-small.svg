@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 80" width="420" height="80" role="img" aria-label="science-ultrapowers, a research lab for Claude Code">
+  <rect width="420" height="80" rx="16" fill="#2d0789"/>
+  <g transform="translate(-4.9 -4.1) scale(0.7)">
+    <path d="M55 28H73V53L101 103H27L55 53Z" fill="#ffffff"/>
+    <rect x="49" y="23" width="30" height="7" fill="#ffffff"/>
+    <path d="M41 78H87L101 103H27Z" fill="#8e09fa"/>
+  </g>
+  <text x="88" y="43" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="28" font-weight="700" fill="#ffffff">science-ultrapowers</text>
+  <text x="89" y="63" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" fill="#c9a3ff">a research lab for Claude Code</text>
+</svg>

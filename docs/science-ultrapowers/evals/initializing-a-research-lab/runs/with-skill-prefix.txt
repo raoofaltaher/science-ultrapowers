@@ -1,0 +1,4 @@
+The lab's skill for this situation is the file /s/science-ultrapowers/skills/initializing-a-research-lab/SKILL.md (it is the skill you have loaded). Read that one file with your file-reading tool and read nothing else: no other file, no directory listing, no search, no commands.
+
+Then answer the exercise below. This is a written exercise. Do not run any tools beyond reading that one file; answer in text only.
+

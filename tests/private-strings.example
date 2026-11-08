@@ -1,0 +1,7 @@
+# Owner-specific strings the gates must never find in the tree: one extended-regex
+# alternative per line, no leading or trailing spaces, lines starting with # ignored.
+# Copy this file to tests/private-strings.txt (git-ignored) and list your own project,
+# dataset, funder, machine and account strings. Without that file the gates scan
+# only the generic patterns (drive-letter paths, host-object calls, decision ids).
+Example-Project-Name
+example-dataset

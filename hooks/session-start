@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+# SessionStart hook for the science-ultrapowers plugin
+
+set -euo pipefail
+
+# Determine plugin root directory.
+# Splits $0 on its last / or \ (run-hook.cmd's cmd half passes a Windows
+# path), with no separator meaning the current directory. This avoids
+# dirname because a SessionStart:startup hook can run with a broken/empty
+# PATH (anthropics/claude-code#43127) before any PATH-repairing sibling hook
+# in the same startup batch takes effect.
+#
+# No command substitution or pipe runs in this script: each one forks, and a
+# fork costs tens of milliseconds under Git Bash on Windows. The paths stay
+# relative to the current directory, which is all the file read below needs.
+case "$0" in
+  */*|*\\*) SCRIPT_DIR="${0%[/\\]*}" ;;
+  *) SCRIPT_DIR="." ;;
+esac
+PLUGIN_ROOT="${SCRIPT_DIR}/.."
+
+# Read the bootstrap skill content with the read builtin (no cat, for the same
+# PATH-independence reason, and no $(< file) subshell). read returns 1 at end
+# of file, hence || true; the loop drops trailing newlines as $(< file) did.
+skill_md="${PLUGIN_ROOT}/skills/using-science-ultrapowers/SKILL.md"
+bootstrap_content="Error reading using-science-ultrapowers skill"
+if [ -r "$skill_md" ]; then
+  IFS= read -r -d '' bootstrap_content < "$skill_md" || true
+  while [[ $bootstrap_content == *$'\n' ]]; do
+    bootstrap_content="${bootstrap_content%$'\n'}"
+  done
+fi
+
+# Escape string for JSON embedding using bash parameter substitution.
+# Each ${s//old/new} is a single C-level pass - orders of magnitude
+# faster than the character-by-character loop this replaces. The result
+# goes to a variable instead of stdout, so no $(...) subshell is needed.
+escape_for_json() {
+    local s="$1"
+    s="${s//\\/\\\\}"
+    s="${s//\"/\\\"}"
+    s="${s//$'\n'/\\n}"
+    s="${s//$'\r'/\\r}"
+    s="${s//$'\t'/\\t}"
+    bootstrap_escaped="$s"
+}
+
+# One extra line when the lab in or above the working directory was scaffolded
+# by another plugin version. Silent otherwise (hooks/lib/lab-version).
+lab_notice=""
+if [ -r "${SCRIPT_DIR}/lib/lab-version" ]; then
+  # shellcheck source=lib/lab-version
+  . "${SCRIPT_DIR}/lib/lab-version"
+  lab_scaffold_notice "$PWD" "${PLUGIN_ROOT}/.claude-plugin/plugin.json" || lab_notice=""
+fi
+if [ -n "$lab_notice" ]; then
+  bootstrap_content="${bootstrap_content}"$'\n\n'"${lab_notice}"
+fi
+
+escape_for_json "$bootstrap_content"
+session_context="<EXTREMELY_IMPORTANT>\nYou have science-ultrapowers.\n\n**Below is the full content of your 'science-ultrapowers:using-science-ultrapowers' skill - your introduction to using skills. For all other skills, use the 'Skill' tool:**\n\n${bootstrap_escaped}\n</EXTREMELY_IMPORTANT>"
+
+# Claude Code reads hookSpecificOutput.additionalContext; it is the only shape this plugin emits.
+#
+# Uses printf instead of heredoc to work around bash 5.3+ heredoc hang.
+# (upstream issue #571)
+#
+# emit_json absorbs EPIPE without a pipe through `cat`. On Windows + Git
+# Bash, the harness can close the hook's stdout before printf finishes, and
+# Git Bash's printf reports that EPIPE as "printf: write error: Permission
+# denied", which `set -euo pipefail` would let escape as a startup diagnostic
+# every session (#1612). SIGPIPE is ignored so other platforms see the same
+# EPIPE error instead of a signal; the error message is dropped and the
+# status ignored. No external command is involved, so a broken PATH (#2310)
+# changes nothing.
+emit_json() {
+  trap '' PIPE
+  # shellcheck disable=SC2059 # every caller passes a literal format string
+  printf "$@" 2>/dev/null || true
+}
+
+emit_json '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$session_context"
+
+exit 0

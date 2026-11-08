@@ -1,0 +1,3 @@
+/research_lab/.scratch/
+/.venv-lab-skills/
+/references/

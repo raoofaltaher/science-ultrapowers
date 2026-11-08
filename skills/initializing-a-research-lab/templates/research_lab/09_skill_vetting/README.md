@@ -1,0 +1,3 @@
+# Skill vetting
+
+The vetting of the vendored skills is summarised in each skill's PROVENANCE.md; a record here is needed for any skill the project adds. Every third-party skill added to the lab needs a vetting record here before it is used: its source and pinned version, its licence, a security scan, a quality scorecard and the roles it is attached to. A vetted skill structures work and never supplies evidence; the evidence rule overrides it, and no vendored skill is updated without a new vetting record. The Findings & Records Curator maintains this folder and the Research Project Manager attaches vetted skills to roles, with the Academic Supervisor approving each adoption.

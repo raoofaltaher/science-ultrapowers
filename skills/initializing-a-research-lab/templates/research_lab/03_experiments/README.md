@@ -1,0 +1,3 @@
+# Experiments
+
+`EXPERIMENT_REGISTER.md` has one row per experiment, registered before the run starts, and `protocols/` holds the pre-registrations filed at gate G2 (hypothesis, design, metrics, seeds where applicable, statistical test, stopping rules, splits where applicable, compute budget where applicable). The test split, where the project has one, is touched only by a pre-registered final evaluation. The Lab & Experiments Lead maintains the register and the run records, with the Data & Evaluation Researcher and the Methods & Innovation Researcher co-authoring each protocol; the Research Engineer changes the code under test.

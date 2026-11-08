@@ -1,0 +1,33 @@
+# claude plugin validate, 0.1.0, 2026-11-08, 2.1.319 (Claude Code)
+
+$ claude plugin validate .
+Validating marketplace manifest: <repo>\.claude-plugin\marketplace.json
+
+Plugin directory checks for <repo>. The plugin directory is the catalog that plugins are submitted to; this is a subset of what it runs.
+
+About these checks:
+
+  ❯ This folder also holds a marketplace manifest. The plugin directory treats such a folder as a plugin, so these checks cover only the plugin in this folder. To check another plugin that the marketplace lists, run validate on that plugin's folder.
+
+✔ These checks found nothing to report
+
+The directory also runs a safety scan and a policy review that this command does not.
+
+✔ Validation passed
+exit=0
+
+$ claude plugin validate . --strict
+Validating marketplace manifest: <repo>\.claude-plugin\marketplace.json
+
+Plugin directory checks for <repo>. The plugin directory is the catalog that plugins are submitted to; this is a subset of what it runs.
+
+About these checks:
+
+  ❯ This folder also holds a marketplace manifest. The plugin directory treats such a folder as a plugin, so these checks cover only the plugin in this folder. To check another plugin that the marketplace lists, run validate on that plugin's folder.
+
+✔ These checks found nothing to report
+
+The directory also runs a safety scan and a policy review that this command does not.
+
+✔ Validation passed
+exit=0

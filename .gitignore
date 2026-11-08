@@ -1,0 +1,14 @@
+.worktrees/
+/.ultrapowers/
+.claude/
+.DS_Store
+node_modules/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# The owner-specific strings the test gates scan for (see tests/private-strings.example)
+/tests/private-strings.txt

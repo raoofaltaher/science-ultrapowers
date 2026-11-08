@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# SessionStart(compact) hook for the science-ultrapowers plugin: rescue
+# lab-worthy learnings right after context compaction. Prints nothing and
+# exits 0 unless a lab memory store (research_lab/memory/MEMORY.md) exists at
+# or above the working directory. When the input carries a "source" field, any
+# value other than "compact" also exits silently, so a registration without a
+# compact matcher stays quiet at ordinary session start. Never writes anything.
+
+set -euo pipefail
+
+# Split $0 on its last / or \ instead of calling dirname: a hook can run with a
+# broken or empty PATH.
+case "$0" in
+  */*|*\\*) SCRIPT_DIR="$(cd "${0%[/\\]*}" && pwd)" ;;
+  *) SCRIPT_DIR="$(pwd)" ;;
+esac
+# shellcheck source=lib/memory-common
+. "${SCRIPT_DIR}/lib/memory-common"
+
+if nudge_off; then
+  exit 0
+fi
+
+input="$(read_hook_input)"
+
+source_field="$(json_string_field "$input" source || true)"
+if [ -n "$source_field" ] && [ "$source_field" != "compact" ]; then
+  exit 0
+fi
+
+cwd="$(hook_cwd "$input")"
+
+store="$(find_memory_store "$cwd")" || exit 0
+
+emit_context "SessionStart" "Context was just compacted. If lab-worthy learnings surfaced earlier and are not yet saved to ${store}, save them now with science-ultrapowers:remembering-for-the-lab."
+exit 0

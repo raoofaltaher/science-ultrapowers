@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# Helper for hooks/session-start. Sourced, never executed.
+#
+# session-start runs on every session start and forks nothing, so this file is
+# bash builtins only: string slicing for the walk up the folders, the read
+# builtin and [[ =~ ]] for the two version strings.
+
+# lab_scaffold_notice <start dir> <plugin.json path>: sets lab_notice to the
+# one-line upgrade notice when research_lab/lab.json at or above <start dir>
+# carries a pluginVersion that differs from the plugin's own version, else to
+# the empty string. Silent on every other path: no lab, an unreadable file, a
+# missing key.
+lab_scaffold_notice() {
+  local dir="$1" manifest="$2" lab_json="" content="" lab_v="" plugin_v=""
+  lab_notice=""
+  dir="${dir//\\//}"
+  while :; do
+    if [ -f "${dir%/}/research_lab/lab.json" ]; then
+      lab_json="${dir%/}/research_lab/lab.json"
+      break
+    fi
+    case "$dir" in
+      "" | "/") return 0 ;;
+      */*) dir="${dir%/*}" ;;
+      *) return 0 ;;
+    esac
+  done
+  [ -r "$lab_json" ] && [ -r "$manifest" ] || return 0
+  IFS= read -r -d '' content < "$lab_json" || true
+  [[ $content =~ \"pluginVersion\"[[:space:]]*:[[:space:]]*\"([^\"]*)\" ]] || return 0
+  lab_v="${BASH_REMATCH[1]}"
+  content=""
+  IFS= read -r -d '' content < "$manifest" || true
+  [[ $content =~ \"version\"[[:space:]]*:[[:space:]]*\"([^\"]*)\" ]] || return 0
+  plugin_v="${BASH_REMATCH[1]}"
+  [ -n "$lab_v" ] && [ -n "$plugin_v" ] && [ "$lab_v" != "$plugin_v" ] || return 0
+  lab_notice="The lab scaffold was written by plugin ${lab_v}; this plugin is ${plugin_v}: run science-ultrapowers:initializing-a-research-lab to upgrade."
+}

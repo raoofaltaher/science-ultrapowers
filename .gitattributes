@@ -1,0 +1,23 @@
+# Ensure shell scripts always have LF line endings
+*.sh text eol=lf
+hooks/** text eol=lf
+
+# Ensure the polyglot wrapper keeps LF (it's parsed by both cmd and bash)
+*.cmd text eol=lf
+
+# Vendored skill files are hashed in PROVENANCE.md: keep every text file under skills/ LF on checkout
+skills/** text=auto eol=lf
+
+# Common text files
+.gitattributes text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.js text eol=lf
+*.mjs text eol=lf
+*.ts text eol=lf
+*.py text eol=lf
+
+# Explicitly mark binary files
+*.png binary
+*.jpg binary
+*.gif binary
