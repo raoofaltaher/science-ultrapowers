@@ -33,10 +33,26 @@ When several skills apply, process skills come first: they set the approach, and
 
 "Fix this bug" → `science-ultrapowers:systematic-debugging` first, then domain skills.
 
+### Tracks
+
+A track enters the lifecycle at the stage that fits what the researcher holds.
+
+| What the researcher has in hand | Track | First skill |
+|---|---|---|
+| An idea, a topic, a paper that provoked them, a technique, or nothing yet | idea | `science-ultrapowers:framing-a-research-question` |
+| A dataset, a call, a remark, a thesis chapter with a question | study | `science-ultrapowers:running-the-lab`, after init |
+| A topic or keyword for a review, a survey, a matrix or a meta-analysis | literature | `science-ultrapowers:synthesizing-the-literature` |
+| A manuscript to referee, check or respond to | review | `science-ultrapowers:reviewing-a-manuscript` |
+| A manuscript or thesis to write, a journal to pick, a submission to format | writing | `science-ultrapowers:writing-for-publication` |
+| Slides, a poster, a graphical abstract, an architecture figure | dissemination | `science-ultrapowers:presenting-research` |
+
+A service track (literature, review, writing or dissemination) in a folder with no `research_lab/` starts with `science-ultrapowers:initializing-a-research-lab` and its flag `--track <track>`, then the track skill; name both before any document is read.
+
 ## The lab in one breath
 
 - Facts come only from peer-reviewed sources with a matched digital object identifier (DOI), read in full text and recorded on an evidence record.
 - Numbers and findings are quoted from the lab records, never retyped.
+- A confirmatory claim needs a registered protocol (`science-ultrapowers:preregistering-the-protocol`); everything else is exploratory.
 - Nobody reviews or audits their own work.
 - When the project has a `research_lab/` folder, that folder is the lab: its records, artifact archive and memory are the source of truth.
 - Address the team, one role or a stage in plain words; the lead session acts as the Research Project Manager, assigns the roles and relays their requests to the researcher.

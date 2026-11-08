@@ -13,4 +13,10 @@ grep -q 'science-ultrapowers:verifying-evidence-by-doi' "$f" || { echo "bootstra
 ! grep -qi 'superpowers:' "$f" || { echo "bootstrap still names a superpowers: skill"; exit 1; }
 grep -q 'that folder is the lab' "$f" || { echo "bootstrap does not say research_lab/ is the lab"; exit 1; }
 grep -q 'acts as the Research Project Manager' "$f" || { echo "bootstrap does not say how the team is addressed"; exit 1; }
+grep -q 'science-ultrapowers:framing-a-research-question' "$f" || { echo "the session primer lacks the track table"; exit 1; }
+grep -q 'science-ultrapowers:synthesizing-the-literature' "$f" || { echo "the session primer lacks the track table"; exit 1; }
+grep -q 'science-ultrapowers:reviewing-a-manuscript' "$f" || { echo "the session primer lacks the track table"; exit 1; }
+grep -q 'science-ultrapowers:writing-for-publication' "$f" || { echo "the session primer lacks the track table"; exit 1; }
+grep -q 'science-ultrapowers:presenting-research' "$f" || { echo "the session primer lacks the track table"; exit 1; }
+grep -q 'science-ultrapowers:preregistering-the-protocol' "$f" || { echo "the session primer lacks the track table"; exit 1; }
 echo "bootstrap-length: ok"
