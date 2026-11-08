@@ -1,4 +1,4 @@
 # artifact store: stored copies are byte-exact
 store/** -text
 *.jsonl text eol=lf
-store/art-1/** filter=lfs diff=lfs merge=lfs -text
+store/art-1/** -diff

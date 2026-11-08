@@ -287,7 +287,7 @@ class MigrationCase(unittest.TestCase):
         self.report()
         lines = self.read("artifacts/.gitattributes").splitlines()
         self.assertIn("archive/** -text", lines)
-        self.assertIn("archive/art-1/** filter=lfs diff=lfs merge=lfs -text", lines)
+        self.assertIn("archive/art-1/** -diff", lines)
         self.assertFalse([l for l in lines if l.startswith("store/")], lines)  # legacy
         self.assertIn("*.jsonl text eol=lf", lines)
         self.assertEqual(lines.count("archive/** -text"), 1)
