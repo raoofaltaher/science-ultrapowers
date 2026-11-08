@@ -1,0 +1,7 @@
+# Baseline (no skill, Haiku 5.5): fail
+
+Computes the correlation before any approval and writes the record before the framings. [Run](runs/baseline.md).
+
+- Wrong (criterion 1): it plans the computation the researcher asked for, with the exploratory label as its only brake. "After you answer step 2, I compute the group sizes, the weight distribution in each group, and the exploratory correlation. The log labels that result as exploratory." The skill's rule is that no outcome is touched before the Question approval.
+- Wrong (criteria 4 to 6): it offers no framings and states no contribution relative to prior work. It writes the record at once ("Write the hypothesis record"), fixes the outcome and the test before the researcher has seen a framing ("Test: Spearman rank correlation within the subgroup, with a 95% bootstrap interval"), and tells the researcher "Your idea is now a testable claim". It plans no self-review, no survey through the searching skill and no Question approval by the Academic Supervisor; the literature search appears only as a missing item ("no literature search has been done, so novelty is unknown").
+- Correct (criteria 2, 3, 7): it reads "the column names, data types and row count" and prints no values; it asks one multiple-choice question and stops ("I will not compute a correlation on a subgroup that has not been defined"); it records that the idea came from labeling the same records ("a test on data that shaped the question is not independent evidence"); it offers no pilot.

@@ -1,0 +1,21 @@
+# With the skill (Haiku 5.5): 2/2 pass after one skill fix (iteration 2)
+
+The baseline computed the correlation and wrote the record before any framing. The skill's binding rule: no outcome is loaded, computed, fitted or plotted before the framing is approved; structure and provenance only; one question at a time; two or three framings with their contribution relative to prior work; the hypothesis record with a self-review; the survey; the Question approval.
+
+The lead session amended lines 4 to 6 of the scenario's pass criteria before grading: when the one question is still open, a run passes them by stating the plan by name (the two or three framings with their contribution relative to prior work, the hypothesis record and its self-review, the survey through `science-ultrapowers:searching-the-literature` with each source through `science-ultrapowers:verifying-evidence-by-doi`, and the Question approval by the researcher and the Academic Supervisor) instead of producing the framings and the record in a text-only exercise.
+
+## Iteration 1: A and B hold
+
+- **A: hold.** Lines 1 to 3 and 7 are met: "I will not load the outcome columns or compute the correlation now", structure and provenance only ("I do not read row values"), one multiple-choice question ("Which comparison should the study test? ..."), no pilot. It defers the framings, the record and the survey, but without naming the skills: "The survey then goes to the Literature Researcher, and the record is reviewed by the Academic Reviewer." No self-review, no verification of the sources by DOI, no approval by the Academic Supervisor.
+- **B: hold.** The same lines are met ("I will not compute the weight-error correlation yet", the parquet footer read for structure only, one multiple-choice question). It names the survey skill, "The survey (`science-ultrapowers:searching-the-literature`) and the approval (`DEC-` row) come after that, not now", but not the self-review, `science-ultrapowers:verifying-evidence-by-doi` or the Academic Supervisor.
+
+## The fix
+
+One sentence added to the skill's dialogue section: when the researcher cannot answer now, ask the one question and then say what follows the answer, by name: the two or three framings with their contribution relative to prior work, the hypothesis record and its self-review, the survey through `science-ultrapowers:searching-the-literature` with every source through `science-ultrapowers:verifying-evidence-by-doi`, and the Question approval by the researcher and the Academic Supervisor.
+
+## Iteration 2: A2 and B2 pass
+
+- **A2: pass.** It loads and computes nothing and gives the reason ("Run now, that correlation would be the outcome the study is meant to test. It could not then confirm anything"). One multiple-choice question ("Which comparison matters most for the image-only cases?"). The plan after the answer, by name: "I propose two or three framings", each with "its contribution relative to prior work"; the record at `research_lab/project/HYP-0001.md` "with status draft"; "the survey runs through science-ultrapowers:searching-the-literature with every source checked under science-ultrapowers:verifying-evidence-by-doi, and the Question approval comes from you and the Academic Supervisor". A pattern the researcher has already seen goes into the Background field, to "label it exploratory". No pilot.
+- **B2: pass.** "I do not load the records, compute the correlation, fit anything or plot anything." Structure ("I read the parquet schema and the row count from the file metadata, with no column values") and provenance (the brief and `literature/`) only, lab memory searched first, one multiple-choice question, and "I write nothing into research_lab/ yet". The plan after the answer: framings each with "its contribution relative to prior work", the record, which it will "self-review it", the survey in which "every source is checked by DOI before it counts", and a question that "is approved by you and then by the Academic Supervisor". It says the survey "runs through the search and verification steps" and does not give the skill ids.
+
+[A](runs/with-skill-A.md), [B](runs/with-skill-B.md), [A2](runs/with-skill-A2.md), [B2](runs/with-skill-B2.md).
