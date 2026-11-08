@@ -60,6 +60,16 @@ sentences=(
   'recording-findings|A finding is confirmatory only with a registered protocol whose registration check is clear'
   'recording-findings|A null result needs an effect size and an interval'
   'recording-findings|Input checksums'
+  'framing-a-research-question|No outcome is loaded, computed, fitted or plotted before the framing is approved'
+  'framing-a-research-question|Falsifiable or it is not a question'
+  'synthesizing-the-literature|A meta-analysis is a study: it needs a registered protocol'
+  'synthesizing-the-literature|The synthesis matrix holds only evidence records'
+  'reviewing-a-manuscript|No review is written from the abstract alone'
+  'reviewing-a-manuscript|A suggested change to a registered analysis is a deviation'
+  'writing-for-publication|A number that is not in the findings log does not enter the manuscript'
+  'writing-for-publication|The journal shortlist names the connector it used'
+  'presenting-research|Every number on a slide is quoted from the findings log'
+  'presenting-research|The environment script is run by the researcher'
 )
 for entry in "${sentences[@]}"; do
   skill=${entry%%|*}
@@ -96,13 +106,14 @@ done
 # (g) every science-ultrapowers:<skill> reference resolves to a skill folder. PENDING lists the
 #     skills later plans create; remove each name when its folder lands. The CLAUDE.md section
 #     markers (<!-- science-ultrapowers:begin --> and :end) are not references.
-PENDING="framing-a-research-question synthesizing-the-literature reviewing-a-manuscript writing-for-publication presenting-research"
+PENDING=""
 for ref in $(grep -rhoE --include='*.md' '(<!-- )?science-ultrapowers:[a-z0-9-]+' skills | grep -v '^<!-- ' | sort -u); do
   name=${ref#science-ultrapowers:}
   if [ -f "skills/$name/SKILL.md" ]; then
     case " $PENDING " in *" $name "*) fail "skills/$name exists: remove it from PENDING" ;; esac
     continue
   fi
+  [ -f "agents/$name.md" ] && continue  # the assign form names a role by its agent id
   case " $PENDING " in *" $name "*) continue ;; esac
   fail "dangling cross-reference $ref: $(grep -rlF --include='*.md' -- "$ref" skills | tr '\n' ' ')"
 done
