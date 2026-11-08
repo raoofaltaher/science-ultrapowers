@@ -1,13 +1,17 @@
 #!/usr/bin/env node
-// memory-lint: structural checks for the lab memory store (research_lab/memory).
+// The lab memory consistency check: structural checks for the lab memory store
+// (research_lab/memory). The script keeps the file name memory-lint.mjs.
 //
 // Node standard library only. Owns the lab memory entry schema, so the skill,
-// the hooks and every role that writes an entry validate it one way: entity
-// scope (project or artifact:<id>), evidence tag, learned_by, origin, and the
-// rule that an entry must not merely cite a lab record.
+// the hooks and every role that writes an entry check it one way: entity
+// scope (project or artifact:<id>), basis (stated, observed or inferred),
+// learned_by, origin, and the rule that an entry must not merely cite a lab
+// record. The legacy frontmatter key "evidence" and the legacy type "gotcha" // legacy
+// are read without a finding.
 //
 // Usage: node memory-lint.mjs <store-dir> [--budget N]
-// Output: one line per finding, "<CODE> <path>: <message>".
+// Output: one line per finding, "<CODE> <path>: <message>", the message a
+// plain sentence.
 // Exit: 0 clean, 1 findings, 2 usage error.
 
 import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
@@ -17,24 +21,28 @@ import { fileURLToPath } from 'node:url';
 export const CODES = Object.freeze([
   'BUDGET', 'DANGLING', 'ORPHAN', 'STRAY',
   'FM_MISSING', 'FM_KEYS', 'FM_NAME', 'FM_TYPE', 'FM_ENTITY', 'FM_ENTITY_DIR',
-  'FM_EVIDENCE', 'FM_LEARNED_BY', 'FM_ORIGIN', 'FM_DATE',
+  'FM_BASIS', 'FM_LEARNED_BY', 'FM_ORIGIN', 'FM_DATE',
   'WIKILINK', 'NEAR_DUP', 'RECORD_ONLY', 'NO_FACT',
 ]);
 
-const TYPES = Object.freeze(['gotcha', 'decision', 'lesson', 'directive', 'vocabulary']);
-const EVIDENCE = Object.freeze(['stated', 'observed', 'inferred']);
+const TYPES = Object.freeze(['pitfall', 'decision', 'lesson', 'directive', 'vocabulary']);
+// Read as legacy, never reported: entries imported from Claude Science carry
+// type gotcha and the metadata key evidence.
+const LEGACY_TYPES = Object.freeze(['gotcha']); // legacy
+const BASES = Object.freeze(['stated', 'observed', 'inferred']);
 const ORIGINS = Object.freeze(['agent', 'extractor', 'user', 'import']);
 const TOP_KEYS = Object.freeze(['name', 'description', 'metadata', 'date']);
-const META_KEYS = Object.freeze(['type', 'entity', 'evidence', 'learned_by', 'origin']);
+const META_KEYS = Object.freeze(['type', 'entity', 'basis', 'learned_by', 'origin']);
+const LEGACY_META_KEYS = Object.freeze(['type', 'entity', 'evidence', 'learned_by', 'origin']);
 const ROLE_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const ENTITY_RE = /^(project|artifact:([A-Za-z0-9_-]+))$/;
 const ARTIFACT_ID_RE = /^[A-Za-z0-9_-]+$/;
 const NAME_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 // A line that is nothing but one or more lab record ids, optionally introduced
 // ("see", "cf.", "per", "the decision") and joined by , ; & / or "and".
-const ID = '(?:F|D|EC|RV|T|REQ|EXP|H)-\\d+';
+const ID = '(?:FND|HYP|EVR|REV|DEC|TASK|MTH|RSK|ADH|ADV|REQ|EXP|F|D|EC|RV|T|MP|R|DA|PC|H)-\\d+';
 const RECORD_LINE_RE = new RegExp(
-  `^(?:(?:see|cf\\.?|per)\\s+)?(?:(?:the\\s+)?(?:decision|finding|record|review|exception|request|task|experiment|hypothesis)s?\\s+)?${ID}(?:\\s*(?:,|;|&|\\/|\\band\\b)\\s*${ID})*\\.?$`,
+  `^(?:(?:see|cf\\.?|per)\\s+)?(?:(?:the\\s+)?(?:decision|finding|record|review|exception|request|task|experiment|hypothesis|risk)s?\\s+)?${ID}(?:\\s*(?:,|;|&|\\/|\\band\\b)\\s*${ID})*\\.?$`,
   'i',
 );
 const BOM = String.fromCharCode(0xfeff);
@@ -163,7 +171,7 @@ function scanLayout(store, add) {
     if (e.isFile() && !TOP_LEVEL_FILES.has(e.name)) {
       add('STRAY', e.name, 'only README.md and MEMORY.md may live at the store root');
     } else if (e.isDirectory() && e.name !== 'project' && e.name !== 'artifact') {
-      add('STRAY', `${e.name}/`, 'unknown folder; allowed: project, artifact');
+      add('STRAY', `${e.name}/`, 'this folder is not allowed here; the only folders are project and artifact');
     }
   }
 
@@ -171,7 +179,7 @@ function scanLayout(store, add) {
   if (isDir(projectDir)) {
     for (const e of sorted(projectDir)) {
       if (e.isDirectory()) {
-        add('STRAY', `project/${e.name}/`, 'entries are files directly under project/');
+        add('STRAY', `project/${e.name}/`, 'entries must be files directly under project/');
       } else if (e.name.endsWith('.md')) {
         entries.push({ kind: 'project', id: null, rel: `project/${e.name}`, stem: e.name.slice(0, -3) });
       } else {
@@ -184,13 +192,13 @@ function scanLayout(store, add) {
   if (isDir(artifactDir)) {
     for (const e of sorted(artifactDir)) {
       if (!e.isDirectory()) {
-        add('STRAY', `artifact/${e.name}`, 'entries live in artifact/<artifact_id>/');
+        add('STRAY', `artifact/${e.name}`, 'entries must live in artifact/<artifact_id>/');
       } else if (!ARTIFACT_ID_RE.test(e.name)) {
-        add('STRAY', `artifact/${e.name}/`, 'not an artifact id');
+        add('STRAY', `artifact/${e.name}/`, 'this folder name is not an artifact id');
       } else {
         for (const f of sorted(join(artifactDir, e.name))) {
           if (f.isDirectory()) {
-            add('STRAY', `artifact/${e.name}/${f.name}/`, `entries are files directly under artifact/${e.name}/`);
+            add('STRAY', `artifact/${e.name}/${f.name}/`, `entries must be files directly under artifact/${e.name}/`);
           } else if (f.name.endsWith('.md')) {
             entries.push({ kind: 'artifact', id: e.name, rel: `artifact/${e.name}/${f.name}`, stem: f.name.slice(0, -3) });
           } else {
@@ -206,60 +214,64 @@ function scanLayout(store, add) {
 function lintFrontmatter(rel, stem, kind, id, d, add) {
   const topKeys = Object.keys(d);
   if (!sameKeys(topKeys, TOP_KEYS) && !sameKeys(topKeys, [...TOP_KEYS, 'note'])) {
-    add('FM_KEYS', rel, `keys are [${topKeys.join(', ')}], expected [${TOP_KEYS.join(', ')}] and optionally note last`);
+    add('FM_KEYS', rel, `the top-level keys are [${topKeys.join(', ')}], expected [${TOP_KEYS.join(', ')}] and optionally note last`);
   }
   for (const key of ['name', 'description']) {
-    if (typeof d[key] !== 'string' || d[key].trim() === '') add('FM_KEYS', rel, `${key} is empty`);
+    if (typeof d[key] !== 'string' || d[key].trim() === '') add('FM_KEYS', rel, `the ${key} is empty`);
   }
   const meta = d.metadata;
   const metaIsMap = isMap(meta);
-  if (!metaIsMap || !sameKeys(Object.keys(meta), META_KEYS)) {
-    const actual = metaIsMap ? Object.keys(meta).join(', ') : '(not a map)';
-    add('FM_KEYS', rel, `metadata keys are [${actual}], expected [${META_KEYS.join(', ')}]`);
+  const metaKeys = metaIsMap ? Object.keys(meta) : [];
+  const legacyKey = metaIsMap && sameKeys(metaKeys, LEGACY_META_KEYS);
+  if (!metaIsMap || !(sameKeys(metaKeys, META_KEYS) || legacyKey)) {
+    const actual = metaIsMap ? metaKeys.join(', ') : '(not a map)';
+    add('FM_KEYS', rel, `the metadata keys are [${actual}], expected [${META_KEYS.join(', ')}]`);
   }
   if (typeof d.name === 'string' && d.name !== stem) {
-    add('FM_NAME', rel, `name "${d.name}" differs from file name "${stem}"`);
+    add('FM_NAME', rel, `the name "${d.name}" differs from the file name "${stem}"`);
   }
   if (typeof d.name === 'string' && d.name !== '' && !NAME_RE.test(d.name)) {
-    add('FM_NAME', rel, `name "${d.name}" is not a kebab-case slug`);
+    add('FM_NAME', rel, `the name "${d.name}" is not a kebab-case slug`);
   }
 
   if (metaIsMap) {
-    if (!TYPES.includes(meta.type)) {
-      add('FM_TYPE', rel, `metadata.type "${text_(meta.type)}" is not gotcha, decision, lesson, directive or vocabulary`);
+    if (!TYPES.includes(meta.type) && !LEGACY_TYPES.includes(meta.type)) {
+      add('FM_TYPE', rel, `the type "${text_(meta.type)}" is not pitfall, decision, lesson, directive or vocabulary`);
     }
 
     const entity = meta.entity;
     const entityMatch = typeof entity === 'string' ? ENTITY_RE.exec(entity) : null;
     if (!entityMatch) {
       if (entity === 'profile') {
-        add('FM_ENTITY', rel, 'entity "profile" is a fact about a person: it belongs in Claude Code user memory, never in the lab');
+        add('FM_ENTITY', rel, 'the entity "profile" is a fact about a person: it belongs in Claude Code user memory, never in the lab');
       } else {
-        add('FM_ENTITY', rel, `entity "${text_(entity)}" is not project or artifact:<id>`);
+        add('FM_ENTITY', rel, `the entity "${text_(entity)}" is not project or artifact:<id>`);
       }
     } else {
       const target = entityMatch[2];
       if (kind === 'project' && target !== undefined) {
-        add('FM_ENTITY_DIR', rel, `entity artifact:${target} lives under project/; move it to artifact/${target}/`);
+        add('FM_ENTITY_DIR', rel, `the entity artifact:${target} lives under project/; move it to artifact/${target}/`);
       } else if (kind === 'artifact' && target === undefined) {
-        add('FM_ENTITY_DIR', rel, `entity project lives under artifact/${id}/; move it to project/`);
+        add('FM_ENTITY_DIR', rel, `the entity project lives under artifact/${id}/; move it to project/`);
       } else if (kind === 'artifact' && target !== id) {
-        add('FM_ENTITY_DIR', rel, `entity artifact:${target} lives under artifact/${id}/; move it to artifact/${target}/`);
+        add('FM_ENTITY_DIR', rel, `the entity artifact:${target} lives under artifact/${id}/; move it to artifact/${target}/`);
       }
     }
 
-    if (!EVIDENCE.includes(meta.evidence)) {
-      add('FM_EVIDENCE', rel, `metadata.evidence "${text_(meta.evidence)}" is not stated, observed or inferred`);
+    // The basis sits under the key basis, or under the legacy key evidence.
+    const basis = Object.hasOwn(meta, 'basis') ? meta.basis : meta.evidence;
+    if (!BASES.includes(basis)) {
+      add('FM_BASIS', rel, `the basis "${text_(basis)}" is not stated, observed or inferred`);
     }
     if (typeof meta.learned_by !== 'string' || !ROLE_RE.test(meta.learned_by)) {
-      add('FM_LEARNED_BY', rel, `metadata.learned_by "${text_(meta.learned_by)}" is not a role name (kebab-case) or unknown`);
+      add('FM_LEARNED_BY', rel, `the learned_by value "${text_(meta.learned_by)}" is not a role name (kebab-case) or unknown`);
     }
     if (!ORIGINS.includes(meta.origin)) {
-      add('FM_ORIGIN', rel, `metadata.origin "${text_(meta.origin)}" is not agent, extractor, user or import`);
+      add('FM_ORIGIN', rel, `the origin "${text_(meta.origin)}" is not agent, extractor, user or import`);
     }
   }
 
-  if (!isIsoDate(d.date)) add('FM_DATE', rel, `date "${text_(d.date)}" is not YYYY-MM-DD`);
+  if (!isIsoDate(d.date)) add('FM_DATE', rel, `the date "${text_(d.date)}" is not YYYY-MM-DD`);
 }
 
 export function lintStore(storeDir, { budget } = {}) {
@@ -269,7 +281,7 @@ export function lintStore(storeDir, { budget } = {}) {
 
   const indexPath = join(store, 'MEMORY.md');
   if (!existsSync(indexPath)) {
-    add('FM_MISSING', 'MEMORY.md', 'index file is missing');
+    add('FM_MISSING', 'MEMORY.md', 'the index file is missing');
     return findings;
   }
 
@@ -277,11 +289,11 @@ export function lintStore(storeDir, { budget } = {}) {
   if (effectiveBudget === undefined) {
     const found = readBudget(store);
     effectiveBudget = found.budget;
-    if (found.problem !== null) add('BUDGET', 'lab.json', `${found.problem}; using ${DEFAULT_BUDGET}`);
+    if (found.problem !== null) add('BUDGET', 'lab.json', `${found.problem}; the default limit of ${DEFAULT_BUDGET} applies`);
   }
   const indexLines = splitLines(readFileSync(indexPath, 'utf8'));
   if (indexLines.length > effectiveBudget) {
-    add('BUDGET', 'MEMORY.md', `${indexLines.length} lines, budget ${effectiveBudget}`);
+    add('BUDGET', 'MEMORY.md', `the index has ${indexLines.length} lines, the limit is ${effectiveBudget}`);
   }
 
   // The layout scan runs first so index links can be matched to entries; its
@@ -302,9 +314,9 @@ export function lintStore(storeDir, { budget } = {}) {
     } else if (relByLower.has(target.toLowerCase())) {
       const actual = relByLower.get(target.toLowerCase());
       linked.add(actual);
-      add('DANGLING', `MEMORY.md:${i + 1}`, `link target ${target} differs in case from ${actual}`);
+      add('DANGLING', `MEMORY.md:${i + 1}`, `the link target ${target} differs in case from ${actual}`);
     } else if (!existsSync(join(store, target))) {
-      add('DANGLING', `MEMORY.md:${i + 1}`, `link target ${target} does not exist`);
+      add('DANGLING', `MEMORY.md:${i + 1}`, `the link target ${target} does not exist`);
     }
 
     const dash = line.indexOf(' — ');
@@ -323,25 +335,25 @@ export function lintStore(storeDir, { budget } = {}) {
 
   const seenNormalized = new Map();
   for (const { kind, id, rel, stem } of entries) {
-    if (!linked.has(rel)) add('ORPHAN', rel, 'entry has no index line');
+    if (!linked.has(rel)) add('ORPHAN', rel, 'the entry has no index line');
 
     const text = readFileSync(join(store, rel), 'utf8');
     const fm = parseFrontmatter(text);
     if (!fm) {
-      add('FM_MISSING', rel, 'no frontmatter block');
+      add('FM_MISSING', rel, 'the entry has no frontmatter block');
     } else if (fm.malformed !== null) {
-      add('FM_KEYS', rel, `unparsable frontmatter line: ${fm.malformed}`);
+      add('FM_KEYS', rel, `this frontmatter line cannot be parsed: ${fm.malformed}`);
     } else {
       lintFrontmatter(rel, stem, kind, id, fm.data, add);
     }
 
     for (const link of proseOf(text).matchAll(WIKILINK_RE)) {
-      if (!entryNames.has(link[1].trim())) add('WIKILINK', rel, `[[${link[1]}]] does not name an entry`);
+      if (!entryNames.has(link[1].trim())) add('WIKILINK', rel, `the link [[${link[1]}]] does not name an entry`);
     }
 
     const normalized = normalizeName(stem);
     if (seenNormalized.has(normalized)) {
-      add('NEAR_DUP', rel, `name differs from ${seenNormalized.get(normalized)} only by punctuation or a trailing s`);
+      add('NEAR_DUP', rel, `the name differs from ${seenNormalized.get(normalized)} only by punctuation or a trailing s`);
     } else {
       seenNormalized.set(normalized, rel);
     }
@@ -358,6 +370,24 @@ export function lintStore(storeDir, { budget } = {}) {
 }
 
 const USAGE = 'Usage: node memory-lint.mjs <store-dir> [--budget N]\n';
+const HELP = `${USAGE}
+Runs the lab memory consistency check on a memory store (research_lab/memory).
+It prints one line per finding, "<CODE> <path>: <message>", and checks:
+  the index (MEMORY.md): its length against the limit, its links, an entry
+    with no index line
+  the layout: only project/ and artifact/<artifact_id>/ hold entries
+  each entry's frontmatter: name, description, date, and the metadata keys
+    type (pitfall, decision, lesson, directive or vocabulary), entity (project
+    or artifact:<id>), basis (stated, observed or inferred), learned_by and
+    origin; the legacy key evidence and the legacy type gotcha are still read
+  each entry's body: it must state a fact, not only cite a lab record
+
+  --budget N   the index limit in lines (default: memory.indexBudget in
+               research_lab/lab.json, else ${DEFAULT_BUDGET})
+  --help       print this text
+
+Exit: 0 when every check passes, 1 when there are findings, 2 on a usage error.
+`;
 
 // Returns { storeDir, budget } or null when the arguments are not valid.
 function parseArgs(argv) {
@@ -370,7 +400,9 @@ function parseArgs(argv) {
   };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
-    if (arg === '--budget') {
+    if (arg === '--help' || arg === '-h') {
+      return { help: true };
+    } else if (arg === '--budget') {
       if (!parseBudget(argv[++i])) return null;
     } else if (arg.startsWith('--budget=')) {
       if (!parseBudget(arg.slice('--budget='.length))) return null;
@@ -390,9 +422,13 @@ function main(argv) {
     process.stderr.write(USAGE);
     return 2;
   }
+  if (parsed.help) {
+    process.stdout.write(HELP);
+    return 0;
+  }
   const { storeDir, budget } = parsed;
   if (!isDir(storeDir)) {
-    process.stderr.write(`memory-lint: no such store directory: ${storeDir}\n`);
+    process.stderr.write(`memory consistency check: no such store directory: ${storeDir}\n`);
     return 2;
   }
   const findings = lintStore(storeDir, { budget });

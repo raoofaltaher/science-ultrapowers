@@ -27,7 +27,7 @@ function makeStore(t) {
 }
 
 function entry({
-  name, type = 'lesson', entity = 'project', evidence = 'observed',
+  name, type = 'lesson', entity = 'project', basis = 'observed', basisKey = 'basis',
   learned_by = 'literature-researcher', origin = 'agent', date = '2026-11-07', note, body = BODY,
 }) {
   return [
@@ -37,7 +37,7 @@ function entry({
     'metadata:',
     `  type: ${type}`,
     `  entity: ${entity}`,
-    `  evidence: ${evidence}`,
+    `  ${basisKey}: ${basis}`,
     `  learned_by: ${learned_by}`,
     `  origin: ${origin}`,
     `date: ${date}`,
@@ -96,6 +96,7 @@ test('BUDGET when index lines exceed budget', (t) => {
   const r = runCli([store, '--budget', '2']);
   assert.equal(r.code, 1);
   assert.match(r.stdout, /^BUDGET MEMORY\.md:/m);
+  assert.match(r.stdout, /the index has 6 lines, the limit is 2/);
 });
 
 test('DANGLING index link to missing file', (t) => {
@@ -128,7 +129,7 @@ test('FM_KEYS when metadata lacks learned_by', (t) => {
   writeIndexed(store, { 'project/alpha-fact.md': text });
   const f = lintStore(store);
   assert.ok(codes(f).includes('FM_KEYS'));
-  assert.match(f.find((x) => x.code === 'FM_KEYS').message, /metadata keys are \[type, entity, evidence, origin\]/);
+  assert.match(f.find((x) => x.code === 'FM_KEYS').message, /metadata keys are \[type, entity, basis, origin\]/);
 });
 
 test('FM_TYPE on unknown type', (t) => {
@@ -137,10 +138,12 @@ test('FM_TYPE on unknown type', (t) => {
   assert.deepEqual(codes(lintStore(store)), ['FM_TYPE']);
 });
 
-test('FM_EVIDENCE on unknown evidence', (t) => {
+test('FM_BASIS on unknown basis', (t) => {
   const { store } = makeStore(t);
-  writeIndexed(store, { 'project/alpha-fact.md': entry({ name: 'alpha-fact', evidence: 'guessed' }) });
-  assert.deepEqual(codes(lintStore(store)), ['FM_EVIDENCE']);
+  writeIndexed(store, { 'project/alpha-fact.md': entry({ name: 'alpha-fact', basis: 'guessed' }) });
+  const f = lintStore(store);
+  assert.deepEqual(codes(f), ['FM_BASIS']);
+  assert.match(f[0].message, /the basis "guessed" is not stated, observed or inferred/);
 });
 
 test('FM_ORIGIN on unknown origin', (t) => {
@@ -243,7 +246,7 @@ test('FM_KEYS on wrong top-level order', (t) => {
     'metadata:',
     '  type: lesson',
     '  entity: project',
-    '  evidence: observed',
+    '  basis: observed',
     '  learned_by: unknown',
     '  origin: agent',
     '---',
@@ -263,7 +266,7 @@ test('FM_KEYS on wrong metadata order', (t) => {
     'description: d',
     'metadata:',
     '  type: lesson',
-    '  evidence: observed',
+    '  basis: observed',
     '  entity: project',
     '  learned_by: unknown',
     '  origin: agent',
@@ -274,7 +277,7 @@ test('FM_KEYS on wrong metadata order', (t) => {
   writeIndexed(store, { 'project/alpha-fact.md': text });
   const f = lintStore(store);
   assert.deepEqual(codes(f), ['FM_KEYS']);
-  assert.match(f[0].message, /metadata keys are \[type, evidence, entity, learned_by, origin\]/);
+  assert.match(f[0].message, /metadata keys are \[type, basis, entity, learned_by, origin\]/);
 });
 
 test('FM_ENTITY_DIR for artifact folder mismatch', (t) => {
@@ -366,7 +369,7 @@ test('CODES lists the eighteen codes', () => {
   assert.deepEqual([...CODES], [
     'BUDGET', 'DANGLING', 'ORPHAN', 'STRAY',
     'FM_MISSING', 'FM_KEYS', 'FM_NAME', 'FM_TYPE', 'FM_ENTITY', 'FM_ENTITY_DIR',
-    'FM_EVIDENCE', 'FM_LEARNED_BY', 'FM_ORIGIN', 'FM_DATE',
+    'FM_BASIS', 'FM_LEARNED_BY', 'FM_ORIGIN', 'FM_DATE',
     'WIKILINK', 'NEAR_DUP', 'RECORD_ONLY', 'NO_FACT',
   ]);
 });
@@ -471,7 +474,7 @@ test('FM_NAME when the name differs from the file name', (t) => {
   writeIndexed(store, { 'project/alpha-fact.md': entry({ name: 'beta-fact' }) });
   const f = lintStore(store);
   assert.deepEqual(codes(f), ['FM_NAME']);
-  assert.match(f[0].message, /differs from file name "alpha-fact"/);
+  assert.match(f[0].message, /differs from the file name "alpha-fact"/);
 });
 
 test('FM_NAME on a name that is not a kebab-case slug', (t) => {
@@ -526,7 +529,7 @@ test('BUDGET on a non-integer indexBudget in lab.json', (t) => {
   const f = lintStore(store);
   assert.deepEqual(codes(f), ['BUDGET']);
   assert.equal(f[0].path, 'lab.json');
-  assert.match(f[0].message, /memory\.indexBudget "1" is not a positive integer; using 150/);
+  assert.match(f[0].message, /memory\.indexBudget "1" is not a positive integer; the default limit of 150 applies/);
 });
 
 test('BUDGET on a lab.json that is not JSON', (t) => {
@@ -535,7 +538,7 @@ test('BUDGET on a lab.json that is not JSON', (t) => {
   writeIndexed(store, { 'project/alpha-fact.md': entry({ name: 'alpha-fact' }) });
   const f = lintStore(store);
   assert.deepEqual(codes(f), ['BUDGET']);
-  assert.match(f[0].message, /not valid JSON; using 150/);
+  assert.match(f[0].message, /not valid JSON; the default limit of 150 applies/);
 });
 
 // L9
@@ -598,7 +601,7 @@ test('FM_KEYS when note is not last', (t) => {
     'metadata:',
     '  type: lesson',
     '  entity: project',
-    '  evidence: observed',
+    '  basis: observed',
     '  learned_by: unknown',
     '  origin: agent',
     'note: a note',
@@ -610,4 +613,96 @@ test('FM_KEYS when note is not last', (t) => {
   const f = lintStore(store);
   assert.deepEqual(codes(f), ['FM_KEYS']);
   assert.match(f[0].message, /keys are \[name, description, metadata, note, date\]/);
+});
+
+// ---- the terminology pass: basis, pitfall, consistency check ----
+
+test('the legacy evidence key is read without a finding', (t) => {
+  const { store } = makeStore(t);
+  writeIndexed(store, {
+    'project/alpha-fact.md': entry({ name: 'alpha-fact', basisKey: 'evidence', basis: 'stated' }),
+  });
+  assert.deepEqual(lintStore(store), []);
+});
+
+test('FM_BASIS on an unknown value under the legacy evidence key', (t) => {
+  const { store } = makeStore(t);
+  writeIndexed(store, {
+    'project/alpha-fact.md': entry({ name: 'alpha-fact', basisKey: 'evidence', basis: 'guessed' }),
+  });
+  const f = lintStore(store);
+  assert.deepEqual(codes(f), ['FM_BASIS']);
+  assert.match(f[0].message, /"guessed" is not stated, observed or inferred/);
+});
+
+test('FM_KEYS when both basis and evidence are present', (t) => {
+  const { store } = makeStore(t);
+  const text = entry({ name: 'alpha-fact' }).replace('  basis: observed\n', '  basis: observed\n  evidence: observed\n');
+  writeIndexed(store, { 'project/alpha-fact.md': text });
+  assert.ok(codes(lintStore(store)).includes('FM_KEYS'));
+});
+
+test('type pitfall is accepted', (t) => {
+  const { store } = makeStore(t);
+  writeIndexed(store, { 'project/alpha-fact.md': entry({ name: 'alpha-fact', type: 'pitfall' }) });
+  assert.deepEqual(lintStore(store), []);
+});
+
+test('the legacy type gotcha is read without a finding', (t) => {
+  const { store } = makeStore(t);
+  writeIndexed(store, { 'project/alpha-fact.md': entry({ name: 'alpha-fact', type: 'gotcha' }) });
+  assert.deepEqual(lintStore(store), []);
+});
+
+test('FM_TYPE names pitfall, not gotcha', (t) => {
+  const { store } = makeStore(t);
+  writeIndexed(store, { 'project/alpha-fact.md': entry({ name: 'alpha-fact', type: 'subsystem' }) });
+  const f = lintStore(store);
+  assert.deepEqual(codes(f), ['FM_TYPE']);
+  assert.match(f[0].message, /is not pitfall, decision, lesson, directive or vocabulary/);
+  assert.doesNotMatch(f[0].message, /gotcha/);
+});
+
+test('RECORD_ONLY on the new record ids and the legacy ones', (t) => {
+  const { store } = makeStore(t);
+  writeIndexed(store, {
+    'project/first-fact.md': entry({ name: 'first-fact', body: wrapBody('FND-1031') }),
+    'project/second-fact.md': entry({ name: 'second-fact', body: wrapBody('see DEC-0124 and EVR-0042') }),
+    'project/third-fact.md': entry({ name: 'third-fact', body: wrapBody('TASK-0007') }),
+    'project/fourth-fact.md': entry({ name: 'fourth-fact', body: wrapBody('D-12') }),
+  });
+  assert.deepEqual(codes(lintStore(store)), ['RECORD_ONLY', 'RECORD_ONLY', 'RECORD_ONLY', 'RECORD_ONLY']);
+});
+
+test('every finding message is a plain sentence beside its code', (t) => {
+  const { store } = makeStore(t);
+  writeStore(store, {
+    index: indexOf(line('project/gone-fact.md')),
+    entries: { 'project/alpha-fact.md': entry({ name: 'alpha-fact', basis: 'guessed' }), 'notes.md': 'x\n' },
+  });
+  const r = runCli([store, '--budget', '1']);
+  assert.equal(r.code, 1);
+  assert.match(r.stdout, /^BUDGET MEMORY\.md: the index has 4 lines, the limit is 1$/m);
+  assert.match(r.stdout, /^DANGLING MEMORY\.md:4: the link target project\/gone-fact\.md does not exist$/m);
+  assert.match(r.stdout, /^ORPHAN project\/alpha-fact\.md: the entry has no index line$/m);
+  assert.match(r.stdout, /^STRAY notes\.md: only README\.md and MEMORY\.md may live at the store root$/m);
+  assert.match(r.stdout, /^FM_BASIS project\/alpha-fact\.md: the basis "guessed" is not stated, observed or inferred$/m);
+});
+
+test('--help prints the usage in the new words and exits 0', () => {
+  const r = runCli(['--help']);
+  assert.equal(r.code, 0);
+  assert.match(r.stdout, /Usage: node memory-lint\.mjs <store-dir> \[--budget N\]/);
+  assert.match(r.stdout, /consistency check/);
+  assert.match(r.stdout, /basis/);
+  // The script's own file name is the only place the old word may stay.
+  assert.doesNotMatch(r.stdout.replaceAll('memory-lint.mjs', ''), /lint/i);
+});
+
+test('a missing store directory is reported as a consistency check problem', (t) => {
+  const { root } = makeStore(t);
+  const r = runCli([join(root, 'no-such-store')]);
+  assert.equal(r.code, 2);
+  assert.match(r.stderr, /memory consistency check: no such store directory/);
+  assert.doesNotMatch(r.stderr, /\blint\b/i);
 });
