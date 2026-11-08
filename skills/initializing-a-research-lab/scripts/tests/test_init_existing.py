@@ -163,10 +163,13 @@ class TestExistingProject(ExistingCase):
         (self.proj / "CLAUDE.md").write_text("# Root\n\n" + BEGIN + "\nmine\n" + END + "\n", encoding="utf-8")
         dot_before = (self.proj / ".claude" / "CLAUDE.md").read_bytes()
         report = self.report()
-        self.assertIn("CLAUDE.md", report["skip"])
+        # The root section differs from the template, so it is refreshed in place; either way no second
+        # section goes into .claude/CLAUDE.md.
+        self.assertIn("rewrite CLAUDE.md: the lab section between the markers -> the current template", report["migration"])
         self.assertNotIn(".claude/CLAUDE.md", report["append"])
         self.assertNotIn("CLAUDE.md", report["append"])
         self.assertEqual((self.proj / ".claude" / "CLAUDE.md").read_bytes(), dot_before)
+        self.assertEqual((self.proj / "CLAUDE.md").read_text(encoding="utf-8").count(BEGIN), 1)
 
     def test_symlinked_claude_md_is_a_warning(self):
         outside = self.tmp / "outside.md"
