@@ -25,7 +25,7 @@ import urllib.request
 
 API_ORIGIN = "https://api.openalex.org/"
 API_BASE = API_ORIGIN + "works"
-USER_AGENT = "science-ultrapowers-literature-search/0.2.1"
+USER_AGENT = "science-ultrapowers-literature-search/0.2.2"
 TIMEOUT_SECONDS = 30
 BACKOFF_SECONDS = (1, 2)
 MAX_PER_PAGE = 200

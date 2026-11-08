@@ -1,5 +1,12 @@
 # Release notes
 
+## 0.2.2 (2026-11-09)
+
+Two more init defects from the first upgrade of a real lab (issues 2 and 3).
+
+- A project that tracks its `references/` folder in git keeps it tracked: init never adds the ignore line for it, and the plan carries a warning that says why. Before, every run added the line back, and new full texts were silently ignored.
+- The migration re-points the archive's records: a `link:` target or a file name in `artifacts/versions.jsonl` and `artifacts/artifacts.jsonl` that names a renamed folder or file follows the rename, shown as `rewrite ... paths` lines. Before, `artifacts.py` reported such links as missing after the migration.
+
 ## 0.2.1 (2026-11-09)
 
 A patch for init's migration, found on the first upgrade of a real 0.1 lab (issue 1).
