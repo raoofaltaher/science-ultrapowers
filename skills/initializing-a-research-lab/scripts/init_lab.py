@@ -99,6 +99,8 @@ class Plan:
     output_style: dict = field(default_factory=dict)
     # The tracks lab.json holds after the run: the ones it holds now, then the ones asked for.
     tracks: list[str] = field(default_factory=list)
+    # The instructions file whose lab section (between the markers) differs from the current template.
+    section_refresh: str | None = None
 
 
 # --- helpers -----------------------------------------------------------------------------------------
@@ -407,8 +409,20 @@ def symlink_warning(name: str, path: Path, remedy: str) -> str:
     return f"{name} is a symlink to {symlink_target(path)}; it was not written through: {remedy}"
 
 
-def plan_instructions(project_root: Path, plan: Plan) -> None:
-    """Decide which instructions file gets the lab section: never a second section anywhere."""
+def section_bounds(text: str):
+    """(start, end) of the lab section in text, markers included; None without both markers in order."""
+    start = text.find(BEGIN_MARKER)
+    if start < 0:
+        return None
+    end = text.find(END_MARKER, start)
+    if end < 0:
+        return None
+    return start, end + len(END_MARKER)
+
+
+def plan_instructions(project_root: Path, plan: Plan, opts: Options | None = None) -> None:
+    """Decide which instructions file gets the lab section: never a second section anywhere. A section that
+    exists but differs from the current template (a lab set up by an older plugin) is planned as a rewrite."""
     existing = [rel for rel in INSTRUCTION_FILES if os.path.lexists(project_root / rel)]
     unreadable: list[str] = []
     for rel in existing:
@@ -416,6 +430,20 @@ def plan_instructions(project_root: Path, plan: Plan) -> None:
         if raw is None:
             unreadable.append(rel)
         elif BEGIN_MARKER in raw.decode("utf-8", errors="replace"):
+            text = raw.decode("utf-8", errors="replace").replace("\r\n", "\n")
+            bounds = section_bounds(text)
+            if bounds is None:
+                plan.warn.append(f"{rel} has the lab section's begin marker but no end marker; the section was not refreshed")
+                plan.skip.append(rel)
+                return
+            if opts is not None and not is_symlink(project_root / rel):
+                current = claude_section(project_root, opts).strip("\n")
+                if rel != "CLAUDE.md":
+                    current = current.replace("@research_lab/", "@../research_lab/")
+                if text[bounds[0]:bounds[1]].strip("\n") != current:
+                    plan.section_refresh = rel
+                    plan.migration.append(f"rewrite {rel}: the lab section between the markers -> the current template")
+                    return
             plan.skip.append(rel)
             return
     if not existing:
@@ -1482,7 +1510,7 @@ def build_plan(project_root: Path, opts: Options) -> Plan:
             (plan.skip if has_both else plan.append).append(GITATTRIBUTES_REL)
 
     # 4: the instructions file that holds the lab section.
-    plan_instructions(project_root, plan)
+    plan_instructions(project_root, plan, opts)
 
     # 4b: connectors into .mcp.json.
     if opts.connectors:
@@ -1584,6 +1612,25 @@ def apply_claude(project_root: Path, opts: Options, action: str, rel: str = "CLA
     else:
         gap = eol + eol
     append_bytes(dest, gap + section.encode("utf-8").replace(b"\n", eol))
+    return True
+
+
+def apply_section_refresh(project_root: Path, opts: Options, rel: str) -> bool:
+    """Replace the lab section between the markers with the current template; the rest of the file and its
+    line endings stay as they are."""
+    dest = project_root / rel
+    raw = dest.read_bytes()
+    eol = b"\r\n" if b"\r\n" in raw else b"\n"
+    text = raw.decode("utf-8").replace("\r\n", "\n")
+    bounds = section_bounds(text)
+    if bounds is None:
+        return False
+    section = claude_section(project_root, opts).strip("\n")
+    if rel != "CLAUDE.md":
+        section = section.replace("@research_lab/", "@../research_lab/")
+    new_text = text[:bounds[0]] + section + text[bounds[1]:]
+    with open(dest, "wb") as handle:
+        handle.write(new_text.encode("utf-8").replace(b"\n", eol))
     return True
 
 
@@ -1714,6 +1761,8 @@ def apply_plan(plan: Plan, project_root: Path, opts: Options) -> dict:
         "tracks": list(plan.tracks),
     }
     report["migration"] = apply_migration(project_root, plan, report["warn"])
+    if plan.section_refresh and apply_section_refresh(project_root, opts, plan.section_refresh):
+        report["migration"].append(f"rewrite {plan.section_refresh}: the lab section between the markers -> the current template")
     permissions_written = False
     items = [(rel, "create") for rel in plan.create] + [(rel, "append") for rel in plan.append]
     items.sort(key=lambda item: _order(item[0]))
