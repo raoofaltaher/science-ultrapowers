@@ -1,0 +1,3 @@
+# Project knowledge
+
+`PROJECT_BRIEF.md` is the entry point for every role: it names the project's research fields, method, data and known risks, code and quality checks, documents and manuscript, restricted folders, current phase and source classes. Any digests of the project's code, data and documents that help a role start quickly also live here. If a number in a digest or the brief disagrees with its source file, the source file wins and the discrepancy is recorded in `findings/FINDINGS_LOG.md`. The Findings & Records Curator maintains this folder; the Research Project Manager keeps the current-phase section up to date, and the Academic Supervisor approves any change to scope.

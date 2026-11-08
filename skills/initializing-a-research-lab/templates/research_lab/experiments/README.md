@@ -1,0 +1,3 @@
+# Experiments
+
+`EXPERIMENT_REGISTER.md` has one row per experiment, registered before the run starts. `preregistrations/` holds the preregistrations filed at the Preregistration stage approval (hypothesis, design, metrics, seeds where applicable, statistical test, stopping rules, splits where applicable, compute budget where applicable), and `feasibility/` holds the records of pilot and feasibility studies. The test split, where the project has one, is touched only by a preregistered final evaluation. The Lab & Experiments Lead maintains the register and the run records, with the Data & Evaluation Researcher and the Methods & Innovation Researcher co-authoring each preregistration; the Research Engineer changes the code under test.

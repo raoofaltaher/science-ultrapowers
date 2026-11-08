@@ -1,10 +1,10 @@
-# MP-xx: <method change>
+# MTH-xxxx: <method change>
 
-Motivation (evidence-card ids):
+Motivation (EVR-ids):
 Formulation (equations):
 Predicted effect (metric and direction):
 Failure modes:
 Refuting ablation:
-Cost (parameters / compute, where applicable):
+Cost (parameters and compute, where applicable):
 Implementation notes (files):
-Status: draft / approved (decision id)
+Status: draft / approved (DEC-id)

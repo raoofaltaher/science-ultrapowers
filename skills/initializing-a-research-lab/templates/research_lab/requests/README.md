@@ -1,0 +1,3 @@
+# Requests
+
+`ACCESS_REQUESTS.md` is the queue for the researcher, the Principal Researcher: requests for a paywalled full text, for a candidate DOI to be confirmed, and for approval of a peer-reviewed work without a DOI. Roles cannot ask directly, so they file a row and put an `ACCESS REQUEST REQ-xxxx` block (or the matching block for a DOI confirmation or an exception approval) at the top of their task report; the procedure is in `science-ultrapowers:requesting-reference-access`. Any role may file a request, the Research Project Manager keeps the queue current, and the researcher fulfills it and delivers files to `references/` at the project root.

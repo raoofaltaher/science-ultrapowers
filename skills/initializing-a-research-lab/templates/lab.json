@@ -5,20 +5,34 @@
   "pluginVersion": "{{PLUGIN_VERSION}}",
   "scaffoldedAt": "{{DATE}}",
   "roles": {
+    "academic-paper-author": true,
     "academic-reviewer": true,
     "academic-supervisor": true,
-    "citation-auditor": true,
+    "citation-reference-auditor": true,
     "data-evaluation-researcher": true,
     "decision-systems-specialist": true,
     "documentation-writer": true,
-    "experiments-lead": true,
-    "findings-curator": true,
-    "lab-project-manager": true,
+    "findings-records-curator": true,
+    "lab-experiments-lead": true,
     "literature-researcher": true,
-    "methods-researcher": true,
-    "paper-author": true,
+    "methods-innovation-researcher": true,
     "research-engineer": true,
-    "scientific-reviewer": true
+    "research-project-manager": true,
+    "scientific-peer-reviewer": true
+  },
+  "idPrefixes": {
+    "FND": "finding",
+    "HYP": "hypothesis",
+    "EVR": "evidence record",
+    "REV": "review",
+    "ADV": "adversarial review",
+    "REQ": "request",
+    "DEC": "decision",
+    "TASK": "task",
+    "MTH": "method proposal",
+    "RSK": "risk",
+    "EXP": "experiment",
+    "ADH": "protocol-adherence review"
   },
   "lfs": {
     "thresholdMB": 10,
@@ -28,8 +42,8 @@
     "indexBudget": 150
   },
   "connectors": [],
-  "jev": {
-    "blockedPaths": []
+  "scope": {
+    "restrictedFolders": []
   },
   "claudeScience": null,
   "permissions": {

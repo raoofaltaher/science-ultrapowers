@@ -1,3 +1,0 @@
-# Decision log (Jev)
-
-`JEV_CALLS.jsonl` has one line per Jev call, appended automatically by the Jev script, and `thresholds.json` holds the calibrated automation thresholds per use case. An empty `thresholds.json` (`{}`) means no automation: every Jev answer goes to specialist review, and an entry is added only after a pre-registered calibration study and with the Supervisor's decision id in `approved_by`. A Jev answer is never evidence and never passes a gate; the rules are in `science-ultrapowers:deciding-with-jev`. The Decision Systems Specialist maintains this folder and reviews the log each calibration cycle; the Academic Supervisor approves every threshold, and the Findings & Records Curator summarises Jev usage at each lab meeting.

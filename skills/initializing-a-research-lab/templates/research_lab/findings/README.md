@@ -1,0 +1,3 @@
+# Findings
+
+`FINDINGS_LOG.md` holds one append-only row per finding, `KEY_RESULTS.md` lists the results every document quotes, and `LAB_NOTEBOOK.md` keeps the dated, append-only record of each working session, failures and negative results included. Every number in any lab document is quoted from here, never retyped from memory; the schema is in `science-ultrapowers:recording-findings`. The Findings & Records Curator maintains the log and verifies each row by recomputing it; the Data & Evaluation Researcher, the Literature Researcher and the Lab & Experiments Lead submit findings and write their own notebook entries.

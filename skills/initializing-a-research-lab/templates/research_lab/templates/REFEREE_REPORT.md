@@ -1,4 +1,4 @@
-# RV-xxxx Referee report on <artifact>
+# REV-xxxx Referee report on <artifact>
 
 Summary of the claims:
 
@@ -14,4 +14,4 @@ Reproducibility checklist: code / config / data / seeds (where applicable) / che
 
 Citation check: DOIs re-checked n/n; claim-source mismatches:
 
-Recommendation: accept / minor / major / reject
+Recommendation: accept / minor revision / major revision / reject
