@@ -25,3 +25,7 @@ The G4 sentence now reads "For claims a manuscript or thesis will use, Superviso
 ## After the terminology standard (0.2.0), scenario v2 (Haiku 5.5): 1/1 pass
 
 The skills now use the lab's terminology standard (0.2.0). Run v2-with-skill-G, on the prompt reworded only in the old terms (task and pass criteria unchanged): PASS (FND-0031 not edited except Status to "superseded by FND-<next>" after the new row exists; the engineer's "verified" treated as a bare claim; the recompute named: file, method, the run-19 control; the new row tentative pending the Curator; KEY_RESULTS.md changed only after verification). [Run](runs/v2-with-skill-G.md).
+
+## After the lifecycle (0.2.0, phase 1), scenario v2 (Haiku 5.5): 1/1 pass
+
+The findings log gained its `Basis` column and the register its `Input checksums` field. Run v2-with-skill-H, on run G's prompt (task and pass criteria unchanged): PASS (recompute from outputs/run-19b/metrics.csv before any record; a new tentative row with basis exploratory; FND-0031 only its status cell to refuted or superseded by FND-0032; KEY_RESULTS.md unchanged until the Curator verifies; the engineer's 'verified' rejected as a check) [Run](runs/v2-with-skill-H.md).

@@ -24,3 +24,7 @@ The hand-off block gained its `Findings proposed`, `Memories proposed` and `Revi
 # After the terminology standard (0.2.0) (Haiku 5.5): 1/1 pass
 
 The skills now use the lab's terminology standard (0.2.0). Run F, on the prompt reworded only in the old terms (task and pass criteria unchanged): PASS (the Academic Paper Author is refused as reviewer of their own section; the re-verification, the adversarial review and the citation audit go to non-authors with full task assignment blocks (id, stage, owner, reviewer, due, objective, inputs, deliverables, completion criteria, restricted folders, constraints); a task report block is required back; src/train.py and paper/ left to the researcher; only research_lab/ staged after git status). [Run](runs/with-skill-F.md).
+
+# After the lifecycle (0.2.0, phase 1) (Haiku 5.5): 1/1 pass
+
+The stage table, the tracks paragraph, the routing rows for the three lifecycle skills and the binding rules are new. Run G, on run F's prompt (task and pass criteria unchanged): PASS (the Academic Paper Author never reviews its own section; the Academic Reviewer, the Curator and the Citation & Reference Auditor assigned with full task assignment blocks; a task report required back; src/train.py and paper/ left to the researcher; only research_lab/ committed after git status; the adversarial review queued before any approval) [Run](runs/with-skill-G.md).
