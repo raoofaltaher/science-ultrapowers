@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # SessionStart(compact) hook for the science-ultrapowers plugin: rescue
-# lab-worthy learnings right after context compaction. Prints nothing and
+# lab-worthy learnings right after the conversation was shortened (Claude
+# Code's compact event). Prints nothing and
 # exits 0 unless a lab memory store (research_lab/memory/MEMORY.md) exists at
 # or above the working directory. When the input carries a "source" field, any
 # value other than "compact" also exits silently, so a registration without a
@@ -17,7 +18,7 @@ esac
 # shellcheck source=lib/memory-common
 . "${SCRIPT_DIR}/lib/memory-common"
 
-if nudge_off; then
+if reminder_off; then
   exit 0
 fi
 
@@ -32,5 +33,5 @@ cwd="$(hook_cwd "$input")"
 
 store="$(find_memory_store "$cwd")" || exit 0
 
-emit_context "SessionStart" "Context was just compacted. If lab-worthy learnings surfaced earlier and are not yet saved to ${store}, save them now with science-ultrapowers:remembering-for-the-lab."
+emit_context "SessionStart" "Lab memory reminder: this session continues after the conversation was shortened. If lab-worthy learnings surfaced earlier and are not yet saved to ${store}, save them now with science-ultrapowers:remembering-for-the-lab."
 exit 0

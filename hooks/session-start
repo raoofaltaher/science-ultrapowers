@@ -19,15 +19,15 @@ case "$0" in
 esac
 PLUGIN_ROOT="${SCRIPT_DIR}/.."
 
-# Read the bootstrap skill content with the read builtin (no cat, for the same
+# Read the session primer skill content with the read builtin (no cat, for the same
 # PATH-independence reason, and no $(< file) subshell). read returns 1 at end
 # of file, hence || true; the loop drops trailing newlines as $(< file) did.
 skill_md="${PLUGIN_ROOT}/skills/using-science-ultrapowers/SKILL.md"
-bootstrap_content="Error reading using-science-ultrapowers skill"
+primer_content="Error reading using-science-ultrapowers skill"
 if [ -r "$skill_md" ]; then
-  IFS= read -r -d '' bootstrap_content < "$skill_md" || true
-  while [[ $bootstrap_content == *$'\n' ]]; do
-    bootstrap_content="${bootstrap_content%$'\n'}"
+  IFS= read -r -d '' primer_content < "$skill_md" || true
+  while [[ $primer_content == *$'\n' ]]; do
+    primer_content="${primer_content%$'\n'}"
   done
 fi
 
@@ -42,23 +42,24 @@ escape_for_json() {
     s="${s//$'\n'/\\n}"
     s="${s//$'\r'/\\r}"
     s="${s//$'\t'/\\t}"
-    bootstrap_escaped="$s"
+    primer_escaped="$s"
 }
 
-# One extra line when the lab in or above the working directory was scaffolded
-# by another plugin version. Silent otherwise (hooks/lib/lab-version).
+# Extra lines when the lab in or above the working directory was set up by
+# another plugin version, or still uses the 0.1 layout (numbered folders).
+# Silent otherwise (hooks/lib/lab-version).
 lab_notice=""
 if [ -r "${SCRIPT_DIR}/lib/lab-version" ]; then
   # shellcheck source=lib/lab-version
   . "${SCRIPT_DIR}/lib/lab-version"
-  lab_scaffold_notice "$PWD" "${PLUGIN_ROOT}/.claude-plugin/plugin.json" || lab_notice=""
+  lab_setup_notice "$PWD" "${PLUGIN_ROOT}/.claude-plugin/plugin.json" || lab_notice=""
 fi
 if [ -n "$lab_notice" ]; then
-  bootstrap_content="${bootstrap_content}"$'\n\n'"${lab_notice}"
+  primer_content="${primer_content}"$'\n\n'"${lab_notice}"
 fi
 
-escape_for_json "$bootstrap_content"
-session_context="<EXTREMELY_IMPORTANT>\nYou have science-ultrapowers.\n\n**Below is the full content of your 'science-ultrapowers:using-science-ultrapowers' skill - your introduction to using skills. For all other skills, use the 'Skill' tool:**\n\n${bootstrap_escaped}\n</EXTREMELY_IMPORTANT>"
+escape_for_json "$primer_content"
+session_context="<EXTREMELY_IMPORTANT>\nYou have science-ultrapowers.\n\n**Below is the full content of your 'science-ultrapowers:using-science-ultrapowers' skill, the session primer - your introduction to using skills. For all other skills, use the 'Skill' tool:**\n\n${primer_escaped}\n</EXTREMELY_IMPORTANT>"
 
 # Claude Code reads hookSpecificOutput.additionalContext; it is the only shape this plugin emits.
 #

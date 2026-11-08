@@ -23,29 +23,33 @@ mkdir -p "$tmp/proj/research_lab/memory" "$tmp/proj/src/deep" "$tmp/empty"
 printf '# Lab memory: index\n' > "$tmp/proj/research_lab/memory/MEMORY.md"
 before=$(find "$tmp" | sort)
 
-# (a) nudge from a deep directory
+# (a) the reminder from a deep directory
 out=$(printf '{"cwd":"%s"}' "$tmp/proj/src/deep" | bash hooks/memory-nudge)
-echo "$out" | jq -e '.hookSpecificOutput.hookEventName == "UserPromptSubmit"' >/dev/null || fail "nudge is not a UserPromptSubmit hookSpecificOutput"
+echo "$out" | jq -e '.hookSpecificOutput.hookEventName == "UserPromptSubmit"' >/dev/null || fail "reminder is not a UserPromptSubmit hookSpecificOutput"
 ctx=$(echo "$out" | jq -r '.hookSpecificOutput.additionalContext')
-case "$ctx" in *"science-ultrapowers:remembering-for-the-lab"*) ;; *) fail "nudge does not name the skill";; esac
-case "$ctx" in *"../../research_lab/memory/"*) ;; *) fail "nudge does not carry the relative store path";; esac
-case "$ctx" in *"gate it and save it"*) ;; *) fail "nudge does not tell the session to gate and save";; esac
-echo "$out" | jq -e 'has("additionalContext") or has("additional_context") | not' >/dev/null || fail "nudge carries a top-level context key"
+case "$ctx" in "Lab memory reminder: "*) ;; *) fail "reminder does not start with 'Lab memory reminder: '";; esac
+case "$ctx" in *"science-ultrapowers:remembering-for-the-lab"*) ;; *) fail "reminder does not name the skill";; esac
+case "$ctx" in *"../../research_lab/memory/"*) ;; *) fail "reminder does not carry the relative store path";; esac
+case "$ctx" in *"admission criteria"*) ;; *) fail "reminder does not point to the admission criteria";; esac
+case "$ctx" in *"gate it"*|*nudge*|*Nudge*) fail "reminder still uses an old word: $ctx";; esac
+echo "$out" | jq -e 'has("additionalContext") or has("additional_context") | not' >/dev/null || fail "reminder carries a top-level context key"
 
 # (b) no store, and a cwd that does not exist: silent
 rc=0; out=$(printf '{"cwd":"%s"}' "$tmp/empty" | bash hooks/memory-nudge) || rc=$?
-[ "$rc" -eq 0 ] || fail "nudge exit $rc outside a store"
-[ -z "$out" ] || fail "nudge printed outside a store"
+[ "$rc" -eq 0 ] || fail "reminder exit $rc outside a store"
+[ -z "$out" ] || fail "reminder printed outside a store"
 rc=0; out=$(printf '{"cwd":"%s"}' "$tmp/nope" | bash hooks/memory-nudge) || rc=$?
-[ "$rc" -eq 0 ] || fail "nudge exit $rc for a missing cwd"
-[ -z "$out" ] || fail "nudge printed for a missing cwd"
+[ "$rc" -eq 0 ] || fail "reminder exit $rc for a missing cwd"
+[ -z "$out" ] || fail "reminder printed for a missing cwd"
 
 # (c) post-compaction hook
 for input in "$(printf '{"cwd":"%s","source":"compact"}' "$tmp/proj")" "$(printf '{"cwd":"%s"}' "$tmp/proj")"; do
   out=$(printf '%s' "$input" | bash hooks/memory-postcompact)
   echo "$out" | jq -e '.hookSpecificOutput.hookEventName == "SessionStart"' >/dev/null || fail "postcompact is not a SessionStart hookSpecificOutput"
   ctx=$(echo "$out" | jq -r '.hookSpecificOutput.additionalContext')
-  case "$ctx" in *compacted*) ;; *) fail "postcompact context lacks 'compacted'";; esac
+  case "$ctx" in "Lab memory reminder: "*) ;; *) fail "postcompact does not start with 'Lab memory reminder: '";; esac
+  case "$ctx" in *"after the conversation was shortened"*) ;; *) fail "postcompact context lacks 'after the conversation was shortened'";; esac
+  case "$ctx" in *compacted*|*compaction*|*Compacted*) fail "postcompact still says compacted: $ctx";; esac
   case "$ctx" in *"science-ultrapowers:remembering-for-the-lab"*) ;; *) fail "postcompact does not name the skill";; esac
   case "$ctx" in *"research_lab/memory/"*) ;; *) fail "postcompact does not name the store";; esac
 done
@@ -57,20 +61,35 @@ for src in startup resume clear; do
   [ -z "$out" ] || fail "postcompact printed for source $src"
 done
 
-# (e) the off switch governs both hooks
+# (e) the off switch governs both hooks: the new name and the old name
+for var in SCIENCE_ULTRAPOWERS_NO_MEMORY_REMINDER SCIENCE_ULTRAPOWERS_NO_MEMORY_NUDGE; do
+  rc=0; out=$(printf '{"cwd":"%s"}' "$tmp/proj" | env "$var=1" bash hooks/memory-nudge) || rc=$?
+  [ "$rc" -eq 0 ] && [ -z "$out" ] || fail "reminder ignored $var=1"
+  rc=0; out=$(printf '{"cwd":"%s","source":"compact"}' "$tmp/proj" | env "$var=1" bash hooks/memory-postcompact) || rc=$?
+  [ "$rc" -eq 0 ] && [ -z "$out" ] || fail "postcompact ignored $var=1"
+  for v in 0 false OFF no ""; do
+    out=$(printf '{"cwd":"%s"}' "$tmp/proj" | env "$var=$v" bash hooks/memory-nudge)
+    echo "$out" | jq -e '.hookSpecificOutput.hookEventName == "UserPromptSubmit"' >/dev/null || fail "reminder stayed silent with $var='$v'"
+  done
+done
+# either variable alone turns it off, even when the other says on
+rc=0; out=$(printf '{"cwd":"%s"}' "$tmp/proj" | env SCIENCE_ULTRAPOWERS_NO_MEMORY_REMINDER=0 SCIENCE_ULTRAPOWERS_NO_MEMORY_NUDGE=1 bash hooks/memory-nudge) || rc=$?
+[ "$rc" -eq 0 ] && [ -z "$out" ] || fail "reminder ignored the old variable beside a new one set to 0"
+rc=0; out=$(printf '{"cwd":"%s"}' "$tmp/proj" | env SCIENCE_ULTRAPOWERS_NO_MEMORY_REMINDER=1 SCIENCE_ULTRAPOWERS_NO_MEMORY_NUDGE=0 bash hooks/memory-nudge) || rc=$?
+[ "$rc" -eq 0 ] && [ -z "$out" ] || fail "reminder ignored the new variable beside an old one set to 0"
 rc=0; out=$(printf '{"cwd":"%s"}' "$tmp/proj" | SCIENCE_ULTRAPOWERS_NO_MEMORY_NUDGE=1 bash hooks/memory-nudge) || rc=$?
-[ "$rc" -eq 0 ] && [ -z "$out" ] || fail "nudge ignored the off switch"
+[ "$rc" -eq 0 ] && [ -z "$out" ] || fail "reminder ignored the off switch"
 rc=0; out=$(printf '{"cwd":"%s","source":"compact"}' "$tmp/proj" | SCIENCE_ULTRAPOWERS_NO_MEMORY_NUDGE=1 bash hooks/memory-postcompact) || rc=$?
 [ "$rc" -eq 0 ] && [ -z "$out" ] || fail "postcompact ignored the off switch"
 out=$(printf '{"cwd":"%s"}' "$tmp/proj" | SCIENCE_ULTRAPOWERS_NO_MEMORY_NUDGE=0 bash hooks/memory-nudge)
-echo "$out" | jq -e '.hookSpecificOutput.hookEventName == "UserPromptSubmit"' >/dev/null || fail "nudge stayed silent with the switch set to 0"
+echo "$out" | jq -e '.hookSpecificOutput.hookEventName == "UserPromptSubmit"' >/dev/null || fail "reminder stayed silent with the switch set to 0"
 for v in false OFF; do
   out=$(printf '{"cwd":"%s"}' "$tmp/proj" | SCIENCE_ULTRAPOWERS_NO_MEMORY_NUDGE=$v bash hooks/memory-nudge)
-  echo "$out" | jq -e '.hookSpecificOutput.hookEventName == "UserPromptSubmit"' >/dev/null || fail "nudge stayed silent with the switch set to $v"
+  echo "$out" | jq -e '.hookSpecificOutput.hookEventName == "UserPromptSubmit"' >/dev/null || fail "reminder stayed silent with the switch set to $v"
 done
 for v in yes 1; do
   rc=0; out=$(printf '{"cwd":"%s"}' "$tmp/proj" | SCIENCE_ULTRAPOWERS_NO_MEMORY_NUDGE=$v bash hooks/memory-nudge) || rc=$?
-  [ "$rc" -eq 0 ] && [ -z "$out" ] || fail "nudge ignored the off switch set to $v"
+  [ "$rc" -eq 0 ] && [ -z "$out" ] || fail "reminder ignored the off switch set to $v"
 done
 
 # (f) registration
@@ -85,16 +104,16 @@ if command -v cygpath >/dev/null 2>&1; then
   esc=${win//\\/\\\\}
   out=$(printf '{"cwd":"%s"}' "$esc" | bash hooks/memory-nudge)
   ctx=$(echo "$out" | jq -r '.hookSpecificOutput.additionalContext')
-  case "$ctx" in *"research_lab/memory/"*) ;; *) fail "nudge ignored a Windows-form cwd";; esac
+  case "$ctx" in *"research_lab/memory/"*) ;; *) fail "reminder ignored a Windows-form cwd";; esac
 fi
 
 # (h) through the wrapper
 out=$(printf '{"cwd":"%s"}' "$tmp/proj" | bash hooks/run-hook.cmd memory-nudge)
-echo "$out" | jq -e '.hookSpecificOutput.hookEventName == "UserPromptSubmit"' >/dev/null || fail "wrapper did not run the nudge"
+echo "$out" | jq -e '.hookSpecificOutput.hookEventName == "UserPromptSubmit"' >/dev/null || fail "wrapper did not run the reminder"
 
 # (i) empty stdin falls back to $PWD
 out=$(cd "$tmp/proj" && bash "$root/hooks/memory-nudge" < /dev/null)
-echo "$out" | jq -e '.hookSpecificOutput.hookEventName == "UserPromptSubmit"' >/dev/null || fail "nudge ignored \$PWD on empty stdin"
+echo "$out" | jq -e '.hookSpecificOutput.hookEventName == "UserPromptSubmit"' >/dev/null || fail "reminder ignored \$PWD on empty stdin"
 
 # (j) the hooks never write
 after=$(find "$tmp" | sort)
@@ -135,13 +154,13 @@ if make_link "$tmp/links/deep" "$tmp/proj/src/deep" && make_link "$tmp/links/pro
   # (k) the junction points below the project: only the physical path finds it
   out=$(printf '{"cwd":"%s"}' "$tmp/links/deep" | bash hooks/memory-nudge)
   ctx=$(echo "$out" | jq -r '.hookSpecificOutput.additionalContext')
-  case "$ctx" in *"$abs"*) ;; *) fail "nudge through a junction lacks the absolute store path $abs (got: $ctx)";; esac
-  case "$ctx" in *"../../research_lab/memory/"*) fail "nudge through a junction counted ../ against the physical path";; esac
+  case "$ctx" in *"$abs"*) ;; *) fail "reminder through a junction lacks the absolute store path $abs (got: $ctx)";; esac
+  case "$ctx" in *"../../research_lab/memory/"*) fail "reminder through a junction counted ../ against the physical path";; esac
   # (l) the junction points at the project: the logical walk finds it
   out=$(printf '{"cwd":"%s"}' "$tmp/links/projlink/src/deep" | bash hooks/memory-nudge)
   ctx=$(echo "$out" | jq -r '.hookSpecificOutput.additionalContext')
-  case "$ctx" in *"../../research_lab/memory/"*) ;; *) fail "nudge through a project junction lacks the relative store path (got: $ctx)";; esac
-  case "$ctx" in *"$abs"*) fail "nudge through a project junction used an absolute path";; esac
+  case "$ctx" in *"../../research_lab/memory/"*) ;; *) fail "reminder through a project junction lacks the relative store path (got: $ctx)";; esac
+  case "$ctx" in *"$abs"*) fail "reminder through a project junction used an absolute path";; esac
 else
   echo "memory-hooks: junction cases skipped"
 fi

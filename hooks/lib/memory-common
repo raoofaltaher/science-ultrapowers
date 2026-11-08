@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Shared helpers for hooks/memory-nudge and hooks/memory-postcompact. Sourced
-# by those two scripts, never executed.
+# Shared helpers for the two memory reminder hooks, hooks/memory-nudge and hooks/memory-postcompact (the file
+# names stay; the lines they print are the lab memory reminder). Sourced by
+# those two scripts, never executed.
 #
-# The nudge hook runs on every prompt in every repository, so these helpers
+# The reminder hook runs on every prompt in every repository, so these helpers
 # stay in bash: no node, and no fork per directory level.
 
 # read_hook_input: the hook's stdin JSON. Waits at most one second, so a
@@ -67,16 +68,21 @@ hook_cwd() {
   printf '%s' "$dir"
 }
 
-# nudge_off: returns 0 (off) when SCIENCE_ULTRAPOWERS_NO_MEMORY_NUDGE is set
-# to anything except empty, 0, false, no or off (case-insensitive); in those
-# cases, and when it is unset, it returns 1 and the hooks stay on. It governs
-# both memory hooks.
-nudge_off() {
+# reminder_off: returns 0 (off) when SCIENCE_ULTRAPOWERS_NO_MEMORY_REMINDER, or
+# the older SCIENCE_ULTRAPOWERS_NO_MEMORY_NUDGE, is set to anything except
+# empty, 0, false, no or off (case-insensitive); either one alone turns the
+# hooks off. In those cases, and when both are unset, it returns 1 and the
+# hooks stay on. It governs both memory hooks.
+reminder_off() {
+  local value
   # Case patterns, not ${var,,}: macOS ships bash 3.2.
-  case "${SCIENCE_ULTRAPOWERS_NO_MEMORY_NUDGE:-}" in
-    "" | 0 | [Ff][Aa][Ll][Ss][Ee] | [Nn][Oo] | [Oo][Ff][Ff]) return 1 ;;
-  esac
-  return 0
+  for value in "${SCIENCE_ULTRAPOWERS_NO_MEMORY_REMINDER:-}" "${SCIENCE_ULTRAPOWERS_NO_MEMORY_NUDGE:-}"; do
+    case "$value" in
+      "" | 0 | [Ff][Aa][Ll][Ss][Ee] | [Nn][Oo] | [Oo][Ff][Ff]) ;;
+      *) return 0 ;;
+    esac
+  done
+  return 1
 }
 
 # find_memory_store <dir>: prints where the nearest research_lab/memory/ that

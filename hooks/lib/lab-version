@@ -3,20 +3,26 @@
 #
 # session-start runs on every session start and forks nothing, so this file is
 # bash builtins only: string slicing for the walk up the folders, the read
-# builtin and [[ =~ ]] for the two version strings.
+# builtin and [[ =~ ]] for the two version strings, a glob for the numbered
+# folders of the 0.1 layout.
 
-# lab_scaffold_notice <start dir> <plugin.json path>: sets lab_notice to the
-# one-line upgrade notice when research_lab/lab.json at or above <start dir>
-# carries a pluginVersion that differs from the plugin's own version, else to
-# the empty string. Silent on every other path: no lab, an unreadable file, a
-# missing key.
-lab_scaffold_notice() {
-  local dir="$1" manifest="$2" lab_json="" content="" lab_v="" plugin_v=""
+# lab_setup_notice <start dir> <plugin.json path>: sets lab_notice to the
+# notice lines for the lab at or above <start dir> (the nearest
+# research_lab/lab.json), else to the empty string:
+#   - the version line, when lab.json carries a pluginVersion that differs from
+#     the plugin's own version;
+#   - the old-layout line, when a numbered folder such as 02_findings_ledger/
+#     exists under research_lab/ (the 0.1 layout).
+# Both lines, version first, when both apply. Silent on every other path: no
+# lab, an unreadable file, a missing key.
+lab_setup_notice() {
+  local dir="$1" manifest="$2" lab_json="" lab_dir="" content="" lab_v="" plugin_v="" numbered=""
   lab_notice=""
   dir="${dir//\\//}"
   while :; do
     if [ -f "${dir%/}/research_lab/lab.json" ]; then
       lab_json="${dir%/}/research_lab/lab.json"
+      lab_dir="${dir%/}/research_lab"
       break
     fi
     case "$dir" in
@@ -25,14 +31,28 @@ lab_scaffold_notice() {
       *) return 0 ;;
     esac
   done
-  [ -r "$lab_json" ] && [ -r "$manifest" ] || return 0
-  IFS= read -r -d '' content < "$lab_json" || true
-  [[ $content =~ \"pluginVersion\"[[:space:]]*:[[:space:]]*\"([^\"]*)\" ]] || return 0
-  lab_v="${BASH_REMATCH[1]}"
-  content=""
-  IFS= read -r -d '' content < "$manifest" || true
-  [[ $content =~ \"version\"[[:space:]]*:[[:space:]]*\"([^\"]*)\" ]] || return 0
-  plugin_v="${BASH_REMATCH[1]}"
-  [ -n "$lab_v" ] && [ -n "$plugin_v" ] && [ "$lab_v" != "$plugin_v" ] || return 0
-  lab_notice="The lab scaffold was written by plugin ${lab_v}; this plugin is ${plugin_v}: run science-ultrapowers:initializing-a-research-lab to upgrade."
+  if [ -r "$lab_json" ] && [ -r "$manifest" ]; then
+    IFS= read -r -d '' content < "$lab_json" || true
+    if [[ $content =~ \"pluginVersion\"[[:space:]]*:[[:space:]]*\"([^\"]*)\" ]]; then
+      lab_v="${BASH_REMATCH[1]}"
+      content=""
+      IFS= read -r -d '' content < "$manifest" || true
+      if [[ $content =~ \"version\"[[:space:]]*:[[:space:]]*\"([^\"]*)\" ]]; then
+        plugin_v="${BASH_REMATCH[1]}"
+        if [ -n "$lab_v" ] && [ -n "$plugin_v" ] && [ "$lab_v" != "$plugin_v" ]; then
+          lab_notice="The lab set-up was written by plugin ${lab_v}; this plugin is ${plugin_v}: run science-ultrapowers:initializing-a-research-lab to upgrade."
+        fi
+      fi
+    fi
+  fi
+  for numbered in "${lab_dir}"/[0-9][0-9]_*; do
+    if [ -d "$numbered" ]; then
+      if [ -n "$lab_notice" ]; then
+        lab_notice="${lab_notice}"$'\n'
+      fi
+      lab_notice="${lab_notice}this lab uses the 0.1 layout; run science-ultrapowers:initializing-a-research-lab to migrate it"
+      break
+    fi
+  done
+  return 0
 }
