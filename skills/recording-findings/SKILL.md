@@ -19,13 +19,14 @@ A NUMBER NOT IN THE FINDINGS LOG IS NOT A FINDING; A CHECK THAT DOES NOT NAME IT
 
 ## Findings log
 
-`research_lab/findings/FINDINGS_LOG.md`: one row per finding, append-only. The header is `| FND-id (finding) | Statement | Type | Evidence | Status | Recorded | Verified | Scope and caveats |`.
+`research_lab/findings/FINDINGS_LOG.md`: one row per finding, append-only. The header is `| FND-id (finding) | Statement | Type | Basis | Evidence | Status | Recorded | Verified | Scope and caveats |`.
 
 | Field | Content |
 |---|---|
 | `FND-id` | `FND-0001`, sequential, one counter per lab. Rows written under the 0.1 layout keep their old ids (`F-0001`), which stay valid |
 | Statement | One precise sentence including the number and its definition (metric, partition, seed count, confidence interval (CI)) |
 | Type | `experimental`, `literature`, `code inspection`, `data inspection` or `document inspection` |
+| Basis | `confirmatory` or `exploratory`; see Basis of a finding below. A row written before the column existed reads as `exploratory` |
 | Evidence | Experimental: experiment id (EXP-id) and metrics file path (and row or epoch). Literature: source id and evidence record id (EVR-id). Inspection: file path and line or cell |
 | Status | `tentative`, `verified`, `superseded by FND-xxxx` or `refuted by FND-xxxx` |
 | Recorded and verified | Date and role for each |
@@ -41,6 +42,21 @@ Transitions:
 
 A number seen only in a console log, a progress bar, a report or another role's task report has no row, not even a `tentative` one. Recompute it from the metrics file yourself (see Checks before recording); the recomputed number enters as `tentative`, never `verified`. `tentative` means you recomputed it; it never means "not yet checked".
 
+## Basis of a finding
+
+A finding is confirmatory only with a registered protocol whose registration check is clear and a run that matched it. Everything else is exploratory.
+
+The Findings & Records Curator sets the basis. For `confirmatory` it needs two files, both clear: the registration check saved as an artifact (`science-ultrapowers:preregistering-the-protocol`) and the protocol-adherence review of the run. A missing file, an `unprovable` item or an adherence issue makes the row `exploratory`. A deviation from the registered protocol makes the affected finding exploratory; the row says so in its caveats. A basis is never relabeled upward after the fact.
+
+| Claim | Requires | Not sufficient |
+|---|---|---|
+| A null result | An effect size and an interval, read against the smallest effect size of interest in the protocol | "Not significant", or a p-value alone |
+| Model quality | A held-out metric on the registered held-out test set, used once | A validation score, or a test score after tuning |
+| "Reproduces" | A re-run from the raw inputs with the recorded seed that matches the recorded number | Loading a saved output, or a cached intermediate |
+| Confirmatory | A registered protocol, a clear registration check and a clear adherence review | A prediction that was "obvious", or a plan not registered before the runs |
+
+A null result needs an effect size and an interval. A row that states a null without both stays `tentative` and says what is missing.
+
 ## Key results table
 
 `research_lab/findings/KEY_RESULTS.md` lists the numbers documents quote (primary metrics, ratios, dataset counts, parameter counts): `name | value | exact definition | FND-id | allowed wording`.
@@ -53,7 +69,7 @@ When documents disagree on a number, the Curator traces each variant to its sour
 
 ## Experiment register
 
-`research_lab/experiments/EXPERIMENT_REGISTER.md`: one row per experiment. The header is `| EXP-id (experiment) | Preregistration | Hypothesis | Code and config | Seeds and partitions | Environment | Status | Outputs | Deviations | Findings |`.
+`research_lab/experiments/EXPERIMENT_REGISTER.md`: one row per experiment. The header is `| EXP-id (experiment) | Preregistration | Hypothesis | Code and config | Seeds and partitions | Environment | Input checksums | Status | Outputs | Deviations | Findings |`.
 
 | Field | Content |
 |---|---|
@@ -63,7 +79,8 @@ When documents disagree on a number, the Curator traces each variant to its sour
 | Code and config | Git commit, Secure Hash Algorithm 256 (SHA-256) hash of the config file, overrides |
 | Seeds and partitions | Seed list; partitions used (test only for the preregistered final evaluation) |
 | Environment | Lock-file hash, framework and CUDA (Compute Unified Device Architecture) versions, graphics processing unit (GPU) |
-| Status | `planned`, `registered`, `running`, `completed`, `failed` or `aborted` (with the reason) |
+| Input checksums | A Secure Hash Algorithm 256 (SHA-256) checksum for every raw input file, recorded before the run; the registration check's `inputs` item compares against it. Rows written before the field existed stay empty |
+| Status | `planned`, `feasibility`, `registered`, `running`, `completed`, `failed` or `aborted` (with the reason); `feasibility` marks a pilot run, which never supports a confirmatory finding |
 | Outputs | Run directory, checkpoints, metrics files, logs, tuning study |
 | Deviations | Anything that differed from the preregistration |
 | Findings | FND-ids derived from this run |
@@ -72,6 +89,7 @@ When documents disagree on a number, the Curator traces each variant to its sour
 
 - **Experimental:** open the metrics file and recompute the number rather than copying it from a log line or a report.
 - **Literature:** the finding must point to an evidence record whose DOI status is `matched` and whose quote you re-read in the full text.
+- **Confirmatory:** open the registration check's artifact and the adherence review, and read both verdicts at recording time; a verdict quoted from a task report is not a check.
 - **Check of a file:** cite the file path and line or cell, and re-open the file at recording time.
 
 ## Naming the check
@@ -101,6 +119,7 @@ Change findings log files with the file tools. Recompute with a short `python -c
 | "I'll record it after the run finishes" | Negative results are forgotten by then. Write the notebook entry now. |
 | "I'll add a candidate row until it's checked" | There is no such status. `tentative` after recomputing, nothing before. |
 | "I'll add it as `tentative` from the task report and let the Curator check it" | `tentative` is a number you recomputed. Open the metrics file and recompute first; until then, no row. |
+| "It would have been my prediction anyway" | Then it cost nothing to register. It was not registered, so it is exploratory. |
 | "Editing the verified row is quicker" | Never edited. Write the new row; mark the old `superseded by FND-new`. |
 | "Single seed is fine for now" | Fine as `tentative` with "single seed" in the caveats. Never `verified`. |
 | "The report I'm summarizing already verified it" | A report is not the file. Re-open the file and recompute. |
@@ -115,6 +134,8 @@ Change findings log files with the file tools. Recompute with a short `python -c
 - "Verified" with no file, method and reference
 - An edit to a row that is already `verified`
 - Two documents quoting different values for one number
+- A `confirmatory` row with no registration check artifact or no adherence review behind it
+- A null result stated without an effect size and an interval
 
 **Any of these: stop, recompute from the file, and record only what the check supports.**
 
@@ -125,4 +146,5 @@ Change findings log files with the file tools. Recompute with a short `python -c
 - [ ] No `verified` row was edited
 - [ ] Single-seed, dev-only and partial-run rows are `tentative` with caveats
 - [ ] Every "verified" I wrote names files, method and reference
+- [ ] Every row has a basis; `confirmatory` only with the two clear files
 - [ ] The key results table and the notebook entry are updated
