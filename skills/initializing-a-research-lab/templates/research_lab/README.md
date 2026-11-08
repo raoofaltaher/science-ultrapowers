@@ -14,7 +14,7 @@ This folder is the record of the research lab that works on {{NAME}}{{DESCRIPTIO
 | `planning/` | the work plan `WORK_PLAN.md`, `ROADMAP_STATUS.md`, `RISK_REGISTER.md` |
 | `automation/` | `JEV_CALLS.jsonl` (every Jev call) and `thresholds.json` (the thresholds the Academic Supervisor approved for automation) |
 | `tool_vetting/` | vetting records for any third-party skill added to the lab |
-| `templates/` | evidence record, hypothesis record, preregistration, internal review, referee report, citation audit, task report, method proposal, adversarial review, meeting notes |
+| `templates/` | evidence record, hypothesis record, preregistration, internal review, referee report, citation audit, task report, method proposal, adversarial review, protocol-adherence review, response matrix, synthesis matrix, archive manifest, meeting notes |
 | `artifacts/` | the versioned artifact archive (`archive/`) |
 | `memory/` | lab memory: the `MEMORY.md` index, `project/` and `artifact/` entries |
 | `.working/` | working notes only; ignored by git and deleted at each session close |

@@ -11,9 +11,11 @@ Grading:
 
 Objections (strongest good-faith case against the claim):
 
-| # | Objection | Type (alternative explanation / confound / leakage / split or metric artifact / seed or confidence-interval fragility / overreach) | Grade (blocking / major / minor) | What would settle it |
+| # | Objection | Type (alternative explanation / confound / leakage / split or metric artifact / seed or confidence-interval fragility / overreach / unchecked assumptions / researcher degrees of freedom / multiplicity / reproducibility from raw and seed) | Grade (blocking / major / minor) | What would settle it |
 |---|---|---|---|---|
 | 1 | | | | |
+
+What would change your mind: the evidence or the change that would make you withdraw your strongest objection.
 
 Author response (per objection):
 

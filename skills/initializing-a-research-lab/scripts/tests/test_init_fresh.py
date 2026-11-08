@@ -132,7 +132,7 @@ class TestFreshFolder(FreshFolderCase):
         lab = self.proj / "research_lab"
         for folder in RECORD_FOLDERS:
             self.assertTrue((lab / folder).is_dir(), folder)
-        self.assertEqual(len(list((lab / "templates").iterdir())), 12)
+        self.assertEqual(len(list((lab / "templates").iterdir())), 16)
         self.assertTrue((lab / "artifacts" / "archive").is_dir())
         self.assertTrue((lab / "memory" / "project").is_dir())
         self.assertTrue((lab / "memory" / "artifact").is_dir())

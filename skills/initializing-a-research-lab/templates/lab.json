@@ -41,6 +41,11 @@
   "memory": {
     "indexBudget": 150
   },
+  "tracks": [],
+  "preregistration": {
+    "registrationTrailer": "Preregistration",
+    "timestampTrailer": "Preregistration-Timestamp"
+  },
   "connectors": [],
   "scope": {
     "restrictedFolders": []

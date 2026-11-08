@@ -32,6 +32,8 @@ new_paths=(
   templates/CITATION_AUDIT.md templates/ADVERSARIAL_REVIEW.md templates/EVIDENCE_RECORD.md
   templates/HYPOTHESIS_RECORD.md templates/TASK_REPORT.md templates/METHOD_PROPOSAL.md
   templates/PREREGISTRATION.md templates/REFEREE_REPORT.md templates/INTERNAL_REVIEW.md
+  templates/PROTOCOL_ADHERENCE_REVIEW.md templates/RESPONSE_MATRIX.md
+  templates/SYNTHESIS_MATRIX.md templates/ARCHIVE_MANIFEST.md
 )
 for p in "${new_paths[@]}"; do
   [ -e "$T/$p" ] || bad "missing $T/$p"
@@ -68,8 +70,8 @@ has_word() {
 }
 
 # ---- the headers, exactly -------------------------------------------------------
-has_line "$T/findings/FINDINGS_LOG.md" '| FND-id (finding) | Statement | Type | Evidence | Status | Recorded | Verified | Scope and caveats |'
-has_line "$T/experiments/EXPERIMENT_REGISTER.md" '| EXP-id (experiment) | Preregistration | Hypothesis | Code and config | Seeds and partitions | Environment | Status | Outputs | Deviations | Findings |'
+has_line "$T/findings/FINDINGS_LOG.md" '| FND-id (finding) | Statement | Type | Basis | Evidence | Status | Recorded | Verified | Scope and caveats |'
+has_line "$T/experiments/EXPERIMENT_REGISTER.md" '| EXP-id (experiment) | Preregistration | Hypothesis | Code and config | Seeds and partitions | Environment | Input checksums | Status | Outputs | Deviations | Findings |'
 has_line "$T/literature/SOURCES.csv" 'source_id,title,first_author,year,doi,source_class,doi_status,status,evidence_records,notes'
 has_line "$T/reviews/REVIEW_LOG.md" '| REV-id (review) | Stage | Artifact | Reviewer | Outcome | Date | Report |'
 has_line "$T/requests/ACCESS_REQUESTS.md" '| REQ-id (request) | Type | Priority | Status | Source | Filed | Resolved |'
@@ -86,7 +88,7 @@ for w in 'full-text request' 'DOI confirmation' 'exception approval' \
          open fulfilled approved declined unavailable; do
   has_word "$T/requests/ACCESS_REQUESTS.md" "$w"
 done
-for w in planned registered running completed failed aborted; do
+for w in planned feasibility registered running completed failed aborted; do
   has_word "$T/experiments/EXPERIMENT_REGISTER.md" "$w"
 done
 has_word "$T/templates/HYPOTHESIS_RECORD.md" 'draft / approved at the Question stage (DEC-id)'
@@ -100,8 +102,18 @@ for f in \
   '- Prior evidence (EVR-ids):' \
   '- Contribution relative to prior work:' \
   '- Planned experiments (EXP-ids):' \
-  '- Status: draft / approved at the Question stage (DEC-id)'; do
+  '- Status: draft / approved at the Question stage (DEC-id)'   '- Background and the decision it informs:'   '- H0:'   '- H1 (directional where justified):'   '- Population and unit of analysis:'   '- Variables, operationalized (outcome, predictors, covariates):'   '- What counts as an answer:'   '- Scope and exclusions:'   '- Open questions for the survey:'; do
   has_line "$T/templates/HYPOTHESIS_RECORD.md" "$f"
+done
+
+# ---- the preregistration's design-validation lines, the ten domains ---------------
+for w in 'Simulated-data recovery' 'No placeholders' 'One handling per confound'          'Power or minimum detectable effect' 'Feasibility' 'Planned deviations handling'          'Registered at commit'; do
+  has_word "$T/templates/PREREGISTRATION.md" "$w"
+done
+domains='alternative explanation / confound / leakage / split or metric artifact / seed or confidence-interval fragility / overreach / unchecked assumptions / researcher degrees of freedom / multiplicity / reproducibility from raw and seed'
+for f in "$T/templates/ADVERSARIAL_REVIEW.md" "$T/templates/REFEREE_REPORT.md"; do
+  has_word "$f" "$domains"
+  has_word "$f" 'What would change your mind:'
 done
 
 # ---- lab.json -------------------------------------------------------------------
@@ -121,6 +133,13 @@ if not isinstance(scope, dict) or not isinstance(scope.get("restrictedFolders"),
     print("lab.json lacks scope.restrictedFolders as a list")
 if "jev" in data:
     print("lab.json still has the jev key")
+if not isinstance(data.get("tracks"), list):
+    print("lab.json lacks tracks as a list")
+prereg = data.get("preregistration")
+if not isinstance(prereg, dict) or prereg.get("registrationTrailer") != "Preregistration":
+    print("lab.json lacks preregistration.registrationTrailer equal to Preregistration")
+elif prereg.get("timestampTrailer") != "Preregistration-Timestamp":
+    print("lab.json preregistration.timestampTrailer is not Preregistration-Timestamp")
 roles = data.get("roles")
 want = {
     "research-project-manager", "academic-supervisor", "literature-researcher",

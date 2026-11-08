@@ -87,7 +87,7 @@ class TestExistingProject(ExistingCase):
         self.assertTrue((lab / "memory" / "MEMORY.md").is_file())
         self.assertTrue((lab / "lab.json").is_file())
         self.assertTrue((lab / ".working" / ".gitkeep").is_file())
-        self.assertEqual(len(list((lab / "templates").iterdir())), 12)
+        self.assertEqual(len(list((lab / "templates").iterdir())), 16)
         self.assertIn("research_lab/lab.json", report["create"])
 
     def test_section_goes_to_dot_claude_when_it_is_the_only_instructions_file(self):
