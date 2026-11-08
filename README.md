@@ -124,7 +124,7 @@ Fourteen agents run the roles. You are the fifteenth: the Principal Researcher. 
 | Role | Agent | Owns |
 |---|---|---|
 | Research Project Manager | `research-project-manager` | Work plan, stage approvals, risks, decisions, lab-meeting minutes |
-| Academic Supervisor | `academic-supervisor` | Scientific direction, Question and Preregistration approvals, integrity, release approval |
+| Academic Supervisor | `academic-supervisor` | Scientific direction, the Question, Literature, Preregistration and Results approvals, integrity, the Publication approval |
 | Literature Researcher | `literature-researcher` | Search, evidence records, the source table |
 | Methods & Innovation Researcher | `methods-innovation-researcher` | Hypotheses, method formulation and mathematics, ablation design |
 | Data & Evaluation Researcher | `data-evaluation-researcher` | Data validity, evaluation protocols, statistics |
@@ -136,7 +136,7 @@ Fourteen agents run the roles. You are the fifteenth: the Principal Researcher. 
 | Scientific Peer Reviewer | `scientific-peer-reviewer` | Referee-style review, the adversarial review |
 | Citation & Reference Auditor | `citation-reference-auditor` | Citation audits, retraction checks, cleared or not cleared at each stage |
 | Research Engineer | `research-engineer` | Code changes with tests and quality checks |
-| Decision Systems Specialist | `decision-systems-specialist` | The Jev decision layer, calibration, the decision log |
+| Decision Systems Specialist | `decision-systems-specialist` | The Jev decision layer, calibration, the automation log and the thresholds |
 
 ## How a session runs
 
@@ -179,12 +179,14 @@ A track enters the lifecycle at the stage that fits what you hold. The session p
 
 | What you have in hand | Track | First skill | Where it ends |
 |---|---|---|---|
-| An idea, a topic, a paper that provoked you, a technique, or nothing yet | idea | `science-ultrapowers:framing-a-research-question` | The Question approval: a hypothesis record and a survey of prior work, handed to the study track or to a pilot and feasibility study. |
-| A dataset, a call, a remark, a thesis chapter with a question | study | `science-ultrapowers:running-the-lab`, after init | The full lifecycle, from the Question stage to the Publication approval. |
+| An idea, a topic, a paper that provoked you, a technique, a supervisor's remark, a dataset with a hunch, or nothing yet | idea | `science-ultrapowers:framing-a-research-question` | The Question approval: a hypothesis record and a survey of prior work, handed to the study track or to a pilot and feasibility study. |
+| A framed question with a dataset, a call for papers, or a thesis chapter | study | `science-ultrapowers:running-the-lab`, after init | The full lifecycle, from the Question stage to the Publication approval. |
 | A topic or keyword for a review, a survey, a matrix or a meta-analysis | literature | `science-ultrapowers:synthesizing-the-literature` | The Literature approval: a logged search, evidence records, a synthesis matrix, a gap matrix and a flow diagram. A review paper or a meta-analysis may follow. |
 | A manuscript to referee, check or respond to | review | `science-ultrapowers:reviewing-a-manuscript` | A report in `research_lab/reviews/reports/`, written by independent roles. No review is written from the abstract alone. |
 | A manuscript or thesis to write, a journal to pick, a submission to format | writing | `science-ultrapowers:writing-for-publication` | The Publication approval, with the manuscript saved as an artifact and the archive manifest complete. |
 | Slides, a poster, a graphical abstract, an architecture figure | dissemination | `science-ultrapowers:presenting-research` | A deck, a poster or a figure saved as an artifact, with every number quoted from the findings log. |
+
+A lab set up for one track holds the files every track uses: the decision log, the request queue, the work plan, the task report template, the three meeting templates (session opening, session close, lab meeting), the literature and review folders, the artifact archive, lab memory and `.working/`. Each track adds its own templates. Init without `--track` adds the rest of the lab.
 
 Every track writes only under `research_lab/`. The roles never run git write commands, and the lead session commits `research_lab/` only. The evidence rule and the four binding rules hold in every track.
 
@@ -292,7 +294,7 @@ The terminology standard, `docs/science-ultrapowers/terminology.md`, fixes the p
 
 ### Adopted third-party skills
 
-Each carries a lab addendum, its upstream license and a `PROVENANCE.md` that records the source, the pinned commit and the vetting. The evidence rule overrides anything an adopted skill says.
+Each carries a lab addendum, its upstream license and a `PROVENANCE.md` that records the source, the pinned commit and the vetting. The two skills from K-Dense-AI/science-superpowers, `investigating-anomalous-results` and `establishing-feasibility-first`, are reworded in full into the plugin's terminology standard, with every rule kept; their `PROVENANCE.md` records it. The evidence rule overrides anything an adopted skill says.
 
 | Skill | Upstream | License |
 |---|---|---|

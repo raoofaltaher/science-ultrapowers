@@ -141,11 +141,13 @@ the Software in the public domain and does not grant any open-source license.
    From https://github.com/K-Dense-AI/science-superpowers, by K-Dense, Inc.,
    under the MIT License (Copyright (c) 2026 K-Dense, Inc.): the skills
    investigating-anomalous-results and establishing-feasibility-first, adopted
-   verbatim with a lab addendum, each with its license text in its folder; and
-   the preregistration, framing, survey, adversarial-review, review-response,
-   verification and archive rules of the lab skills preregistering-the-protocol,
-   framing-a-research-question, synthesizing-the-literature,
-   reviewing-a-manuscript, writing-for-publication, presenting-research and
+   with a lab addendum and reworded into the plugin's terminology standard
+   with every rule kept, each with its license text in its folder; and the
+   preregistration, framing, survey, adversarial-review, review-response,
+   verification, basis and archive rules of the lab skills
+   preregistering-the-protocol, framing-a-research-question,
+   synthesizing-the-literature, reviewing-a-manuscript,
+   writing-for-publication, presenting-research, recording-findings and
    running-the-lab, which are reworded from its skills, as the credit line at
    the end of each skill records:
 

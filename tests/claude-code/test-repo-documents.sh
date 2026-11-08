@@ -37,6 +37,32 @@ if [ -f LICENSE ]; then
   grep -qF '7.0.2' LICENSE || bad "LICENSE does not name 7.0.2"
   grep -qF 'MIT' LICENSE || bad "LICENSE does not name MIT"
   grep -qF 'science-superpowers' LICENSE || bad "LICENSE does not name science-superpowers"
+  lic=$(tr -s ' \r\n' '   ' < LICENSE)
+  case "$lic" in *"adopted verbatim"*) bad "LICENSE still says the science-superpowers skills are adopted verbatim";; esac
+  case "$lic" in *recording-findings*) ;; *) bad "LICENSE does not name recording-findings among the reworded lab skills";; esac
+fi
+
+# The documents agree with the skills and agents they describe.
+if [ -f README.md ]; then
+  grep -qE '^\| Academic Supervisor \|.*Literature.*Results' README.md \
+    || bad "README.md: the Academic Supervisor row lacks the Literature and Results approvals"
+  grep -qE '^\| Decision Systems Specialist \|.*automation log' README.md \
+    || bad "README.md: the Decision Systems Specialist row lacks the automation log"
+  grep -qF '| A framed question with a dataset, a call for papers, or a thesis chapter | study |' README.md \
+    || bad "README.md: the study row does not match the session primer"
+  grep -qF "a supervisor's remark, a dataset with a hunch, or nothing yet | idea |" README.md \
+    || bad "README.md: the idea row does not match the session primer"
+fi
+for f in docs/testing.md RELEASE-NOTES.md; do
+  [ -f "$f" ] || continue
+  ! grep -qF 'registered, time-stamped, unaltered' "$f" \
+    || bad "$f names the registration check item time-stamped; the item is timestamp"
+done
+if [ -f RELEASE-NOTES.md ]; then
+  grep -qF 'SCIENCE_ULTRAPOWERS_NO_MEMORY_REMINDER' RELEASE-NOTES.md \
+    || bad "RELEASE-NOTES.md does not name SCIENCE_ULTRAPOWERS_NO_MEMORY_REMINDER"
+  grep -qF 'none (an external manuscript)' RELEASE-NOTES.md \
+    || bad "RELEASE-NOTES.md does not name the stage value for an external manuscript"
 fi
 
 if [ -f RELEASE-NOTES.md ]; then
