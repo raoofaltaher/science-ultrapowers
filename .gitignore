@@ -12,3 +12,6 @@ __pycache__/
 
 # The owner-specific strings the test gates scan for (see tests/private-strings.example)
 /tests/private-strings.txt
+
+
+.playwright-mcp
