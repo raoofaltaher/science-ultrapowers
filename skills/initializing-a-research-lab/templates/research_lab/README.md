@@ -4,7 +4,7 @@ This folder is the record of the research lab that works on {{NAME}}{{DESCRIPTIO
 
 | Folder | Contents |
 |---|---|
-| `project/` | `PROJECT_BRIEF.md` (start here) and any digests of the project's code, data and documents |
+| `project/` | `PROJECT_BRIEF.md` (start here) and any digests of the project's code, data and documents; a hypothesis record is `project/HYP-xxxx.md`, from the template |
 | `literature/` | the source table `SOURCES.csv`, `EXCEPTIONS.md`, `evidence_records/`, `search_logs/`, `citation_audits/` |
 | `findings/` | the findings log `FINDINGS_LOG.md`, the key results table `KEY_RESULTS.md`, `LAB_NOTEBOOK.md` |
 | `experiments/` | `EXPERIMENT_REGISTER.md`, `preregistrations/`, `feasibility/` (pilot and feasibility studies) |

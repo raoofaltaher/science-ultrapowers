@@ -29,6 +29,9 @@ EVERY_TRACK = [
     "research_lab/README.md",
     "research_lab/project/README.md",
     "research_lab/project/PROJECT_BRIEF.md",
+    "research_lab/decisions/README.md",
+    "research_lab/decisions/DECISION_LOG.md",
+    "research_lab/decisions/lab_meetings/.gitkeep",
     "research_lab/lab.json",
 ]
 

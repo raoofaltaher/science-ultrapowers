@@ -257,10 +257,10 @@ def _track_files() -> dict[str, list[str]]:
         "research_lab/project/README.md",
         "research_lab/project/PROJECT_BRIEF.md",
         LAB_JSON_REL,
-    ]
+    ] + _under(items, "research_lab/decisions/")
     t = "research_lab/templates/"
     extra = {
-        "idea": _under(items, "research_lab/project/", "research_lab/decisions/")
+        "idea": _under(items, "research_lab/project/")
         + [t + "HYPOTHESIS_RECORD.md", t + "EVIDENCE_RECORD.md"],
         "literature": [t + "EVIDENCE_RECORD.md", t + "SYNTHESIS_MATRIX.md", t + "CITATION_AUDIT.md"],
         "review": [
@@ -269,7 +269,8 @@ def _track_files() -> dict[str, list[str]]:
             t + "RESPONSE_MATRIX.md",
             t + "ADVERSARIAL_REVIEW.md",
         ],
-        "writing": _under(items, "research_lab/findings/", "research_lab/planning/") + [t + "INTERNAL_REVIEW.md"],
+        "writing": _under(items, "research_lab/findings/", "research_lab/planning/")
+        + [t + "INTERNAL_REVIEW.md", t + "ARCHIVE_MANIFEST.md"],
         "dissemination": _under(items, "research_lab/findings/") + [t + "EVIDENCE_RECORD.md"],
     }
     return {track: sorted(set(shared + extra[track])) for track in TRACKS}
