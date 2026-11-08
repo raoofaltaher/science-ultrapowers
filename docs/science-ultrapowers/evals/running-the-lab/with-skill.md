@@ -20,3 +20,7 @@ The roster names the role "Research Engineer" (it was "ML Research Engineer"). R
 # After the pre-release review fixes (Haiku 5.5): 1/1 pass
 
 The hand-off block gained its `Findings proposed`, `Memories proposed` and `Review requested` lines, the commit rule became a paragraph, the Findings Curator is dispatched by the orchestrator, and code reviews go through `science-ultrapowers:requesting-code-review`. Run E refuses the self-review, reads the hand-off's new lines, sends three non-author checks of section 4 with the full brief block, routes the `src/train.py` review through the code-review skill to the Experiments Lead, and stages only `research_lab/` after `git status` ("Never run git add . or git add src/"). [Run](runs/with-skill-E.md).
+
+# After the terminology standard (0.2.0) (Haiku 5.5): 1/1 pass
+
+The skills now use the lab's terminology standard (0.2.0). Run F, on the prompt reworded only in the old terms (task and pass criteria unchanged): PASS (the Academic Paper Author is refused as reviewer of their own section; the re-verification, the adversarial review and the citation audit go to non-authors with full task assignment blocks (id, stage, owner, reviewer, due, objective, inputs, deliverables, completion criteria, restricted folders, constraints); a task report block is required back; src/train.py and paper/ left to the researcher; only research_lab/ staged after git status). [Run](runs/with-skill-F.md).

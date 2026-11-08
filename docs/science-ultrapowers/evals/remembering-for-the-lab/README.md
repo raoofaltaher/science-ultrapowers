@@ -9,6 +9,7 @@ Discipline under test: gate before writing (verified, durable, expensive, not de
 | [v3](scenario-v3.md): refactor check after the wording change, artifact-scoped fact | (not run) | 2/2 pass |
 | v4: re-test after the final review (step 5 points at the project's `research_lab/memory/README.md` entry format; `NO_FACT` in the lint table), on the v2 scenario | (not run) | 2/2 pass ([A](v4-with-skill-A.md), [B](v4-with-skill-B.md)) |
 | v5: re-test after the pre-release review (the `Memories proposed` line form with type, evidence, scope and fact; the learned_by fallback), on the v3 scenario | (not run) | 1/1 pass ([A](v5-with-skill-A.md)) |
+| v6: re-test after the terminology standard (0.2.0), on the v1 scenario reworded only in the old terms | (not run) | 1/1 pass ([A](v6-with-skill-A.md)): (a) the only entry written, with basis: observed and type pitfall; (b) refused as RECORD_ONLY with DEC-0137; (c) routed to user memory as a fact about a person; (d) refused as inferred; (e) refused as task state and routed to the work plan; the 150-line index pruned before the one new line, else the entry is not written |
 
 ## What the runs changed
 

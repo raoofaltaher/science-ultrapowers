@@ -20,6 +20,7 @@ The prompt is given inline. A first round that let agents read scenario.md (and 
 | [with-skill-v3-haiku](with-skill-v3-haiku.md) | v3 | Haiku 5.5 | PASS | called `resolve` on a version id: the citing row was reworded in v4 |
 | [with-skill-v4-haiku](with-skill-v4-haiku.md) | v4 (shipped) | Haiku 5.5 | PASS | clean sequence, no `resolve` misuse |
 | [with-skill-v5-haiku](with-skill-v5-haiku.md) | v5 (after the pre-release fixes) | Haiku 5.5 | PASS | search, save with both inputs, lfs-check, lineage, `research_lab/` only |
+| [with-skill-v6-haiku](with-skill-v6-haiku.md) | v6, after the terminology standard (0.2.0) | Haiku 5.5 | PASS | all three deliverables saved with `save` and `--task TASK-0112`; the report saved with both inputs, the metrics file linked as an input; provenance and lfs-check before the commit; nothing committed with git alone. Note: the CSV and the figure list only the metrics file as input, the preregistration only on the report |
 
 Baselines: 0/3 pass. With the skill: 7/7 pass (six on Haiku 5.5, the smallest model the lab runs, and one on Sonnet 5.5).
 

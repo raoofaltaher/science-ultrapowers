@@ -11,6 +11,7 @@ Scenario: [scenario.md](scenario.md). Three messages in a folder with no lab: "s
 | [baseline](runs/baseline.md) | descriptions only | Haiku 5.5 | PASS 4/4 | routes all three messages from the skill descriptions alone |
 | [with-skill-A](runs/with-skill-A.md) | bootstrap | Haiku 5.5 | PASS 4/4 | quotes the "init first, then the rest" rule; process skill before the meeting |
 | [with-skill-B](runs/with-skill-B.md) | bootstrap | Haiku 5.5 | PASS 4/4 | meeting first, process skill second; names recording-findings for any quoted fact |
+| [with-skill-C](runs/with-skill-C.md) | bootstrap, after the terminology standard (0.2.0) | Haiku 5.5 | PASS | init first; holding-lab-meetings for status; saving-artifacts named as the source for REV-0048 'from the lab's records and version history rather than memory'; nothing written or assigned |
 
 Baseline: 1/1 pass. With the bootstrap: 2/2 pass.
 

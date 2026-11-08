@@ -19,3 +19,7 @@ The skill now says to quit Claude Science before the copy and describes `--trans
 ## After the pre-release review fixes (Haiku 5.5): 1/1 pass
 
 The report gained a warnings summary and `WARNINGS.md`, the skill lists `PRUNE_CANDIDATES.md`, `SUPERSEDED_MEMORIES.md` and `SKILLS_DRIFT.md`, the environment checklist marks "label only" names, and the body is under 600 words. Run D passes all seven criteria and explains every report file, the new ones included. [Run](runs/with-skill-D.md).
+
+## After the terminology standard (0.2.0) (Haiku 5.5): 1/1 pass
+
+The skills now use the lab's terminology standard (0.2.0). Run E, on the prompt reworded only in the old terms (task and pass criteria unchanged): PASS (quit Claude Science first; never opens the live database; init first; lists and names the project; dry run shown before the real run; no secret value copied, names only; agent files untouched, the diff goes to the researcher; commits research_lab/ and leaves git lfs push to the researcher). [Run](runs/with-skill-E.md).

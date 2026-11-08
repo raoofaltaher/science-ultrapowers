@@ -27,3 +27,9 @@ Runs E, F, G and H also mention MCP servers that failed to connect. That line co
 | Iteration | Runs | Result | What changed after it |
 |---|---|---|---|
 | 6 (Optuna opt-in, readable dry run, permissions snippet, lab.json merge, `--out-of-scope`) | [I](runs/with-skill-I.md) | 7/7 | None. I leaves Optuna out because the brief names no hyper-parameter study, runs the environment script as a dry run only, and hands the permissions snippet over for a manual merge. It names the `account` and `bundled` connectors as left out without restating why; the skill still says why. |
+
+## After the terminology standard (0.2.0)
+
+| Iteration | Runs | Result | What changed after it |
+|---|---|---|---|
+| 7 (the prompt reworded only in the old terms, task and pass criteria unchanged; Haiku 5.5) | [J](runs/with-skill-J.md) | 7/7 | None. PASS (dry run first and the plan read; the key written nowhere, TYPESAFE_API_KEY named and rotation advised; no Bash rule, settings.json untouched, the WebFetch snippet handed over; only mcp connectors in .mcp.json, account ones after /mcp sign-in, bundled ones Claude Science only; nothing deleted under .claude, the three copies named; the lab section in .claude/CLAUDE.md; the migration skill offered) |

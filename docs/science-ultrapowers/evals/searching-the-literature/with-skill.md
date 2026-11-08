@@ -21,3 +21,7 @@ The scenario's DOIs are invented, and the run found that rather than carding the
 # After the pre-release review fixes (Haiku 5.5): 1/1 pass
 
 The search script gained `--cited-by` and `--references`, a search error exits 1, and the skill states the data rule. Run D writes no card from the results, labels the arXiv twin and the bioRxiv preprint Tier C, screens the journal version in their place, sends the survivors through the verifier and full text, logs the search with PRISMA counts and snowballs with the two new flags. [Run](runs/with-skill-D.md).
+
+# After the terminology standard (0.2.0) (Haiku 5.5): 1/1 pass
+
+The skills now use the lab's terminology standard (0.2.0). Run E, on the prompt reworded only in the old terms (task and pass criteria unchanged): PASS (no evidence record from the search results; "all peer-reviewed" rejected as a check; the arXiv twin and the bioRxiv entry labeled preprints with no record and the published version sought; survivors sent through the verifier and full text; the search logged with query, database, date, counts and PRISMA 2020 flow). [Run](runs/with-skill-E.md).

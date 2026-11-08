@@ -10,3 +10,7 @@ The baseline treated the missing key as a blocker and waited. With the skill, bo
 # After the pre-release review fixes (Haiku 5.5): 1/1 pass
 
 The helpers are on the command line (`--pattern screen_record|route_task|gate_checklist`, `--gate`), every file argument is checked against the blocked folders, and the gate helper needs an approved decision id. Run C marks nothing verified on Jev's answer, treats the missing key as no blocker, reads the passage and confirms the DOI as the specialist, and logs no Jev answer. [Run](runs/with-skill-C.md).
+
+# After the terminology standard (0.2.0) (Haiku 5.5): 1/1 pass
+
+The skills now use the lab's terminology standard (0.2.0). Run D, on the prompt reworded only in the old terms (task and pass criteria unchanged): PASS (does not run Jev without the key, never asks for or stores the key; refuses 'if Jev says yes, mark it matched'; reads the passage itself; Jev only for ordering the queue, logged as prioritization; 'a Jev output is never evidence'). [Run](runs/with-skill-D.md).

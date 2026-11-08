@@ -12,3 +12,7 @@ The skill now has a committee-report cycle instead of the TIK cycle, and its tem
 # After the pre-release review fixes (Haiku 5.5): 1/1 pass
 
 The `Memories proposed` line now carries the evidence class and the stand-up template has a check column. Run D runs the five steps in order, gates the observed gotcha and the inferred lesson without promoting the latter, runs `lfs-check`, writes the note from the template with a check beside every number, deletes the scratchpad and commits `research_lab/`. [Run](runs/with-skill-D.md).
+
+# After the terminology standard (0.2.0) (Haiku 5.5): 1/1 pass
+
+The skills now use the lab's terminology standard (0.2.0). Run E, on the prompt reworded only in the old terms (task and pass criteria unchanged): PASS (close note written from SESSION_CLOSE.md; each proposal judged against the admission criteria, TASK-0133 refused as unverified inference; lfs-check run; .working deleted after the note; research_lab/ committed, not pushed). [Run](runs/with-skill-E.md).

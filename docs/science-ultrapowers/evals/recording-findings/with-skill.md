@@ -21,3 +21,7 @@ The baselines already kept the console number out of the brief (v1) and left the
 ## After the generality fix (Haiku 5.5): 1/1 pass
 
 The G4 sentence now reads "For claims a manuscript or thesis will use, Supervisor approval at G4 as well." Run F again leaves F-0031 unedited, recomputes from `outputs/run-19b/metrics.csv` before any row is written, adds F-0032 as `tentative`, keeps the canonical number with an open reconciliation, and treats the bare "verified" as unverified. It quotes the new sentence: "a number a manuscript will use needs Supervisor approval at G4". [Run](runs/v2-with-skill-F.md).
+
+## After the terminology standard (0.2.0), scenario v2 (Haiku 5.5): 1/1 pass
+
+The skills now use the lab's terminology standard (0.2.0). Run v2-with-skill-G, on the prompt reworded only in the old terms (task and pass criteria unchanged): PASS (FND-0031 not edited except Status to "superseded by FND-<next>" after the new row exists; the engineer's "verified" treated as a bare claim; the recompute named: file, method, the run-19 control; the new row tentative pending the Curator; KEY_RESULTS.md changed only after verification). [Run](runs/v2-with-skill-G.md).

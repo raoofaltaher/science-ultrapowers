@@ -8,3 +8,7 @@ Both runs read only the skill. In the baseline, the run kept the five-box pipeli
 # With the skill, scenario v2 (Haiku 5.5): 2/2 pass
 
 Both runs make Figure 1 the reliability diagram before and after. They move the partner's Illustrator pipeline to the supplement as Figure S1 instead of cutting it: "The pipeline is not thrown away ... That keeps the Sunday work and needs no new drawing before 8am" (A). Both cut the per-seed bar chart because it repeats the ECE table. Both refuse the notes' numbers until each has an F-id from the ledger. Both send every shipped figure through `science-ultrapowers:figure-qa` with the `science-ultrapowers:figure-bible` theme. [A](runs/v2-with-skill-A.md), [B](runs/v2-with-skill-B.md).
+
+# After the terminology standard (0.2.0), scenario v2 (Haiku 5.5): 1/1 pass
+
+The skills now use the lab's terminology standard (0.2.0). Run v2-with-skill-C, on the prompt reworded only in the old terms (task and pass criteria unchanged): PASS (pipeline boxes refused as Figure 1 and moved to S1; reliability diagram as Figure 1; per-seed bar chart cut as a repeat of the table; every number traced to an FND-id, "notes from last week are not a source"; figure-bible and figure-qa named as next steps). [Run](runs/v2-with-skill-C.md).
