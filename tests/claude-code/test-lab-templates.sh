@@ -74,8 +74,8 @@ has_line "$T/findings/FINDINGS_LOG.md" '| FND-id (finding) | Statement | Type | 
 has_line "$T/experiments/EXPERIMENT_REGISTER.md" '| EXP-id (experiment) | Preregistration | Hypothesis | Code and config | Seeds and partitions | Environment | Input checksums | Status | Outputs | Deviations | Findings |'
 has_line "$T/literature/SOURCES.csv" 'source_id,title,first_author,year,doi,source_class,doi_status,status,evidence_records,notes'
 has_line "$T/reviews/REVIEW_LOG.md" '| REV-id (review) | Stage | Artifact | Reviewer | Outcome | Date | Report |'
-has_line "$T/requests/ACCESS_REQUESTS.md" '| REQ-id (request) | Type | Priority | Status | Source | Filed | Resolved |'
-has_line "$T/decisions/DECISION_LOG.md" '| DEC-id (decision) | Date | Stage | Decision | Rationale | Evidence | Approver |'
+has_line "$T/requests/ACCESS_REQUESTS.md" '| REQ-id (request) | Type | DOI or identifier | Citation (from Crossref) | Requested by and date | Needed for | Priority | Status | Delivered file |'
+has_line "$T/decisions/DECISION_LOG.md" '| DEC-id (decision) | Date | Stage | Context | Options | Decision | Rationale | Evidence | Approver |'
 has_line "$T/planning/WORK_PLAN.md" '| TASK-id (task) | Stage | Owner | Reviewer | Status | Due | Deliverables |'
 has_line "$T/planning/RISK_REGISTER.md" '| RSK-id (risk) | Risk | Likelihood | Impact | Mitigation | Owner | Status |'
 
@@ -92,6 +92,7 @@ for w in planned feasibility registered running completed failed aborted; do
   has_word "$T/experiments/EXPERIMENT_REGISTER.md" "$w"
 done
 has_word "$T/templates/HYPOTHESIS_RECORD.md" 'draft / approved at the Question stage (DEC-id)'
+has_word "$T/templates/TASK_REPORT.md" 'none (an external manuscript)'
 
 # ---- the hypothesis record's fields ---------------------------------------------
 for f in \

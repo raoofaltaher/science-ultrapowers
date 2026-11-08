@@ -91,6 +91,25 @@ class TestColumns(ColumnCase):
         self.assertEqual(second["migration"], [])
         self.assertEqual(tree_bytes(self.proj), after_first)
 
+    def test_decision_log_gains_date_and_stage_after_its_id(self):
+        old = (
+            "# Decision log\n\n"
+            "| DEC-id (decision) | Context | Options | Decision | Rationale | Evidence | Approver |\n"
+            "|---|---|---|---|---|---|---|\n"
+            "| DEC-0001 | scope | a or b | go | because | FND-0001 | the researcher |\n"
+        )
+        self.write(DECISIONS, old)
+        report = self.report()
+        self.assertEqual(
+            self.read(DECISIONS),
+            "# Decision log\n\n"
+            "| DEC-id (decision) | Date | Stage | Context | Options | Decision | Rationale | Evidence | Approver |\n"
+            "|---|---|---|---|---|---|---|---|---|\n"
+            "| DEC-0001 |  |  | scope | a or b | go | because | FND-0001 | the researcher |\n",
+        )
+        self.assertIn(f"header {DECISIONS}: (none) -> Date", report["migration"])
+        self.assertIn(f"header {DECISIONS}: (none) -> Stage", report["migration"])
+
     def test_column_additions_listed_in_plan(self):
         before = tree_bytes(self.proj)
         lines = self.init(yes=False, as_json=False).stdout.splitlines()
@@ -104,9 +123,9 @@ class TestColumns(ColumnCase):
     def test_column_additions_leave_other_records_alone(self):
         decisions = (
             "# Decision log\n\n"
-            "| DEC-id (decision) | Date | Stage | Decision | Rationale | Evidence | Approver |\n"
-            "|---|---|---|---|---|---|---|\n"
-            "| DEC-0001 | 2026-01-03 | Question | go | because | FND-0001 | the researcher |\n"
+            "| DEC-id (decision) | Date | Stage | Context | Options | Decision | Rationale | Evidence | Approver |\n"
+            "|---|---|---|---|---|---|---|---|---|\n"
+            "| DEC-0001 | 2026-01-03 | Question | scope | a or b | go | because | FND-0001 | the researcher |\n"
         )
         reviews = (
             "# Review log\n\n"

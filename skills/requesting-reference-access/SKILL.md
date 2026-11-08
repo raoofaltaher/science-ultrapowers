@@ -1,6 +1,6 @@
 ---
 name: requesting-reference-access
-description: Use when a needed paper is paywalled or missing in full text, a candidate digital object identifier (DOI) needs the researcher's confirmation, or a peer-reviewed source without a DOI needs approval
+description: Use when a needed paper is paywalled or missing in full text, a candidate DOI needs the researcher's confirmation, or a peer-reviewed source without a DOI needs approval
 ---
 
 # Requesting Reference Access
@@ -19,15 +19,21 @@ The researcher is the lab's Principal Researcher, with library and database acce
 
 ## 2. File the request
 
-Append one row to `research_lab/requests/ACCESS_REQUESTS.md`:
+Append one row to `research_lab/requests/ACCESS_REQUESTS.md`, under this header:
+
+```
+| REQ-id (request) | Type | DOI or identifier | Citation (from Crossref) | Requested by and date | Needed for | Priority | Status | Delivered file |
+```
+
+The fields:
 
 | Field | Content |
 |---|---|
 | REQ-id | `REQ-0001`, sequential |
 | Type | `full-text request` · `DOI confirmation` · `exception approval` (a peer-reviewed work without a DOI) |
-| DOI / identifier | DOI, or the official proceedings URL for an exception approval |
-| Citation | First author, year, title, venue (from Crossref, not from notes) |
-| Requested by / date | role + date |
+| DOI or identifier | DOI, or the official proceedings URL for an exception approval |
+| Citation (from Crossref) | First author, year, title, venue (from Crossref, not from notes) |
+| Requested by and date | role + date |
 | Needed for | task or stage, and the exact claim(s) it must support |
 | Priority | `blocks a stage` · `this cycle` · `background` |
 | Status | `open` → `fulfilled` / `approved` / `declined` / `unavailable` |

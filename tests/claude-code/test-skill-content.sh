@@ -70,6 +70,11 @@ sentences=(
   'writing-for-publication|The journal shortlist names the connector it used'
   'presenting-research|Every number on a slide is quoted from the findings log'
   'presenting-research|The environment script is run by the researcher'
+  'running-the-lab|K-Dense-AI/science-superpowers'
+  'recording-findings|K-Dense-AI/science-superpowers'
+  'writing-for-publication|Author response to reviewer comments (`RESPONSE_MATRIX.md`) | Academic Paper Author | Academic Supervisor'
+  'holding-lab-meetings|| DEC-id (decision) | Date | Stage | Context | Options | Decision | Rationale | Evidence | Approver |'
+  'requesting-reference-access|| REQ-id (request) | Type | DOI or identifier | Citation (from Crossref) | Requested by and date | Needed for | Priority | Status | Delivered file |'
 )
 for entry in "${sentences[@]}"; do
   skill=${entry%%|*}
@@ -77,6 +82,18 @@ for entry in "${sentences[@]}"; do
   grep -qF -- "$s" "skills/$skill/SKILL.md" || fail "skills/$skill/SKILL.md lacks the sentence: $s"
 done
 n=$(wc -c < skills/running-the-lab/SKILL.md); [ "$n" -lt 18000 ] || fail "running-the-lab is $n bytes, limit under 18000"
+
+# (h) every task assignment in a skill names its task as <TASK-id> or TASK-NNNN
+bad_tasks=$(grep -nE '^[[:space:]>]*TASK ' skills/*/SKILL.md | grep -vE 'TASK (<TASK-id>|REPORT|TASK-[0-9]{4})' || true)
+[ -z "$bad_tasks" ] || fail "a task assignment does not name its task as <TASK-id> or TASK-NNNN: $bad_tasks"
+
+# (i) no doubled article left by a rename
+doubled=$(grep -rniw -E 'the the' skills/*/SKILL.md agents skills/initializing-a-research-lab/templates || true)
+[ -z "$doubled" ] || fail "doubled 'the the': $doubled"
+
+# (j) the journal shortlist reads the connectors attached to the session, not lab.json (account connectors are never in lab.json)
+! grep -qF 'that `research_lab/lab.json` lists' skills/writing-for-publication/SKILL.md \
+  || fail "writing-for-publication reads the shortlist connectors from lab.json, which never lists account connectors"
 
 # The plugin's own skills: folders without PROVENANCE.md.
 own=()

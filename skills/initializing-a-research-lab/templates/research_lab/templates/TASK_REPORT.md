@@ -5,7 +5,7 @@ The project manager (the lead session) writes a task assignment when it assigns 
 ## Task assignment
 
 ```
-TASK <TASK-id> | Stage <Question / Literature / Preregistration / Execution / Results / Reporting / Publication> | Owner <role> | Reviewer <role> | Due <date>
+TASK <TASK-id> | Stage <Question / Literature / Preregistration / Execution / Results / Reporting / Publication / none (an external manuscript)> | Owner <role> | Reviewer <role> | Due <date>
 Objective: <one sentence>
 Inputs: <paths, EVR-ids, FND-ids, artifact ids>
 Deliverables: <paths>

@@ -92,6 +92,8 @@ class Plan:
     migration: list[str] = field(default_factory=list)
     migration_renames: list = field(default_factory=list)
     migration_skip_folders: list[str] = field(default_factory=list)
+    # The new paths of renames that failed at apply time; set by apply_migration, never shown in a dry run.
+    migration_blocked: list[str] = field(default_factory=list)
     lab_json_migrated: bytes | None = None
     # False for a lab with the new layout: only the column additions run, no rename, header rename or token rewrite.
     migration_old_layout: bool = False
@@ -240,7 +242,18 @@ def _under(items: dict[str, Path], *prefixes: str) -> list[str]:
 def _track_files() -> dict[str, list[str]]:
     """Track -> the template destinations its minimal lab holds (every set has the shared files)."""
     items = template_files()
+    t = "research_lab/templates/"
+    # The meeting templates are copied from holding-lab-meetings (COPIED_FILES); template_files() lists them with the
+    # other destinations, so a track set keeps them only when it names them.
     shared = [
+        "research_lab/requests/README.md",
+        "research_lab/requests/ACCESS_REQUESTS.md",
+        "research_lab/planning/WORK_PLAN.md",
+        "research_lab/.working/.gitkeep",
+        t + "TASK_REPORT.md",
+        t + "SESSION_OPENING.md",
+        t + "SESSION_CLOSE.md",
+        t + "LAB_MEETING.md",
         "research_lab/literature/README.md",
         "research_lab/literature/SOURCES.csv",
         "research_lab/literature/EXCEPTIONS.md",
@@ -260,7 +273,6 @@ def _track_files() -> dict[str, list[str]]:
         "research_lab/project/PROJECT_BRIEF.md",
         LAB_JSON_REL,
     ] + _under(items, "research_lab/decisions/")
-    t = "research_lab/templates/"
     extra = {
         "idea": _under(items, "research_lab/project/")
         + [t + "HYPOTHESIS_RECORD.md", t + "EVIDENCE_RECORD.md"],
@@ -429,8 +441,14 @@ def plan_instructions(project_root: Path, plan: Plan, opts: Options | None = Non
         raw = read_bytes_or_none(project_root / rel)
         if raw is None:
             unreadable.append(rel)
-        elif BEGIN_MARKER in raw.decode("utf-8", errors="replace"):
-            text = raw.decode("utf-8", errors="replace").replace("\r\n", "\n")
+        elif BEGIN_MARKER.encode("utf-8") in raw:
+            try:
+                text = raw.decode("utf-8").replace("\r\n", "\n")
+            except UnicodeDecodeError:
+                # Never decode with replacement for a write: a file that is not UTF-8 is left byte for byte.
+                plan.warn.append(f"{rel} is not UTF-8; the lab section was not refreshed")
+                plan.skip.append(rel)
+                return
             bounds = section_bounds(text)
             if bounds is None:
                 plan.warn.append(f"{rel} has the lab section's begin marker but no end marker; the section was not refreshed")
@@ -862,7 +880,11 @@ TABLES = (
     TableSpec(
         "requests/ACCESS_REQUESTS.md",
         "md",
-        {"REQ-id": "REQ-id (request)"},
+        {
+            "REQ-id": "REQ-id (request)",
+            "DOI / identifier": "DOI or identifier",
+            "Requested by / date": "Requested by and date",
+        },
         {
             "Type": table_of(REQUEST_TYPES),
             "Priority": table_of(REQUEST_PRIORITIES),
@@ -874,6 +896,8 @@ TABLES = (
         "md",
         {"D-id": "DEC-id (decision)", "Evidence ids": "Evidence"},  # legacy
         {},
+        # Date, then Stage: the second anchor is the first addition, so the order is DEC-id, Date, Stage.
+        (("DEC-id (decision)", "Date", ""), ("Date", "Stage", "")),
     ),
     TableSpec(
         "planning/WORK_PLAN.md",
@@ -1347,18 +1371,32 @@ def _move(project_root: Path, old: str, new: str, warn: list[str]) -> bool:
     if os.path.lexists(target):
         warn.append(f"unexpected layout: {old} and {new} both exist; nothing was moved for it")
         return False
-    target.parent.mkdir(parents=True, exist_ok=True)
-    if _git_tracked(project_root, old):
-        result = run_git(["mv", "--", old, new], project_root)
-        if result is not None and result.returncode == 0:
-            return True
-        warn.append(f"git mv failed for {old}; moved without git")
-    os.rename(source, target)
+    try:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if _git_tracked(project_root, old):
+            result = run_git(["mv", "--", old, new], project_root)
+            if result is not None and result.returncode == 0:
+                return True
+            warn.append(f"git mv failed for {old}; moved without git")
+        os.rename(source, target)
+    except OSError as exc:
+        # A file or folder open in another program (Windows) blocks a rename: report it, go on, and let a re-run finish.
+        warn.append(f"rename failed for {old}: {_reason(exc)}; close the file and run init again")
+        return False
     return True
+
+
+def _reason(exc: OSError) -> str:
+    return (exc.strerror or str(exc)).strip()
 
 
 def _write_text(path: Path, text: str) -> None:
     path.write_bytes(text.encode("utf-8"))
+
+
+def _rewrite_failed(rel: str, exc: OSError, warn: list[str]) -> None:
+    # Once every folder is renamed a re-run only adds columns, so the researcher edits this file by hand.
+    warn.append(f"rewrite failed for {rel}: {_reason(exc)}; the file is unchanged: close it and edit it by hand")
 
 
 def apply_migration(project_root: Path, plan: Plan, warn: list[str]) -> list[str]:
@@ -1370,6 +1408,8 @@ def apply_migration(project_root: Path, plan: Plan, warn: list[str]) -> list[str
     for old, new in plan.migration_renames:
         if _move(project_root, old, new, warn):
             done.append(f"rename {old} -> {new}")
+        elif os.path.lexists(project_root / old) and not os.path.lexists(project_root / new):
+            plan.migration_blocked.append(new)  # the rename failed: nothing may be created at the new path meanwhile
     headers: list[str] = []
     rewrites: list[str] = []
     for spec in TABLES:
@@ -1387,7 +1427,11 @@ def apply_migration(project_root: Path, plan: Plan, warn: list[str]) -> list[str
             continue
         new_text, header_changes, token_changes = transform_table(text, spec)
         if new_text != text:
-            _write_text(path, new_text)
+            try:
+                _write_text(path, new_text)
+            except OSError as exc:
+                _rewrite_failed(rel, exc, warn)
+                continue
         headers += [f"header {rel}: {old} -> {new}" for old, new in header_changes]
         rewrites += [f"rewrite {rel}: {column}, {n} rows: {old} -> {new}" for column, n, old, new in token_changes]
     done += headers + rewrites
@@ -1400,9 +1444,13 @@ def apply_migration(project_root: Path, plan: Plan, warn: list[str]) -> list[str
             if text is None:
                 continue
             new_text, changes = transform_frontmatter(text)
-            if new_text != text:
-                _write_text(path, new_text)
             rel = path.relative_to(project_root).as_posix()
+            if new_text != text:
+                try:
+                    _write_text(path, new_text)
+                except OSError as exc:
+                    _rewrite_failed(rel, exc, warn)
+                    continue
             done += [f"rewrite {rel}: {column}, {n} rows: {old} -> {new}" for column, n, old, new in changes]
     lab_json = project_root / LAB_JSON_REL
     if plan.lab_json_migrated is not None and lab_json.is_file():
@@ -1412,18 +1460,28 @@ def apply_migration(project_root: Path, plan: Plan, warn: list[str]) -> list[str
         except ValueError:
             new_raw, changes = None, []
         if new_raw is not None:
-            lab_json.write_bytes(new_raw)
-            done += [f"rewrite {LAB_JSON_REL}: {column}, {n} rows: {old} -> {new}" for column, n, old, new in changes]
+            try:
+                lab_json.write_bytes(new_raw)
+            except OSError as exc:
+                _rewrite_failed(LAB_JSON_REL, exc, warn)
+            else:
+                done += [
+                    f"rewrite {LAB_JSON_REL}: {column}, {n} rows: {old} -> {new}" for column, n, old, new in changes
+                ]
     attributes = project_root / GITATTRIBUTES_REL
     text = _read_text(attributes)
     if text is not None:
         new_text, count = transform_gitattributes(text)
         if count:
-            _write_text(attributes, new_text)
-            done.append(
-                f"rewrite {GITATTRIBUTES_REL}: patterns, {count} lines: "
-                f"{GITATTRIBUTES_OLD_PREFIX} -> {GITATTRIBUTES_NEW_PREFIX}"
-            )
+            try:
+                _write_text(attributes, new_text)
+            except OSError as exc:
+                _rewrite_failed(GITATTRIBUTES_REL, exc, warn)
+            else:
+                done.append(
+                    f"rewrite {GITATTRIBUTES_REL}: patterns, {count} lines: "
+                    f"{GITATTRIBUTES_OLD_PREFIX} -> {GITATTRIBUTES_NEW_PREFIX}"
+                )
     return done
 
 
@@ -1621,7 +1679,10 @@ def apply_section_refresh(project_root: Path, opts: Options, rel: str) -> bool:
     dest = project_root / rel
     raw = dest.read_bytes()
     eol = b"\r\n" if b"\r\n" in raw else b"\n"
-    text = raw.decode("utf-8").replace("\r\n", "\n")
+    try:
+        text = raw.decode("utf-8").replace("\r\n", "\n")
+    except UnicodeDecodeError:
+        return False
     bounds = section_bounds(text)
     if bounds is None:
         return False
@@ -1774,6 +1835,8 @@ def apply_plan(plan: Plan, project_root: Path, opts: Options) -> dict:
         if rel == GIT_REL:
             git_planned = True
             continue
+        if any(rel == blocked or rel.startswith(blocked + "/") for blocked in plan.migration_blocked):
+            continue  # its folder's rename failed; creating it now would block the re-run's rename
         try:
             done = apply_item(rel, action, project_root, opts, files, plan, permissions_written)
         except Exception as exc:  # one item failing never stops the run
@@ -1826,8 +1889,11 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
         description="Set up a research lab in a project folder. Prints the plan; --yes applies it.",
     )
     parser.add_argument("--project-root", help="project folder (default: the git top-level, else the cwd)")
-    parser.add_argument("--name", required=True, help="the project's name")
-    parser.add_argument("--short-name", help="short name (default: a lowercase slug of the name)")
+    parser.add_argument("--name", help="the project's name (default: the name research_lab/lab.json records)")
+    parser.add_argument(
+        "--short-name",
+        help="short name (default: the one research_lab/lab.json records, else a lowercase slug of the name)",
+    )
     parser.add_argument("--description", default="", help="one or two sentences")
     parser.add_argument("--lfs-threshold-mb", type=positive_int, default=10, help="Git Large File Storage (LFS) threshold in MB (default 10)")
     parser.add_argument("--git-init", action="store_true", help="git init and commit the lab set-up when there is no repository")
@@ -1866,6 +1932,18 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument("--yes", action="store_true", help="apply the plan (without it nothing is written)")
     parser.add_argument("--json", action="store_true", dest="json_output", help="print the report as JSON")
     return parser.parse_args(argv)
+
+
+def recorded_names(project_root: Path) -> dict:
+    """The name and shortName an existing lab.json holds (only non-empty strings); {} when there is none to read."""
+    raw = read_bytes_or_none(project_root / LAB_JSON_REL)
+    if raw is None:
+        return {}
+    try:
+        data = parse_lab_json(raw)
+    except ValueError:
+        return {}
+    return {key: data[key].strip() for key in ("name", "shortName") if isinstance(data.get(key), str) and data[key].strip()}
 
 
 def resolve_root(given: str | None, parser_error) -> Path:
@@ -1910,7 +1988,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"init_lab.py: error: {message}", file=sys.stderr)
         raise SystemExit(2)
 
-    if not args.name.strip():
+    if args.name is not None and not args.name.strip():
         fail("--name must not be empty")
     if args.allow_domain and not args.permissions:
         fail("--allow-domain needs --permissions")
@@ -1939,9 +2017,13 @@ def main(argv: list[str] | None = None) -> int:
         if track not in tracks:
             tracks.append(track)
     root = resolve_root(args.project_root, fail)
+    recorded = recorded_names(root)
+    name = args.name if args.name is not None else recorded.get("name", "")
+    if not name.strip():
+        fail("--name is required (research_lab/lab.json records no name)")
     opts = Options(
-        name=args.name,
-        short_name=args.short_name or slugify(args.name),
+        name=name,
+        short_name=args.short_name or recorded.get("shortName") or slugify(name),
         description=args.description,
         lfs_threshold_mb=args.lfs_threshold_mb,
         git_init=args.git_init,
@@ -1956,7 +2038,13 @@ def main(argv: list[str] | None = None) -> int:
     )
     plan = build_plan(root, opts)
     if not opts.yes:
-        internal = ("migration_renames", "migration_skip_folders", "lab_json_migrated", "migration_old_layout")
+        internal = (
+            "migration_renames",
+            "migration_skip_folders",
+            "migration_blocked",
+            "lab_json_migrated",
+            "migration_old_layout",
+        )
         out = {**{k: v for k, v in plan.__dict__.items() if k not in internal}, "projectRoot": root.as_posix()}
         if not opts.json_output:
             # the order the applied report lists them in

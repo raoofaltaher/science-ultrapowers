@@ -1,4 +1,5 @@
 <!-- science-ultrapowers:begin -->
+<!-- init regenerates the text between these markers; keep your own notes outside them -->
 # Research lab ({{SHORT_NAME}})
 
 This project runs a research lab. Load `science-ultrapowers:running-the-lab` before assigning work, reviewing, writing a task report or recording anything. The researcher's own session is the lead session; it acts as the project manager.
@@ -7,7 +8,7 @@ This project runs a research lab. Load `science-ultrapowers:running-the-lab` bef
 
 - Evidence: facts come only from peer-reviewed works whose DOI matched at Crossref, read in full text at the cited passage and recorded on an evidence record. A work without a DOI needs the researcher's approval. Preprints, web pages, lab notes and memory are never evidence; a preprint may be cited only to credit a method's origin, marked as one.
 - Every level re-checks: never accept another role's claim that a result is verified without re-running the check. Nobody reviews their own work, and nobody audits their own citations.
-- Numbers come from the findings log: quote results only from `research_lab/findings/FINDINGS_LOG.md` or `research_lab/findings/KEY_RESULTS.md`.
+- Numbers come from the findings log, where the lab has one: quote results only from `research_lab/findings/FINDINGS_LOG.md` or `research_lab/findings/KEY_RESULTS.md`. A lab without a findings log quotes no result as a finding.
 - Stages: Question, Literature, Preregistration, Execution, Results, Reporting, Publication. Each stage ends with a stage approval, and nothing skips one.
 - Test split, where the project has one: touched only by a preregistered final evaluation.
 - Paywalled papers: file a request in `research_lab/requests/ACCESS_REQUESTS.md` for the researcher. Never use shadow libraries or ask for credentials.

@@ -9,13 +9,16 @@ description: Use at the start of every work session before any task, at the end 
 
 The lab opens each session with a session opening, closes it with a session close, and meets at milestones. Notes live in `research_lab/decisions/lab_meetings/`, from the templates in `research_lab/templates/`.
 
+Write every note from its template in `research_lab/templates/` (`SESSION_OPENING.md`, `SESSION_CLOSE.md`, `LAB_MEETING.md`), never by copying an earlier note, because a note migrated from an older lab may carry retired headings and words.
+
 **Core principle:** A session starts from the records and ends in the records; nothing is carried in anyone's head.
 
 ## Session opening
 
 Before any task, including a short session:
 
-1. Read `research_lab/project/PROJECT_BRIEF.md`, `research_lab/planning/WORK_PLAN.md`, the last note in `research_lab/decisions/lab_meetings/`, the open rows of `research_lab/requests/ACCESS_REQUESTS.md` and `research_lab/memory/MEMORY.md`; and `research_lab/migration/HANDOVER_SUMMARY.md` when it exists and no lab-meeting note is newer than the import.
+1. Read `research_lab/project/PROJECT_BRIEF.md`, `research_lab/planning/WORK_PLAN.md`, the last note in `research_lab/decisions/lab_meetings/`, the open rows of `research_lab/requests/ACCESS_REQUESTS.md` and `research_lab/memory/MEMORY.md`.
+   Also read the handover summary, where the lab has it (`research_lab/migration/HANDOVER_SUMMARY.md`), when no lab-meeting note is newer than the import.
 2. Write `research_lab/decisions/lab_meetings/YYYY-MM-DD_opening.md` from `SESSION_OPENING.md`; a second session the same day is `YYYY-MM-DD_opening-2.md`, and likewise `_close-2.md`. Its first paragraph is a short lab status: open tasks by stage, blocked items, open requests, and the recommended next action.
 3. Present it. No task starts before it is presented.
 
@@ -40,7 +43,11 @@ At each milestone, or weekly: write `research_lab/decisions/lab_meetings/YYYY-MM
 1. The stage's owner submits.
 2. The stage's independent checks run in parallel.
 3. The approver decides.
-4. Log the decision in `research_lab/decisions/DECISION_LOG.md`: id, context, options, decision, rationale, evidence ids, approver.
+4. Log the decision in `research_lab/decisions/DECISION_LOG.md`, as one row under this header (Evidence holds the evidence record and finding ids):
+
+   ```
+   | DEC-id (decision) | Date | Stage | Context | Options | Decision | Rationale | Evidence | Approver |
+   ```
 
 The stages, owners and checks are in `science-ultrapowers:running-the-lab`.
 

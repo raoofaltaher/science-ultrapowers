@@ -32,6 +32,14 @@ EVERY_TRACK = [
     "research_lab/decisions/README.md",
     "research_lab/decisions/DECISION_LOG.md",
     "research_lab/decisions/lab_meetings/.gitkeep",
+    "research_lab/requests/README.md",
+    "research_lab/requests/ACCESS_REQUESTS.md",
+    "research_lab/planning/WORK_PLAN.md",
+    "research_lab/.working/.gitkeep",
+    "research_lab/templates/TASK_REPORT.md",
+    "research_lab/templates/SESSION_OPENING.md",
+    "research_lab/templates/SESSION_CLOSE.md",
+    "research_lab/templates/LAB_MEETING.md",
     "research_lab/lab.json",
 ]
 
@@ -57,7 +65,12 @@ class TestTrack(FreshFolderCase):
         ):
             self.assertIn(rel, lab_files)
         self.assertFalse(
-            [p for p in lab_files if p.startswith(("research_lab/experiments/", "research_lab/planning/"))]
+            [
+                p
+                for p in lab_files
+                if p.startswith(("research_lab/experiments/", "research_lab/planning/"))
+                and p != "research_lab/planning/WORK_PLAN.md"
+            ]
         )
         self.assertEqual(plan["tracks"], ["review"])
         self.assertEqual(sorted(init_lab.TRACK_FILES), sorted(TRACKS))
@@ -79,7 +92,7 @@ class TestTrack(FreshFolderCase):
         for rel in init_lab.TRACK_FILES["review"]:
             self.assertTrue((self.proj / rel).is_file(), rel)
         self.assertFalse((lab / "experiments").exists())
-        self.assertFalse((lab / "planning").exists())
+        self.assertEqual(sorted(x.name for x in (lab / "planning").iterdir()), ["WORK_PLAN.md"])
         data = self.lab_json()
         self.assertEqual(data["tracks"], ["review"])
         self.assertEqual(
@@ -124,7 +137,7 @@ class TestTrack(FreshFolderCase):
         plan = json.loads(result.stdout)
         for rel in (
             "research_lab/experiments/EXPERIMENT_REGISTER.md",
-            "research_lab/planning/WORK_PLAN.md",
+            "research_lab/planning/ROADMAP_STATUS.md",
             "research_lab/findings/FINDINGS_LOG.md",
         ):
             self.assertIn(rel, plan["create"])

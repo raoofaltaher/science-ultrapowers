@@ -7,7 +7,7 @@ description: Use when the researcher wants a research lab started, joined or upg
 
 ## Overview
 
-The setup script adds what the project lacks: folders, templates and the artifact archive, the lab section of `CLAUDE.md` (`.claude/CLAUDE.md` if it is the only one) and, on request, connectors and permission rules. It never overwrites a file; a re-run adds what is new and updates `lab.json`.
+The setup script adds what the project lacks: folders, templates and the artifact archive, the lab section of `CLAUDE.md` (`.claude/CLAUDE.md` if it is the only one) and, on request, connectors and permission rules. It never overwrites a file; a re-run adds what is new and updates `lab.json`. A re-run also refreshes the lab section between the markers when it differs from the template, and keeps everything outside the markers.
 
 The lab set-up has these folders under `research_lab/`: `project/`, `literature/`, `findings/`, `experiments/`, `reviews/`, `requests/`, `decisions/`, `planning/`, `automation/`, `tool_vetting/`, `templates/`, `artifacts/`, `memory/` and `.working/`. `lab.json` holds the lab's name, `roles` (the fourteen role ids, such as `research-project-manager`), `idPrefixes`, `tracks`, `preregistration` (the two commit-trailer names the registration check reads), `connectors`, `scope.restrictedFolders` and `permissions`.
 

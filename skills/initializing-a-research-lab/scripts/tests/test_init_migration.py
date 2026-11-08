@@ -1,5 +1,7 @@
 """init_lab.py on a lab in the 0.1 layout: the shown plan, the renames, the header and token rewrites."""
 
+import contextlib
+import io
 import json
 import os
 import shutil
@@ -8,6 +10,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from test_init_fresh import GIT_IDENTITY, HAVE_GIT, run_script
 
@@ -89,8 +92,12 @@ EXPECTED_PLAN = [
     "header research_lab/reviews/REVIEW_LOG.md: Reviewer role -> Reviewer",  # legacy
     "header research_lab/reviews/REVIEW_LOG.md: Verdict -> Outcome",  # legacy
     "header research_lab/requests/ACCESS_REQUESTS.md: REQ-id -> REQ-id (request)",
+    "header research_lab/requests/ACCESS_REQUESTS.md: DOI / identifier -> DOI or identifier",
+    "header research_lab/requests/ACCESS_REQUESTS.md: Requested by / date -> Requested by and date",
     "header research_lab/decisions/DECISION_LOG.md: D-id -> DEC-id (decision)",  # legacy
     "header research_lab/decisions/DECISION_LOG.md: Evidence ids -> Evidence",  # legacy
+    "header research_lab/decisions/DECISION_LOG.md: (none) -> Date",
+    "header research_lab/decisions/DECISION_LOG.md: (none) -> Stage",
     "header research_lab/planning/WORK_PLAN.md: Task -> TASK-id (task)",  # legacy
     "header research_lab/planning/WORK_PLAN.md: Gate -> Stage",  # legacy
     "header research_lab/planning/RISK_REGISTER.md: R-id -> RSK-id (risk)",  # legacy
@@ -230,6 +237,8 @@ class MigrationCase(unittest.TestCase):
             self.read("requests/ACCESS_REQUESTS.md"),
             self.original("05_access_requests/ACCESS_REQUESTS.md")  # legacy
             .replace("| REQ-id |", "| REQ-id (request) |")
+            .replace("| DOI / identifier |", "| DOI or identifier |")
+            .replace("| Requested by / date |", "| Requested by and date |")
             .replace("| FULLTEXT |", "| full-text request |")  # legacy
             .replace("| P1 |", "| blocks a stage |")  # legacy
             .replace("| OPEN |", "| open |"),
@@ -237,8 +246,10 @@ class MigrationCase(unittest.TestCase):
         self.assertEqual(
             self.read("decisions/DECISION_LOG.md"),
             self.original("06_decisions/DECISIONS.md")  # legacy
-            .replace("| D-id |", "| DEC-id (decision) |")  # legacy
-            .replace("| Evidence ids |", "| Evidence |"),  # legacy
+            .replace("| D-id |", "| DEC-id (decision) | Date | Stage |")  # legacy
+            .replace("| Evidence ids |", "| Evidence |")  # legacy
+            .replace("|---|---|---|---|---|---|---|\n", "|---|---|---|---|---|---|---|---|---|\n")
+            .replace("| D-01 |", "| D-01 |  |  |"),  # legacy
         )
         self.assertIn("| D-01 |", self.read("decisions/DECISION_LOG.md"))  # legacy
         self.assertIn("| F-0001 |", self.read("findings/FINDINGS_LOG.md"))  # legacy
@@ -291,6 +302,74 @@ class MigrationCase(unittest.TestCase):
         self.assertTrue((self.lab / ".working" / ".gitkeep").is_file())
         self.assertEqual(init_lab.detect_old_layout(self.proj), [])
         self.assertFalse((self.lab / "02_findings_ledger").exists())  # legacy
+
+    def test_migrated_decision_log_and_request_queue_carry_the_template_headers(self):
+        def header(text: str) -> str:
+            return next(line for line in text.splitlines() if line.startswith("|"))
+
+        self.report()
+        templates = init_lab.TEMPLATE_ROOT / "research_lab"
+        for rel in ("decisions/DECISION_LOG.md", "requests/ACCESS_REQUESTS.md"):
+            template = (templates / rel).read_text(encoding="utf-8")
+            self.assertEqual(header(self.read(rel)), header(template), rel)
+        # The old rows keep their cells; the added Date and Stage cells are empty.
+        self.assertIn("| D-01 |  |  | context text |", self.read("decisions/DECISION_LOG.md"))  # legacy
+
+    def run_in_process(self, *extra):
+        """init_lab.main in this process (so a rename can be patched): (exit code, the parsed JSON report)."""
+        argv = ["--project-root", str(self.proj), "--name", "Fixture study", "--yes", "--json", *extra]
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = init_lab.main(argv)
+        return code, json.loads(out.getvalue())
+
+    def test_a_failed_rename_is_a_warning_and_a_second_run_finishes_the_migration(self):
+        real_rename = os.rename
+
+        def locked(src, dst, *args, **kwargs):
+            if Path(src).name == "03_experiments":  # legacy
+                raise PermissionError(13, "The process cannot access the file because it is being used")
+            return real_rename(src, dst, *args, **kwargs)
+
+        with mock.patch.object(os, "rename", locked):
+            code, report = self.run_in_process()
+        self.assertEqual(code, 0)
+        warnings = [w for w in report["warn"] if w.startswith("rename failed for research_lab/03_experiments: ")]  # legacy
+        self.assertEqual(len(warnings), 1, report["warn"])
+        self.assertTrue(warnings[0].endswith("; close the file and run init again"), warnings[0])
+        self.assertTrue((self.lab / "03_experiments").is_dir())  # legacy
+        self.assertFalse((self.lab / "experiments").exists(), "nothing is created inside a folder whose rename failed")
+        for old, new in (("01_reference_registry", "literature"), ("04_reviews", "reviews"), ("06_decisions", "decisions")):  # legacy
+            self.assertTrue((self.lab / new).is_dir(), new)
+            self.assertFalse((self.lab / old).exists(), old)
+        self.assertEqual(init_lab.detect_old_layout(self.proj), ["03_experiments"])  # legacy
+        code, report = self.run_in_process()
+        self.assertEqual(code, 0)
+        self.assertEqual([w for w in report["warn"] if "rename failed" in w], [])
+        self.assertEqual(init_lab.detect_old_layout(self.proj), [])
+        self.assertTrue((self.lab / "experiments" / "EXPERIMENT_REGISTER.md").is_file())
+        self.assertTrue((self.lab / "experiments" / "preregistrations").is_dir())
+        self.assertIn("| EXP-id (experiment) |", self.read("experiments/EXPERIMENT_REGISTER.md"))
+
+    def test_a_failed_table_rewrite_is_a_warning_and_the_other_items_are_written(self):
+        real_write = init_lab._write_text
+
+        def locked(path, text):
+            if Path(path).name == "FINDINGS_LOG.md":
+                raise PermissionError(13, "The process cannot access the file because it is being used")
+            return real_write(path, text)
+
+        with mock.patch.object(init_lab, "_write_text", locked):
+            code, report = self.run_in_process()
+        self.assertEqual(code, 0)
+        warnings = [w for w in report["warn"] if w.startswith("rewrite failed for research_lab/findings/FINDINGS_LOG.md: ")]
+        self.assertEqual(len(warnings), 1, report["warn"])
+        self.assertTrue(warnings[0].endswith("; the file is unchanged: close it and edit it by hand"), warnings[0])
+        done = [line for line in report["migration"] if line.startswith(("header", "rewrite")) and "FINDINGS_LOG.md" in line]
+        self.assertEqual(done, [], "a failed rewrite is not reported as done")
+        self.assertIn("| F-id |", self.read("findings/FINDINGS_LOG.md"))  # legacy
+        self.assertNotIn("| FND-id (finding) |", self.read("findings/FINDINGS_LOG.md"))
+        self.assertIn("| REQ-id (request) |", self.read("requests/ACCESS_REQUESTS.md"))
 
     def test_gitattributes_patterns_move_to_archive(self):
         self.report()

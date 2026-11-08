@@ -19,4 +19,6 @@ This folder is the record of the research lab that works on {{NAME}}{{DESCRIPTIO
 | `memory/` | lab memory: the `MEMORY.md` index, `project/` and `artifact/` entries |
 | `.working/` | working notes only; ignored by git and deleted at each session close |
 
+A lab set up for one track (`--track`) holds only the folders that track uses, and init without `--track` adds the rest.
+
 Full-text PDFs live in `references/` at the project root, which git ignores.
