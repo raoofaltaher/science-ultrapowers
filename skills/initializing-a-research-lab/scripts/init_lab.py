@@ -801,6 +801,11 @@ ROLE_RENAMES = {  # old agent id -> new agent id
 OLD_BRIEF_IMPORT = "research_lab/00_project_knowledge/"  # legacy
 GITATTRIBUTES_OLD_PREFIX = "store/"  # legacy
 GITATTRIBUTES_NEW_PREFIX = "archive/"
+FINDING_TYPES = {  # the 0.1 finding types
+    "code-audit": "code inspection",  # legacy
+    "data-audit": "data inspection",  # legacy
+    "doc-audit": "document inspection",  # legacy
+}
 STAGE_NAMES = {
     "G0": "Question",  # legacy
     "G1": "Literature",  # legacy
@@ -885,7 +890,7 @@ TABLES = (
         "findings/FINDINGS_LOG.md",
         "md",
         {"F-id": "FND-id (finding)", "Scope / caveats": "Scope and caveats"},  # legacy
-        {"Status": finding_status},
+        {"Status": finding_status, "Type": table_of(FINDING_TYPES)},
         (("Type", "Basis", "exploratory"),),
     ),
     TableSpec("findings/KEY_RESULTS.md", "md", {"F-id": "FND-id (finding)"}, {}),  # legacy
@@ -979,6 +984,25 @@ def _tally(counts: dict, column: str, old: str, new: str) -> None:
     counts[(column, old, new)] = counts.get((column, old, new), 0) + 1
 
 
+def _record_rows(lines: list[str], start: int, width: int) -> list[int]:
+    """The line indexes of the record's data rows: every row after the header at `start` whose cell count is the
+    header's, to the end of the file. A record kept in sections (rows, a note, more rows) is one table; a separator
+    row, a note and a table with another width are not rows of it."""
+    rows = []
+    for row in range(start + 2, len(lines)):
+        line = lines[row].lstrip()
+        if not line.startswith("|") or _SEPARATOR_ROW.match(line.rstrip("\r\n")):
+            continue
+        if len(_CELL_SPLIT.split(_split_eol(lines[row])[0])) == width:
+            rows.append(row)
+    return rows
+
+
+def _first_word(value: str) -> str:
+    """The first word of a cell: up to the first space or punctuation, so `P1 (before the last stage)` gives `P1`."""
+    return re.split(r"[\s(;:,/]", value, maxsplit=1)[0]
+
+
 def _add_md_column(lines: list[str], start: int, after: str, new: str, value: str):
     """Insert the column `new` after `after` in the table at `start`: (header change or None, rewrite or None, skipped).
 
@@ -1002,15 +1026,12 @@ def _add_md_column(lines: list[str], start: int, after: str, new: str, value: st
     sep_cells.insert(index, "---")
     lines[start + 1] = "|".join(sep_cells) + sep_eol
     rows = 0
-    row = start + 2
-    while row < len(lines) and lines[row].lstrip().startswith("|"):
+    for row in _record_rows(lines, start, width):
         row_body, row_eol = _split_eol(lines[row])
         row_cells = _CELL_SPLIT.split(row_body)
-        if len(row_cells) == width:
-            row_cells.insert(index, f" {value} ")
-            lines[row] = "|".join(row_cells) + row_eol
-            rows += 1
-        row += 1
+        row_cells.insert(index, f" {value} ")
+        lines[row] = "|".join(row_cells) + row_eol
+        rows += 1
     rewrite = (new, rows, "(empty)", value) if value and rows else None
     return ("(none)", new), rewrite, None
 
@@ -1044,21 +1065,25 @@ def transform_md_table(text: str, spec: TableSpec, warnings: list[str] | None = 
     columns = {column: names.index(column) for column in spec.tokens if column in names}
     counts: dict = {}
     order: list[tuple] = []
-    row = start + 2
-    while row < len(lines) and lines[row].lstrip().startswith("|"):
+    for row in _record_rows(lines, start, len(cells)):
         body, eol = _split_eol(lines[row])
         row_cells = _CELL_SPLIT.split(body)
-        if len(row_cells) == len(cells):
-            for column, index in columns.items():
-                value = row_cells[index].strip()
-                new = spec.tokens[column](value) if value else value
-                if new != value:
-                    if (column, value, new) not in counts:
-                        order.append((column, value, new))
-                    _tally(counts, column, value, new)
-                    row_cells[index] = _swap_cell(row_cells[index], new)
-            lines[row] = "|".join(row_cells) + eol
-        row += 1
+        for column, index in columns.items():
+            value = row_cells[index].strip()
+            new = spec.tokens[column](value) if value else value
+            if new != value:
+                if (column, value, new) not in counts:
+                    order.append((column, value, new))
+                _tally(counts, column, value, new)
+                row_cells[index] = _swap_cell(row_cells[index], new)
+            elif value and warnings is not None:
+                word = _first_word(value)
+                if word != value and spec.tokens[column](word) != word:
+                    warnings.append(
+                        f"{spec.path}: the {column} cell of row {row_cells[1].strip()} starts with the 0.1 word "
+                        f"'{word}' and holds more text; edit it by hand"
+                    )
+        lines[row] = "|".join(row_cells) + eol
     rewrites = [(column, counts[(column, old, new)], old, new) for column, old, new in order]
     rewrites.sort(key=lambda item: names.index(item[0]))
     for after, column, value in spec.added:

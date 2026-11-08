@@ -101,7 +101,8 @@ EXPECTED_PLAN = [
     "header research_lab/planning/WORK_PLAN.md: Task -> TASK-id (task)",  # legacy
     "header research_lab/planning/WORK_PLAN.md: Gate -> Stage",  # legacy
     "header research_lab/planning/RISK_REGISTER.md: R-id -> RSK-id (risk)",  # legacy
-    "rewrite research_lab/findings/FINDINGS_LOG.md: Basis, 2 rows: (empty) -> exploratory",
+    "rewrite research_lab/findings/FINDINGS_LOG.md: Type, 1 rows: code-audit -> code inspection",  # legacy
+    "rewrite research_lab/findings/FINDINGS_LOG.md: Basis, 3 rows: (empty) -> exploratory",
     "rewrite research_lab/literature/SOURCES.csv: status, 1 rows: ADMITTED -> citable",  # legacy
     "rewrite research_lab/literature/SOURCES.csv: status, 1 rows: PENDING_FULLTEXT -> awaiting full text",  # legacy
     "rewrite research_lab/literature/SOURCES.csv: source_class, 1 rows: A -> peer-reviewed matched doi",  # legacy
@@ -109,6 +110,7 @@ EXPECTED_PLAN = [
     "rewrite research_lab/literature/SOURCES.csv: doi_status, 1 rows: VERIFIED -> matched",  # legacy
     "rewrite research_lab/literature/SOURCES.csv: doi_status, 1 rows: NO_DOI -> no doi",  # legacy
     "rewrite research_lab/reviews/REVIEW_LOG.md: Stage, 1 rows: G1 -> Literature",  # legacy
+    "rewrite research_lab/reviews/REVIEW_LOG.md: Stage, 1 rows: G3 -> Execution",  # legacy
     "rewrite research_lab/requests/ACCESS_REQUESTS.md: Type, 1 rows: FULLTEXT -> full-text request",  # legacy
     "rewrite research_lab/requests/ACCESS_REQUESTS.md: Priority, 1 rows: P1 -> blocks a stage",  # legacy
     "rewrite research_lab/requests/ACCESS_REQUESTS.md: Status, 1 rows: OPEN -> open",  # legacy
@@ -196,6 +198,17 @@ class MigrationCase(unittest.TestCase):
         self.assertIn("research_lab/02_findings_ledger/FINDINGS.md", moved[0])  # legacy
         self.assertFalse([l for l in status if l.startswith(" D") or l.startswith("D ")], status)
 
+    def test_a_table_continued_after_a_note_is_migrated_to_its_last_row_and_a_compound_cell_is_reported(self):
+        report = self.report()
+        text = self.read("reviews/REVIEW_LOG.md")
+        self.assertIn("| RV-0002 | 2026-01-07 | art/y.md v1 | Execution |", text)  # legacy
+        self.assertIn("| RV-0003 | 2026-01-08 | art/z.md v1 | G3 code review |", text)  # legacy
+        self.assertIn(
+            "reviews/REVIEW_LOG.md: the Stage cell of row RV-0003 starts with the 0.1 word 'G3' and holds more text; edit it by hand",  # legacy
+            report["warn"],
+        )
+        self.assertIn("| F-0003 | A third statement | code inspection | exploratory |", self.read("findings/FINDINGS_LOG.md"))
+
     def test_migration_rewrites_headers_and_tokens_only(self):
         self.report()
         self.assertEqual(
@@ -205,7 +218,8 @@ class MigrationCase(unittest.TestCase):
             .replace("| Scope / caveats |", "| Scope and caveats |")  # legacy
             .replace("| Type | Evidence |", "| Type | Basis | Evidence |")
             .replace("|---|---|---|---|---|---|---|---|\n", "|---|---|---|---|---|---|---|---|---|\n")
-            .replace("| measured | EC-0001 |", "| measured | exploratory | EC-0001 |"),  # legacy
+            .replace("| measured | EC-0001 |", "| measured | exploratory | EC-0001 |")  # legacy
+            .replace("| code-audit | EC-0001 |", "| code inspection | exploratory | EC-0001 |"),  # legacy
         )
         self.assertEqual(
             self.read("findings/KEY_RESULTS.md"),
@@ -233,7 +247,8 @@ class MigrationCase(unittest.TestCase):
             .replace("| Gate |", "| Stage |")  # legacy
             .replace("| Reviewer role |", "| Reviewer |")
             .replace("| Verdict |", "| Outcome |")
-            .replace("| G1 |", "| Literature |"),  # legacy
+            .replace("| G1 |", "| Literature |")  # legacy
+            .replace("| G3 |", "| Execution |"),  # legacy
         )
         self.assertEqual(
             self.read("requests/ACCESS_REQUESTS.md"),

@@ -172,7 +172,7 @@ class TestColumnsOfAZeroOneLab(unittest.TestCase):
                 "| FND-id (finding) | Statement | Type | Basis | Evidence | Status | Recorded | Verified | Scope and caveats |",
             )
             rows = [l for l in findings.splitlines() if l.startswith("| F-")]  # legacy
-            self.assertEqual(len(rows), 2)
+            self.assertEqual(len(rows), 3)
             for row in rows:
                 self.assertEqual(row.split("|")[4].strip(), "exploratory", row)
             register = (proj / REGISTER).read_text(encoding="utf-8")
