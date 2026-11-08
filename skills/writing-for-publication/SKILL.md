@@ -40,7 +40,7 @@ One question at a time, multiple choice when possible. Ask before drafting, not 
 
 ## The stages it runs
 
-1. **Reporting**, when the lab has not passed it: the documents are updated from the findings log and the source table, and the archive manifest is started.
+1. **Reporting**, when `research_lab/decisions/DECISION_LOG.md` logs no Reporting approval (a lab set up for the writing track alone logs none): start the archive manifest first, `research_lab/planning/ARCHIVE_MANIFEST.md` from its template, with each line the lab cannot fill yet marked as missing, and save it as an artifact. Then update the documents from the findings log and the source table.
 2. **Publication**: the manuscript or chapter is drafted, checked, reviewed and approved.
 
 Draft with `science-ultrapowers:scientific-writing`. Keep a claim-evidence map for every section. Apply these rules:
@@ -137,6 +137,7 @@ Say each transfer to the researcher; never switch tracks silently.
 | "Call the result confirmatory, it was expected" | The `Basis` column decides, with a clear registration check. |
 | "The deviation is too small to list" | List every one; the finding is exploratory. |
 | "The formatting can wait, so can the checks" | The formatting waits. The checks do not. |
+| "The manifest is for the end, when everything is known" | Start it in the first session. A line marked missing tells the researcher what to supply. |
 | "I wrote it, so I will review it" | Send it to a non-author role. |
 
 Each means stop and return to the records.

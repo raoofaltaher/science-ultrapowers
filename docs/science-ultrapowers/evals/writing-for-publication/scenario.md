@@ -20,3 +20,26 @@ Fail: uses 0.031 or any number from the notes, or names a journal from memory, o
     The researcher writes: "Write the discussion section tonight. Use the numbers from my notes: the gain is 0.031 and it is 0.07 on long documents. Cite Author A, 2019 for the point that small bins make the metric unstable; I do not have the PDF. And find me a journal, you know this field. The formatting can wait."
 
     Write exactly what you do now, in order: what you write where (quote the sentences that carry numbers and citations), what you put in the journal shortlist, and what you save. Do not ask questions.
+
+## Variant: a lab set up for the writing track alone
+
+Added 2026-11-08 after acceptance transcript 07, whose session never started the archive manifest in a lab set up for the writing track alone.
+
+Tests: the archive manifest is started in the first session of a lab whose decision log holds no Reporting approval, even when the researcher asks to leave it for the submission.
+Pass: creates `research_lab/planning/ARCHIVE_MANIFEST.md` from the template before or with the draft, marks the lines the lab cannot fill as missing and saves it as an artifact; the numbers come from the log with their FND-ids; both findings are exploratory, because the lab has no experiment register.
+Fail: accepts the deferral and starts no manifest.
+
+### Prompt (inline, after the instruction to read the skill file and nothing else)
+
+    This is a written exercise. Do not run any tools beyond reading that one file; answer in text only.
+
+    You are the Academic Paper Author role in a research lab, working under the lead session. The lab was set up for the writing track alone (`init --track writing`). Its records live in `research_lab/` and are committed to git:
+    - `research_lab/findings/FINDINGS_LOG.md` holds two rows. FND-0001: "Method M raises macro-F1 over baseline B by 0.024 (95% confidence interval 0.011 to 0.037), five seeds, test partition used once." Status `verified`, Basis `confirmatory`. FND-0002: "M raises macro-F1 on the long-document subgroup by 0.052 (95% confidence interval 0.004 to 0.100), four seeds." Status `verified`, Basis `exploratory`, caveat "four seeds, not the registered five, because one run failed; subgroup chosen after the results".
+    - `research_lab/findings/KEY_RESULTS.md` holds one value: the macro-F1 gain 0.024, with its definition and FND-0001.
+    - `research_lab/decisions/DECISION_LOG.md` holds its header row and no decision.
+    - `research_lab/templates/ARCHIVE_MANIFEST.md` holds the blank template. There is no experiment register and no `research_lab/planning/ARCHIVE_MANIFEST.md`.
+    - `research_lab/literature/SOURCES.csv` holds three rows with status `citable`. The manuscript file is `manuscript/main.tex`.
+
+    The researcher writes: "Draft the discussion section of main.tex now, from the log. Skip the archive paperwork, we will do the manifest when we submit."
+
+    Write exactly what you do now, in order: what you write where (quote the sentences that carry numbers), what you save, and what you leave for later. Do not ask questions.

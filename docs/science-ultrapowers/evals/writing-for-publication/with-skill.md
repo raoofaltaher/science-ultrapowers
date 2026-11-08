@@ -9,3 +9,10 @@ The baseline took the right numbers but named journals from memory, wrote no sho
 - save the manuscript with `science-ultrapowers:saving-artifacts` and start the archive manifest (A: the manuscript with its claim-evidence map, the shortlist and the manifest; B: the manuscript as "a first version", the manifest "started from `research_lab/templates/ARCHIVE_MANIFEST.md` and marked incomplete").
 
 [A](runs/with-skill-A.md), [B](runs/with-skill-B.md).
+
+## The variant: a lab set up for the writing track alone (2026-11-08)
+
+Acceptance transcript 07 found that a real session in such a lab drafted, saved and reviewed the discussion but never started the archive manifest: the skill placed the manifest under the Reporting stage "when the lab has not passed it", and the session worked at the Publication stage. The skill now starts the manifest first whenever `DECISION_LOG.md` logs no Reporting approval, and its rationalization table answers "the manifest is for the end".
+
+- With the old text (Haiku 5.5, one run): FAIL. "I do not create research_lab/planning/ARCHIVE_MANIFEST.md. The researcher asked to defer it." [variant-old-skill](runs/variant-old-skill.md).
+- With the new text (Haiku 5.5, two runs): 2/2 PASS. C: "Archive manifest first, not deferred." D: "The skill's warning sign applies: 'The manifest is for the end ... Start it in the first session.'" Both mark the lines the lab cannot fill as missing and save the manifest as an artifact. [C](runs/with-skill-C.md), [D](runs/with-skill-D.md).
