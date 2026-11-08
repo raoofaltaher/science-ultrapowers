@@ -23,10 +23,10 @@ class JevAskOfflineTest(unittest.TestCase):
 
     def make_project(self, blocked=None):
         """A temp project with research_lab/08_decision_log/ and, if given, a lab.json."""
-        (self.root / "research_lab" / "08_decision_log").mkdir(parents=True)
+        (self.root / "research_lab" / "automation").mkdir(parents=True)
         if blocked is not None:
             (self.root / "research_lab" / "lab.json").write_text(
-                json.dumps({"jev": {"blockedPaths": blocked}}), encoding="utf-8")
+                json.dumps({"scope": {"restrictedFolders": blocked}}), encoding="utf-8")
         return self.root
 
     def write(self, rel, text):
@@ -50,7 +50,7 @@ class JevAskOfflineTest(unittest.TestCase):
         r = self.run_script(["--request", req, "--role", "x", "--purpose", "y"])
         self.assertEqual(r.returncode, 2, r.stderr)
         self.assertIn(KEY_MESSAGE, r.stderr)
-        self.assertFalse((self.root / "research_lab" / "08_decision_log" / "JEV_CALLS.jsonl").exists())
+        self.assertFalse((self.root / "research_lab" / "automation" / "JEV_CALLS.jsonl").exists())
 
     def test_policy_check_redacts_personal_data(self):
         f = self.write("note.txt", "contact jane.doe@example.org or +90 532 123 45 67 / 905321234567")
@@ -102,10 +102,10 @@ class JevAskOfflineTest(unittest.TestCase):
                                                   "questions": REQUEST["questions"]}))
         r = self.run_script(["--request", req, "--role", "x", "--purpose", "y"], key="dummy-not-a-key")
         self.assertEqual(r.returncode, 2, r.stderr)
-        self.assertIn("error: Jev payload blocked by lab data policy: mentions blocked folder data/private",
+        self.assertIn("error: Jev payload blocked by lab data policy: mentions restricted folder data/private",
                       r.stderr)
         self.assertNotIn("Traceback", r.stderr)
-        self.assertFalse((self.root / "research_lab" / "08_decision_log" / "JEV_CALLS.jsonl").exists())
+        self.assertFalse((self.root / "research_lab" / "automation" / "JEV_CALLS.jsonl").exists())
 
     def test_unreadable_lab_json_blocks_the_policy_check(self):
         self.make_project()
@@ -125,16 +125,34 @@ class JevAskOfflineTest(unittest.TestCase):
         self.assertEqual(r.returncode, 2, r.stderr)
         self.assertIn("lab.json is unreadable", r.stderr)
         self.assertNotIn("Traceback", r.stderr)
-        self.assertFalse((self.root / "research_lab" / "08_decision_log" / "JEV_CALLS.jsonl").exists())
+        self.assertFalse((self.root / "research_lab" / "automation" / "JEV_CALLS.jsonl").exists())
 
-    def test_blocked_paths_that_are_not_a_list_block(self):
+    def test_restricted_folders_that_are_not_a_list_block(self):
         self.make_project(blocked="data/private")
+        f = self.write("note.txt", "nothing sensitive")
+        out = json.loads(self.run_script(["--policy-check", f]).stdout)
+        self.assertIs(out["blocked"], True)
+        self.assertTrue(any("restrictedFolders" in x for x in out["reasons"]), out["reasons"])
+
+    def test_legacy_blocked_paths_that_are_not_a_list_block(self):
+        self.make_project()
+        (self.root / "research_lab" / "lab.json").write_text(
+            json.dumps({"jev": {"blockedPaths": "data/private"}}), encoding="utf-8")
         f = self.write("note.txt", "nothing sensitive")
         out = json.loads(self.run_script(["--policy-check", f]).stdout)
         self.assertIs(out["blocked"], True)
         self.assertTrue(any("blockedPaths" in x for x in out["reasons"]), out["reasons"])
 
-    def test_lab_json_without_a_jev_section_blocks_nothing(self):
+    def test_the_old_layout_exits_2_with_the_exact_message_as_a_subprocess(self):
+        (self.root / "research_lab" / "08_decision_log").mkdir(parents=True)
+        req = self.write("req.json", json.dumps(REQUEST))
+        r = self.run_script(["--request", req], key="dummy-not-a-key")
+        self.assertEqual(r.returncode, 2, r.stderr)
+        self.assertEqual(r.stderr.strip(), "error: this lab uses the 0.1 layout; run "
+                         "science-ultrapowers:initializing-a-research-lab to migrate it")
+        self.assertNotIn("Traceback", r.stderr)
+
+    def test_lab_json_without_a_scope_section_blocks_nothing(self):
         self.make_project()
         (self.root / "research_lab" / "lab.json").write_text(json.dumps({"name": "x"}), encoding="utf-8")
         f = self.write("note.txt", "see data/private/x.csv")
