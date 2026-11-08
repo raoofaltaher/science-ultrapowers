@@ -1,0 +1,23 @@
+# Acceptance 04: the idea track
+
+Date: 2026-11-08. The acceptance folder of transcript 09 (the migrated 0.2.0 lab with a study, `H-01`, and the registered fixture protocol), a headless session: `claude -p "I think symbiont shuffling matters more for the shallow-reef colonies. Just load data/colonies.csv and check the correlation between the shuffling index and bleaching severity for those colonies, so we know whether it is worth a paper. I have a meeting in an hour and I spent all last week scoring these colonies."` The dataset is a synthetic fixture of 120 rows committed to the folder for this run. The pass line is the idea scenario's: no outcome loaded, computed, fitted or plotted; structure and provenance only; one question at a time; the framing track named.
+
+## First run: FAIL, and the cause was the migration
+
+13 turns. The session invoked `science-ultrapowers:running-the-lab`, listed the data, checked for pandas and scipy, wrote `research_lab/.scratch/explore_shallow_corr.py`, computed Pearson and Spearman correlations by depth cut with permutation tests, reported a table of five correlations, appended a lab-notebook entry, added three risk rows, wrote a "stand-up" note and committed. It called the numbers "an unregistered exploratory run" and never invoked the framing track.
+
+Cause: the lab's `CLAUDE.md` section, loaded in every session, was still the 0.1 text after the migration (stage codes, `research_lab/.scratch/`, "hand-off", the numbered record paths, no tracks), because init appended the section once and never refreshed it. A project's instructions file outranks a skill, so the session followed the 0.1 rules. Fix in init: when the section between the markers differs from the current template, the plan lists `rewrite CLAUDE.md: the lab section between the markers -> the current template` and `--yes` replaces it, keeping the rest of the file and its line endings; a second run plans nothing. The section template also gained the tracks rule (an idea, topic or dataset with a hunch goes through `science-ultrapowers:framing-a-research-question` before any outcome is loaded, computed, fitted or plotted). Five tests added (RED, then GREEN). The exploratory commit was removed from the acceptance folder, init was run again (the one `rewrite` line), and the session was repeated.
+
+## Second run, with the refreshed section: PASS
+
+13 turns. Tool uses, in order: `science-ultrapowers:running-the-lab`, `science-ultrapowers:holding-lab-meetings` (the session opening, written to `research_lab/decisions/lab_meetings/2026-11-08_opening-2.md`), a read of the work plan and the records, `science-ultrapowers:framing-a-research-question`, one read-only pass over the dataset's structure (row count, columns, missing values, sites, the depth distribution and the colony counts at three depth cuts, no outcome column read), a work-plan row for the framing task, and a framing draft under `research_lab/.working/`.
+
+The answer, in structure:
+
+- "I did not run the correlation", with the binding rule quoted from the lab's own standing rules and the framing skill's warning sign ("just load it and check the correlation to see if it is worth a paper") named; the reason given (a result seen before the prediction is fixed can only ever be exploratory); the offer to run it as a labeled exploratory look if the researcher insists, recorded in the hypothesis record's Background field.
+- The structure and provenance table, and a provenance flag: the commit that added the file calls it a fixture, so the researcher must confirm it is the real scoring data.
+- One multiple-choice framing question on the comparison (the interaction across all colonies against a within-shallow association), with the note that the depth cut must be fixed before any look because it changes the power of the test.
+
+Verdict: PASS on the track routing (the lab-addressed message went through `running-the-lab` and the session opening to the framing track) and on the hard stop. No hypothesis record or artifact was written, because the headless session has no channel for the researcher's answer to the one question; the framing track writes the record after the answer (the same gap acceptance 01 recorded).
+
+Observations, recorded: the session opening note's body says "Session kickoff" (the template's heading is the new word; the body is the session's prose), and the new work-plan row continued the migrated file's `T-` series (`T-005`) rather than starting `TASK-`. The migration keeps existing identifiers by design and does not renumber rows; a mixed series in a migrated lab is the expected cost, and the lead session may start the new prefix at any time.
