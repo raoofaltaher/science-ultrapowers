@@ -643,7 +643,7 @@ git commit -m "release: 0.2.0 documents, licence section 7 and release notes"
 
 - [ ] **Step 1: Update the smoke folder's install to the local build**
 
-In `S:\lab-smoke` (the 0.1.x smoke lab from acceptance 01), `claude plugin update science-ultrapowers@science-ultrapowers` after Task 19's push, or, before the release, a local marketplace install from the repository path; record which in each transcript.
+In `<smoke-folder>` (the 0.1.x smoke lab from acceptance 01), `claude plugin update science-ultrapowers@science-ultrapowers` after Task 19's push, or, before the release, a local marketplace install from the repository path; record which in each transcript.
 
 - [ ] **Step 2: Run one headless session per track and the freeze cycle**
 

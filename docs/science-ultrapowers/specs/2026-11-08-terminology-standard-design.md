@@ -140,7 +140,7 @@ Anti-goals:
 
 ### D14: One release, terminology first
 - **Chosen:** the rename and the standard are phase 0 of the lifecycle plan; the lifecycle design and plan are rewritten in the new vocabulary at the end of phase 0, before any lifecycle task runs; one release 0.2.0. Evidence: this conversation ("EVERYTHING NOW").
-- **Why this one:** the researcher's choice; the lifecycle is then built once, in the right words.
+- **Why this one:** the researcher's choice; the lifecycle is then built once, in the right words. Evidence: this conversation.
 - **Rejected:** terminology as 0.2.0 and the lifecycle as 0.3.0, because the researcher wants one release. Evidence: this conversation.
 - **Failure points:** a long branch; the ledger and the task lines are the recovery. Evidence: the lifecycle design D6.
 - **Edge cases:** the two phase-0 pressure reruns on skills the lifecycle changes again later are run once more then. My call.

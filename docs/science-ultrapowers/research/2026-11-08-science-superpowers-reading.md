@@ -75,7 +75,7 @@ Smaller: the "Not a stop criterion" list; "a clean number is not a correct numbe
 
 ## What to leave
 
-Multi-harness plumbing; K-Dense product material; their literature method (web search as a source, no DOI check); worktree and branch finishing (our commit rule forbids git writes by roles); executing-analysis and subagent-driven-analysis control flow (continuous execution conflicts with our gates; anonymous agents that commit); tool names in skills; writing-science-skills; the `@statistical-fallacies.md` link; environment commands with swallowed failures; solver-specific examples; their storage model (Markdown under docs/ with git as the only record); treating a git freeze as proof of what anyone saw; `science-superpowers:` prefixes and `docs/science-superpowers/` paths; prereg.sh tooling risks.
+Multi-harness plumbing; K-Dense product material; their literature method (web search as a source, no DOI check); worktree and branch finishing (our commit rule forbids git writes by roles); executing-analysis and subagent-driven-analysis control flow (continuous execution conflicts with our gates; anonymous agents that commit); tool names in skills; writing-science-skills; the `@statistical-fallacies.md` link; environment commands with swallowed failures; solver-specific examples; their storage model (Markdown under docs/ with git as the only record); treating a git freeze as proof of what anyone saw; the upstream skill-reference prefix and the upstream `docs/` paths; prereg.sh tooling risks.
 
 ## Licence and provenance
 
