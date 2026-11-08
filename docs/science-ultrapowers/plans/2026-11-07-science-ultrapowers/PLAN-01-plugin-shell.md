@@ -8,7 +8,7 @@
 
 **Tech Stack:** bash (Git for Windows), `hooks/run-hook.cmd` polyglot wrapper, `jq` (used by `scripts/bump-version.sh`, dev-time only), JSON manifests.
 
-**Spec:** `specs/2026-11-07-science-ultrapowers-design.md` — G1, G2, Constraints, D1, D9, Architecture units 1-2, Components "Plugin shell" and "Bootstrap skill", Testing "Plugin shape" and "Bootstrap".
+**Spec:** `docs/science-ultrapowers/specs/2026-11-07-science-ultrapowers-design.md` — G1, G2, Constraints, D1, D9, Architecture units 1-2, Components "Plugin shell" and "Bootstrap skill", Testing "Plugin shape" and "Bootstrap".
 
 **Sources:** Claude Code plugin manifest reference (https://code.claude.com/docs/en/plugins/manifest-reference.md, read 2026-11-07: `name` only required field, reserved-name rules, standard layout, `${CLAUDE_PLUGIN_ROOT}`); marketplace reference (https://code.claude.com/docs/en/plugins/marketplace-reference.md: `"source": "./"`, `version` drives updates); hooks reference (https://code.claude.com/docs/en/hooks.md: SessionStart matchers `startup|resume|clear|compact`, `hookSpecificOutput.additionalContext`, 10,000-character cap, Windows `shell` field); plugin components reference (https://code.claude.com/docs/en/plugins/components.md: `hooks/hooks.json` top-level `hooks` key); superpowers v7.0.2 tree read in this session (`hooks/session-start`, `hooks/run-hook.cmd`, `.version-bump.json`, `scripts/bump-version.sh`, `skills/using-superpowers/SKILL.md`). Not checked: none for this plan.
 

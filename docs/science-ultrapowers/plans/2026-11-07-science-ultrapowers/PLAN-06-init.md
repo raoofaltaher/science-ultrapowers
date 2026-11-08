@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.11+ stdlib, JSON, PowerShell 7 (`setup_lab_env.ps1`), `unittest`.
 
-**Spec:** `specs/2026-11-07-science-ultrapowers-design.md` — G6, G10, D8, D4, D10, Components "initializing-a-research-lab", "Project lab templates", Error handling, Testing.
+**Spec:** `docs/science-ultrapowers/specs/2026-11-07-science-ultrapowers-design.md` — G6, G10, D8, D4, D10, Components "initializing-a-research-lab", "Project lab templates", Error handling, Testing.
 
 **Sources:** Claude Code MCP reference (https://code.claude.com/docs/en/mcp.md: `.mcp.json` entries `type: http` with `url`, `headers` with `${VAR}` expansion, `stdio` with `command`/`args`, project-scope approval prompt), plugin skills reference (`${CLAUDE_PLUGIN_ROOT}` substitution), both read 2026-11-07; Claude Science `mcp/directory-cache.json` (connector names and URLs) and `directory_attachments` (46 rows), read 2026-11-07; the source project's `.mcp.json` (Optuna stdio entry); the current `research_lab/templates/*`, `README.md`, `claude_code_team/CLAUDE.md`, `claude_code_team/setup_claude_code_env.ps1`. Not checked: which directory connectors complete OAuth from a `.mcp.json` `http` entry (spec ledger row 1); `init` writes `url` only and the skill tells your human partner to run `/mcp` to authenticate.
 

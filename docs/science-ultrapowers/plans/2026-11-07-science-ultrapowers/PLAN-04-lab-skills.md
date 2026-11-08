@@ -8,7 +8,7 @@
 
 **Tech Stack:** Markdown skills, Python 3.11+ stdlib scripts (`verify_doi.py`, `jev_ask.py`, new `search_openalex.py`), `unittest`, bash tests.
 
-**Spec:** `specs/2026-11-07-science-ultrapowers-design.md` — G3, G5, D1, D6, D7, D9, Constraints (sorting rule), Components "running-the-lab" through "planning-paper-figures", Testing "Prose changes".
+**Spec:** `docs/science-ultrapowers/specs/2026-11-07-science-ultrapowers-design.md` — G3, G5, D1, D6, D7, D9, Constraints (sorting rule), Components "running-the-lab" through "planning-paper-figures", Testing "Prose changes".
 
 **Sources:** superpowers v7.0.2 `skills/writing-skills/SKILL.md` and `references/discovery.md` (form, description rules, word budgets, cross-reference style), `skills/test-driven-development/SKILL.md` and `skills/verification-before-completion/SKILL.md` (the discipline form as written); the current lab skills and `TEAM_SPEC.md` (content, read 2026-11-07); `09_skill_vetting/SKILL_VETTING_REPORT.md` and each `PROVENANCE.md` (vendoring rules); Claude Code skills reference (https://code.claude.com/docs/en/skills.md: frontmatter fields, 1,536-character description cap, `${CLAUDE_PLUGIN_ROOT}` substitution in skill bodies); OpenAlex API (https://docs.openalex.org/ — `GET https://api.openalex.org/works?search=<q>&per-page=<n>`, fields `doi`, `title`, `publication_year`, `type`, `primary_location.source.display_name`; from memory, Not checked this session — Task 7's script treats a missing field as `null` and its test uses a fixture, so an API change breaks nothing at test time).
 

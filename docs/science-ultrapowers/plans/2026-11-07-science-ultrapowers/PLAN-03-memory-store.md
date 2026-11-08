@@ -8,7 +8,7 @@
 
 **Tech Stack:** node 22+ (`memory-lint.mjs`, `node --test`), bash hooks through `hooks/run-hook.cmd`, Markdown with YAML-like frontmatter (parsed line-wise, no YAML library).
 
-**Spec:** `specs/2026-11-07-science-ultrapowers-design.md` — G9, D5, D10, Components "remembering-for-the-lab", Error handling, Testing.
+**Spec:** `docs/science-ultrapowers/specs/2026-11-07-science-ultrapowers-design.md` — G9, D5, D10, Components "remembering-for-the-lab", Error handling, Testing.
 
 **Sources:** Claude Science system prompt sections "Memory" (entities `profile`, `project:<pid>`, `artifact:<aid>`, `frame`; evidence `stated|observed|inferred`; `search_memory` before acting; "use sparingly, prefer replace") and "What NOT to save as memory", read 2026-11-07 from the local Claude Science database; ultrapowers 2.3.0 `skills/team-memory/SKILL.md`, `skills/team-memory/scripts/memory-lint.mjs`, `hooks/team-memory-nudge`, `hooks/team-memory-postcompact`, `hooks/lib/team-memory-common` (read from `<user-profile>\.claude\plugins\cache\ultrapowers\ultrapowers\2.3.0\`); Claude Code hooks reference (UserPromptSubmit and SessionStart `compact` context injection; `source` field). Not checked: none.
 

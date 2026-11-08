@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.11+ stdlib (`sqlite3`, `shutil`, `hashlib`, `json`, `tomllib` for `config.toml`), `unittest`.
 
-**Spec:** `specs/2026-11-07-science-ultrapowers-design.md` — G7, D1 edge cases, D3, D5, D7, Constraints (migration safety), Components "migrating-from-claude-science", Error handling, Testing, Definition of done 3.
+**Spec:** `docs/science-ultrapowers/specs/2026-11-07-science-ultrapowers-design.md` — G7, D1 edge cases, D3, D5, D7, Constraints (migration safety), Components "migrating-from-claude-science", Error handling, Testing, Definition of done 3.
 
 **Sources:** Claude Science `self-awareness` skill (table and column documentation, denied tables), the `operon-cli.db` schema read in this session via `PRAGMA table_info` (tables and columns listed in Task 1), `config.toml` and `last-data-dir-move.json` (data-dir resolution), the artifact file layout observed under `orgs/<org>/artifacts/<proj>/<artifact_id>/v<8-hex>_<filename>`, `storage_path` values beginning `~/<drive>:/…` for host-linked files, enum values observed (`origin`: `extractor|agent_tool|user`; `evidence`: `stated|observed|inferred`; `verification_checks.status`: `open|claimed|resolved|unaddressed`; `verdict`: `pass|warn|fail|inconclusive`), all read 2026-11-07. Python `sqlite3` URI `file:…?mode=ro&immutable=1` (Python docs, from memory; Task 3's test proves it opens a copy while another handle holds the original). Not checked: whether `frame_messages.msg_json` has a stable shape across Claude Science versions; the transcript export treats each row as opaque JSON text.
 

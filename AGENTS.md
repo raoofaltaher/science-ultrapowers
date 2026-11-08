@@ -18,7 +18,7 @@ science-ultrapowers is a research-lab methodology for Claude Code: fourteen rese
 - No `CLAUDE.md` at the repository root. Claude Code does not load it from a plugin; instructions live in skills.
 - Nothing is ever written under `${CLAUDE_PLUGIN_ROOT}`.
 - No Git LFS in this repository.
-- `tests/claude-code/test-no-foreign-harness.sh` enforces these rules: no project-specific or Claude-Science-specific string (specs/ and plans/ included), no other harness name or template remnant, no root `CLAUDE.md`, an executable bit on every script and hook in the index, and no Git LFS attribute. The runtime-dependency rule and the rule against writing under `${CLAUDE_PLUGIN_ROOT}` are reviewed by hand.
+- `tests/claude-code/test-no-foreign-harness.sh` enforces these rules: no project-specific or Claude-Science-specific string (the design documents under `docs/science-ultrapowers/specs/` and `plans/` included), no other harness name or template remnant, no root `CLAUDE.md`, an executable bit on every script and hook in the index, and no Git LFS attribute. The runtime-dependency rule and the rule against writing under `${CLAUDE_PLUGIN_ROOT}` are reviewed by hand.
 
 ## Windows
 

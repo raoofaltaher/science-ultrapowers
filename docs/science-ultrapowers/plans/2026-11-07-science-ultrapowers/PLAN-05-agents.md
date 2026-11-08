@@ -8,7 +8,7 @@
 
 **Tech Stack:** Markdown agents with YAML frontmatter, bash test, `jq`.
 
-**Spec:** `specs/2026-11-07-science-ultrapowers-design.md` — G4, D2, D7, Components "Agents", Constraints (plugin agent frontmatter).
+**Spec:** `docs/science-ultrapowers/specs/2026-11-07-science-ultrapowers-design.md` — G4, D2, D7, Components "Agents", Constraints (plugin agent frontmatter).
 
 **Sources:** Claude Code sub-agents reference (https://code.claude.com/docs/en/sub-agents.md: supported fields `name, description, model, tools, disallowedTools, skills (≤32), color`; `initialPrompt`, `permissionMode`, `hooks`, `mcpServers` ignored in plugin agents; an explicit `tools` list is exhaustive; `AskUserQuestion` unavailable to subagents; nesting three deep by default), plugin components reference (https://code.claude.com/docs/en/plugins/components.md: `agents/*.md`, manifest `agents` key replaces the default scan), both read 2026-11-07; the fourteen current agent files and `TEAM_SPEC.md` §7 (read 2026-11-07). Not checked: none.
 

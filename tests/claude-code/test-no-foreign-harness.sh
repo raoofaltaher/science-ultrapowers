@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 # The plugin carries no other harness, no template remnant, no removed skill,
-# no project-specific or Claude-Science-specific string (specs/ and plans/ are
-# scanned too), valid skill names, no root CLAUDE.md, no Git LFS attribute, and
+# no project-specific or Claude-Science-specific string (the design documents
+# under docs/science-ultrapowers/specs/ and plans/ are scanned too), valid skill names, no root CLAUDE.md, no Git LFS attribute, and
 # an executable bit on every script and hook.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 fail=0
-# The private-string scan covers specs/ and plans/. The harness and removed-skill
+# The private-string scan covers the design documents. The harness and removed-skill
 # scans leave them out: the design documents name the other harnesses and the
 # removed skills on purpose, as non-goals and as history.
 exempt='^(RELEASE-NOTES\.md|LICENSE|tests/|docs/science-ultrapowers/evals/|docs/science-ultrapowers/claude-science-schema\.md)'
-exempt_design='^(RELEASE-NOTES\.md|LICENSE|specs/|plans/|tests/|docs/science-ultrapowers/evals/|docs/science-ultrapowers/claude-science-schema\.md)'
+exempt_design='^(RELEASE-NOTES\.md|LICENSE|docs/science-ultrapowers/specs/|docs/science-ultrapowers/plans/|tests/|docs/science-ultrapowers/evals/|docs/science-ultrapowers/claude-science-schema\.md)'
 ex="$exempt_design"
 # scan FLAGS PATTERN: matching lines of every non-exempt tracked file (NUL-safe).
 scan() {

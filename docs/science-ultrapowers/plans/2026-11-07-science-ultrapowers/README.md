@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use ultrapowers:subagent-driven-development (recommended) or ultrapowers:executing-plans to implement these plans task-by-task, in the order below. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Spec:** `specs/2026-11-07-science-ultrapowers-design.md` (approved 2026-11-07). Every plan argues from it; read the spec first.
+**Spec:** `docs/science-ultrapowers/specs/2026-11-07-science-ultrapowers-design.md` (approved 2026-11-07). Every plan argues from it; read the spec first.
 
 **Why a set:** the spec names seven independently testable units (plugin shell and bootstrap, lab skills, agents, artifact store, memory store, `init`, `migrate`) plus a release gate. Each plan below produces working, tested software on its own; later plans consume the earlier ones' interfaces, named in each plan's Interfaces blocks.
 
@@ -24,5 +24,5 @@
 - Windows (learned in PLAN-01): git records new files as 100644 here, so every new script or hook is staged with `git add --chmod=+x` (the gate fails a shebang file or hook without it); `.gitattributes` keeps hooks, scripts and Markdown LF; call `python`, not `python3` (which can be the Windows Store stub); never `find … -delete` near the repository root; edit text containing backslashes with a file editor, not `sed`.
 - The gate `tests/claude-code/test-no-foreign-harness.sh` also rejects names of the skills PLAN-01 removed (`subagent-driven…`, `writing-plans`, `executing-plans`, `using-git-worktrees`, `finishing-a-development-branch`, `diagnosing-superpowers`, `using-superpowers`, the brainstorming skill) and the product names `Cursor`, `Muse`, `Devin` as capitalised words.
 - Commit messages: imperative subject, body optional, and the trailer lines the session requires (the author line and a `Claude-Session:` link).
-- "Spec §X" references point into `specs/2026-11-07-science-ultrapowers-design.md`.
+- "Spec §X" references point into `docs/science-ultrapowers/specs/2026-11-07-science-ultrapowers-design.md`.
 - Nothing in the plugin repository may contain a path of the source project's machine, the source project's name, a Claude Science `host.` call, a decision id (`D-00xx`) outside `RELEASE-NOTES.md`, or a secret. PLAN-01 Task 6 installs the test that enforces this.

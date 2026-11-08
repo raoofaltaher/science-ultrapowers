@@ -8,7 +8,7 @@
 
 **Tech Stack:** `claude` CLI, `gh` CLI, git, Markdown, hand-written SVG, Python stdlib for a PNG.
 
-**Spec:** `specs/2026-11-07-science-ultrapowers-design.md` — Definition of done 1-6, Testing "Acceptance", Constraints (install scope, public repository).
+**Spec:** `docs/science-ultrapowers/specs/2026-11-07-science-ultrapowers-design.md` — Definition of done 1-6, Testing "Acceptance", Constraints (install scope, public repository).
 
 **Sources:** Claude Code plugin install reference (https://code.claude.com/docs/en/plugins/install.md: `/plugin marketplace add owner/repo`, `/plugin install name@marketplace`, `claude plugin install name@marketplace --scope project`, private repos through existing git credentials), host-marketplace reference (https://code.claude.com/docs/en/plugins/host-marketplace.md: `gh auth setup-git` for background updates, keep plugin files out of LFS, `version` drives updates), manifest reference (`claude plugin validate <path>`, `--strict`), all read 2026-11-07. Not checked: none.
 

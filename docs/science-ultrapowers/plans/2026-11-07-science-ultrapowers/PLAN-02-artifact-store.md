@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.11+ stdlib (`argparse`, `json`, `hashlib`, `mimetypes`, `uuid`, `datetime`, `pathlib`, `subprocess` for `git add`), `unittest`.
 
-**Spec:** `specs/2026-11-07-science-ultrapowers-design.md` — G8, D3, D4, D10, Components "saving-artifacts", Data flow, Error handling, Testing "Scripts".
+**Spec:** `docs/science-ultrapowers/specs/2026-11-07-science-ultrapowers-design.md` — G8, D3, D4, D10, Components "saving-artifacts", Data flow, Error handling, Testing "Scripts".
 
 **Sources:** Claude Science system prompt sections "Working style" (`save_artifacts(files, language, version_of, environment, checkpoints, destination)`, markers `{{artifact:VID}}` / `{{artifact:art_ID}}`, "workspace files are ephemeral", the instruction to discover files through the host object's artifacts call), "Checkpoint Rule" (`working_data` keeps only the latest copy; checkpoints are loadable serializations only) and "The host Object" (the host object's lineage lookup by version id → `{code, messages, env, inputs}`, and its lineage graph for a version id), read 2026-11-07 from the local Claude Science database; Claude Science `self-awareness` skill (table and column names for `artifacts`, `artifact_versions`, `artifact_dependencies`, `verification_checks`); Claude Code worktrees reference (LFS pointer files in worktrees). Not checked against documentation: that `.gitattributes` honours exact-path lines (from the git-attributes man page, from memory; Task 4's test proves it against the installed git); GitHub LFS quota figures (1 GB storage / 1 GB bandwidth) are from memory and appear only in a warning message.
 
