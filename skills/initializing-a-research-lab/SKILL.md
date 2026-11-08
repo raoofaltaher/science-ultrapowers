@@ -41,7 +41,7 @@ On every lab, whatever its layout, the plan can also list two column additions, 
 ### A lab in the 0.1 layout
 
 Init migrates a lab in the 0.1 layout (a numbered folder such as `02_findings_ledger/` under `research_lab/`). <!-- legacy -->
-The plan lists each change as a `rename`, `header` or `rewrite` line, and init applies it only after the researcher confirms with `--yes`. The migration renames folders and files with `git mv` when the lab is tracked. It rewrites table headers, status tokens, the memory keys `basis` and `type`, and `lab.json`. It never edits a free-text cell or an existing identifier. It stops for a folder when the old and the new name both exist, and reports `unexpected layout`. Until the migration runs, every lab script exits with the message `this lab uses the 0.1 layout; run science-ultrapowers:initializing-a-research-lab to migrate it`.
+The plan lists each change as a `rename`, `header`, `rewrite` or `refresh` line, and init applies it only after the researcher confirms with `--yes`. The migration renames folders and files with `git mv` when the lab is tracked. It rewrites table headers, status tokens, the memory keys `basis` and `type`, and `lab.json`. It never edits a free-text cell or an existing identifier. A template, a folder guide or the text above a record's table that is still exactly as 0.1 wrote it is refreshed to the current text; a file the researcher edited is kept, with a warning. It stops for a folder when the old and the new name both exist, and reports `unexpected layout`. Until the migration runs, every lab script exits with the message `this lab uses the 0.1 layout; run science-ultrapowers:initializing-a-research-lab to migrate it`.
 
 ### The scholarly output style
 

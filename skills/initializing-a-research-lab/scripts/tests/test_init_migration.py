@@ -127,6 +127,8 @@ EXPECTED_PLAN = [
     "rewrite research_lab/lab.json: roles, 1 rows: scientific-reviewer -> scientific-peer-reviewer",  # legacy
     "rewrite research_lab/lab.json: idPrefixes, 1 rows: absent -> added",
     "rewrite research_lab/artifacts/.gitattributes: patterns, 2 lines: store/ -> archive/",  # legacy
+    # The fixture's task board keeps the 0.1 text above its table, so init refreshes that text (test_init_refresh.py).
+    "refresh research_lab/planning/WORK_PLAN.md: the 0.1 text above the table -> the current text",
 ]
 
 
@@ -257,6 +259,7 @@ class MigrationCase(unittest.TestCase):
         self.assertEqual(
             self.read("planning/WORK_PLAN.md"),
             self.original("07_project_management/TASK_BOARD.md")  # legacy
+            .replace("# Task board\n", "# Work plan\n", 1)  # legacy
             .replace("| Task |", "| TASK-id (task) |")  # legacy
             .replace("| Gate |", "| Stage |")  # legacy
             .replace("| G1 |", "| Literature |"),  # legacy

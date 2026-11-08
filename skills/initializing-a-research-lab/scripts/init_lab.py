@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import functools
+import hashlib
 import importlib.util
 import json
 import os
@@ -103,6 +104,8 @@ class Plan:
     tracks: list[str] = field(default_factory=list)
     # The instructions file whose lab section (between the markers) differs from the current template.
     section_refresh: str | None = None
+    # The lab files (new paths) whose text is still the 0.1 template; apply_migration refreshes them. Internal.
+    migration_refresh: list[str] = field(default_factory=list)
 
 
 # --- helpers -----------------------------------------------------------------------------------------
@@ -697,8 +700,10 @@ def apply_mcp_json(project_root: Path, action: str, servers: dict) -> bool:
 
 
 # --- migration of a 0.1 lab --------------------------------------------------------------------------
-# Three kinds of plan line and no others: `rename <old> -> <new>`, `header <file>: <old> -> <new>` and
-# `rewrite <file>: <column>, <n> rows: <old> -> <new>`. Free-text cells and existing ids in rows are never edited.
+# Four kinds of plan line and no others: `rename <old> -> <new>`, `header <file>: <old> -> <new>`,
+# `rewrite <file>: <column>, <n> rows: <old> -> <new>` and `refresh <file>: <what> -> <what>`. Free-text cells and
+# existing ids in rows are never edited; a refresh replaces a file, or the text above a record's table, only when it is
+# still exactly the 0.1 template text.
 
 OLD_FOLDERS = {  # old folder under research_lab/ -> new folder
     "00_project_knowledge": "project",  # legacy
@@ -737,6 +742,53 @@ INNER_RENAMES = (
 )
 MEETINGS_FOLDER = "decisions/lab_meetings"
 MEETING_SUFFIXES = (("_kickoff.md", "_opening.md"), ("_standup.md", "_close.md"))  # legacy
+# The 0.1 template text a migrated lab still holds: 0.2 destination (relative to the project root, POSIX) ->
+# (kind, SHA-256 hex of the 0.1 text). kind "whole" is a file that is the 0.1 template as a whole; "preamble" is a
+# record file with a table, of which only the text above the table (preamble_of) is the 0.1 template. The hashes
+# were computed from the files init copied at v0.1.1 (0.1.0 shipped the same templates), kept as the test fixture
+# tests/fixtures/templates_0_1/; the README is hashed with its placeholders unrendered. A file whose current text
+# above the table or as a whole equals the 0.1 text is not listed (a refresh would change nothing). Never listed:
+# the researcher's PROJECT_BRIEF.md, lab.json, .csv, .json, .jsonl and .gitkeep files, lab meeting notes and
+# anything under migration/.
+OLD_TEMPLATE_KEYS: dict[str, tuple[str, str]] = {
+    "research_lab/README.md": ("whole", "30d0b11e133f3bf6d242aec3999d8c5ad64d62733955d6a07bf82ec899311942"),
+    "research_lab/automation/README.md": ("whole", "a3bd5cb2301e3f8b7bf549461ee583f95ee631aff810435e435464893a70b3be"),
+    "research_lab/decisions/DECISION_LOG.md": ("preamble", "c6348e284164576080063449ce2fa9ccac9f087c76b6e4338cf4d5debf75ff87"),
+    "research_lab/decisions/README.md": ("whole", "6216a1ececc4fe649063ec08438829f810f1de9969d14aee6ba067a8edc4129d"),
+    "research_lab/experiments/EXPERIMENT_REGISTER.md": ("preamble", "7a173e35e29be4c1bfcbf7e23d97536eb08438de5787cd429d189c13247c01b5"),
+    "research_lab/experiments/README.md": ("whole", "4a11de41a563c4678351446c84962c7d56edf09eb12d394cdd06589f5b8df6ae"),
+    "research_lab/findings/FINDINGS_LOG.md": ("preamble", "a89cec01af71538a010930c3b2ee5b77b7c35f7dbeb0ba70648edf1fc6243629"),
+    "research_lab/findings/KEY_RESULTS.md": ("preamble", "7cf4d9e5b7a279bcead07539cde3c4565658574307cedf374ff5ecc49afe5bf7"),
+    "research_lab/findings/LAB_NOTEBOOK.md": ("whole", "96374c006cf928260cd27b94d8abce37cbb406a1a97f4d3e8aa6476333db7a02"),
+    "research_lab/findings/README.md": ("whole", "892e6e8691aa401cda514c50f570e8624b0b3c35da91adf941f9dcf57d22a13e"),
+    "research_lab/literature/EXCEPTIONS.md": ("preamble", "4476b12e53989c21d275f06ebd4ccb3d0926d49232c24a3922d22b0d1bc45bb9"),
+    "research_lab/literature/README.md": ("whole", "92e306ed0ca59348538d47d19f9ff75bde840917f3fc688923a1b50ed769da33"),
+    "research_lab/memory/MEMORY.md": ("whole", "a25e61092836cf5224dde4cd88ad54458275c2ca4f0529a89666ad8f16471c82"),
+    "research_lab/memory/README.md": ("whole", "2db3ebfa969708e9e4f38c7874bb73d93984950e7d80ceead09e47a830697797"),
+    "research_lab/planning/README.md": ("whole", "bb7c54da69cbd98b40509af741f1ec0fb4af09179d790f1513e3b3f65bcef820"),
+    "research_lab/planning/WORK_PLAN.md": ("preamble", "175bb11bcdbb9eee2c4e90a8b840924195b90b27359343468dbe48f6bfdcf96f"),
+    "research_lab/project/README.md": ("whole", "f4ed541ee89f7cb56a12f4c37d1cf54a6ac9794f8cb9afcb04056224079df164"),
+    "research_lab/requests/ACCESS_REQUESTS.md": ("preamble", "27fd1a883bad9abc866d1e3893fac7be88200d4e75d68dc6a8440dc874b30c54"),
+    "research_lab/requests/README.md": ("whole", "650b96e784226c9b8fe827e834a911902a5401c146747fd2776e381be9240c92"),
+    "research_lab/reviews/README.md": ("whole", "a2496c0dc0a0c939242775002cb0ff3f081dd3fb6949c37b36ab67d83f2fee5d"),
+    "research_lab/reviews/REVIEW_LOG.md": ("preamble", "e8d62cea63c5f6833fdb71e10f3c21745a4d66dc60728224effff0219e663748"),
+    "research_lab/templates/ADVERSARIAL_REVIEW.md": ("whole", "1865d1ef1a4b834840f47aa97601c046bfadfaab7e0f0d936dbae72a7208135a"),
+    "research_lab/templates/CITATION_AUDIT.md": ("whole", "26f36b6f285019a4c4cf29d12b5a32053c34b4c5c67aa39fbe383c15a29f1d05"),
+    "research_lab/templates/EVIDENCE_RECORD.md": ("whole", "992d100a934790b6e45aa73a7efb401cbbd027b25c5ca4eace46d755bdf4246c"),
+    "research_lab/templates/HYPOTHESIS_RECORD.md": ("whole", "95e506a7c18763ac01bb861b7e9d96f8f7b728a734a75cc55d341801cded6daa"),
+    "research_lab/templates/INTERNAL_REVIEW.md": ("whole", "958285de230468900c7cf1c60a73c0a834108f15233f440be82a8eb601e3b2bb"),
+    "research_lab/templates/LAB_MEETING.md": ("whole", "7050c789bfa11af6ddaed86e6c1c87f487de636df20e4685b96729ee5daff2a2"),
+    "research_lab/templates/METHOD_PROPOSAL.md": ("whole", "93df7bd15475df751ecb1c0964d3139b9c8920fbc3facabf4d2b64d3cab25bd6"),
+    "research_lab/templates/PREREGISTRATION.md": ("whole", "1cbfa72414fb84535ced3351bb059cd4ab83f92fa6c6f28b9914aa685b67a023"),
+    "research_lab/templates/REFEREE_REPORT.md": ("whole", "55802e1e5e541bd42c3a26881190b317ad9fb4bd57d391b0aba69efb41d81041"),
+    "research_lab/templates/SESSION_CLOSE.md": ("whole", "0cf1a4e959c9154592df4431c965b9c166e06814306aa935b801fab2d7ca6eb8"),
+    "research_lab/templates/SESSION_OPENING.md": ("whole", "165e9c4876a8d00c013bb957dca072d0fd9359d563c2b63bdb7975ed1e7e8ce3"),
+    "research_lab/templates/TASK_REPORT.md": ("whole", "0d6ea14700f05ea8766cade07d7182870a8e36e818f355a61f5ada5a4f999ef3"),
+    "research_lab/tool_vetting/README.md": ("whole", "c62a2c488f956b06a5d66779daf540d5cc1c56c248d9b5206d2ebb19f1144294"),
+}
+# Records that grow by design: entries the lab adds make them differ from the 0.1 template, which is no edit to
+# report, so a 0.1-layout migration keeps them without the "was edited after setup" warning.
+GROWING_RECORDS = ("research_lab/findings/LAB_NOTEBOOK.md", "research_lab/memory/MEMORY.md")
 ROLE_RENAMES = {  # old agent id -> new agent id
     "lab-project-manager": "research-project-manager",  # legacy
     "methods-researcher": "methods-innovation-researcher",  # legacy
@@ -1207,17 +1259,127 @@ def _before_renames(rel: str, renames: list[tuple[str, str]]) -> str:
     return rel
 
 
-def plan_migration(project_root: Path, plan: Plan) -> None:
+def plan_migration(project_root: Path, plan: Plan, opts: Options | None = None) -> None:
     """Plan the migration: fills plan.migration (the shown lines) and the steps apply_migration runs.
 
     A lab in the 0.1 layout gets the renames and rewrites and the column additions; a lab with the new layout only
-    the column additions."""
+    the column additions. Every lab gets the refresh of the 0.1 template text it still holds."""
     project_root = Path(project_root)
     if detect_old_layout(project_root):
         plan.migration_old_layout = True
         _plan_old_layout(project_root, plan)
     else:
         _plan_added_columns(project_root, plan)
+    _plan_template_refresh(project_root, plan, opts)
+
+
+# --- refresh of the 0.1 template text ----------------------------------------------------------------
+
+README_REL = "research_lab/README.md"
+_README_SCAFFOLDED = re.compile(r"Scaffolded (\d{4}-\d{2}-\d{2}) by science-ultrapowers (\d+\.\d+\.\d+)\.")
+_README_WORKS_ON = "works on {{NAME}}{{DESCRIPTION_SENTENCE}} It indexes"
+_README_SCAFFOLDED_TEMPLATE = "Scaffolded {{DATE}} by science-ultrapowers {{PLUGIN_VERSION}}."
+
+
+def text_key(text: str) -> str:
+    """The SHA-256 hex of a text's UTF-8 bytes, with CRLF read as LF."""
+    return hashlib.sha256(text.replace("\r\n", "\n").encode("utf-8")).hexdigest()
+
+
+def preamble_of(text: str) -> str | None:
+    """The lines before the first line whose first non-blank character is `|`, each followed by a newline; None
+    when the text has no such table line."""
+    head: list[str] = []
+    for line in text.replace("\r\n", "\n").split("\n"):
+        if line.lstrip().startswith("|"):
+            return "".join(item + "\n" for item in head)
+        head.append(line)
+    return None
+
+
+def _lab_name_and_description(project_root: Path) -> tuple[str, str] | None:
+    """The name and description research_lab/lab.json records; None when it is unreadable or holds no name."""
+    raw = read_bytes_or_none(project_root / LAB_JSON_REL)
+    if raw is None:
+        return None
+    try:
+        data = parse_lab_json(raw)
+    except ValueError:
+        return None
+    name, description = data.get("name"), data.get("description", "")
+    if not isinstance(name, str) or not name.strip() or not isinstance(description, str):
+        return None
+    return name, description
+
+
+def _readme_as_template(text: str, name: str, description: str) -> tuple[str, dict[str, str]] | None:
+    """The lab README turned back into the 0.1 template (placeholders unrendered) and the setup date and version it
+    carried; None when any part does not match."""
+    lines = text.split("\n")
+    if len(lines) < 3 or lines[0] != f"# {name} research lab":
+        return None
+    works_on = f"works on {name}{description_sentence(description)} It indexes"
+    if works_on not in lines[2]:
+        return None
+    line = lines[2].replace(works_on, _README_WORKS_ON, 1)
+    found = _README_SCAFFOLDED.findall(line)
+    if len(found) != 1:
+        return None
+    lines[0] = "# {{NAME}} research lab"
+    lines[2] = _README_SCAFFOLDED.sub(lambda _: _README_SCAFFOLDED_TEMPLATE, line, count=1)
+    return "\n".join(lines), {"DATE": found[0][0], "PLUGIN_VERSION": found[0][1]}
+
+
+def _old_template_values(project_root: Path, rel: str, text: str) -> dict[str, str] | None:
+    """The values to keep when `text` is still exactly the 0.1 text OLD_TEMPLATE_KEYS holds for `rel` (the README's
+    setup date, version, name and description sentence; {} for every other file); None when it is not."""
+    kind, key = OLD_TEMPLATE_KEYS[rel]
+    text = text.replace("\r\n", "\n")
+    values: dict[str, str] = {}
+    if rel == README_REL:
+        names = _lab_name_and_description(project_root)
+        converted = _readme_as_template(text, *names) if names is not None else None
+        if names is None or converted is None:
+            return None
+        text, values = converted
+        values = {**values, "NAME": names[0], "DESCRIPTION_SENTENCE": description_sentence(names[1])}
+    if kind == "preamble":
+        text = preamble_of(text)
+        if text is None:
+            return None
+    return values if text_key(text) == key else None
+
+
+def _refresh_line(rel: str, kind: str) -> str:
+    what = "the 0.1 template -> the current template" if kind == "whole" else "the 0.1 text above the table -> the current text"
+    return f"refresh {rel}: {what}"
+
+
+def _plan_template_refresh(project_root: Path, plan: Plan, opts: Options | None = None) -> None:
+    """Plan the refresh of every lab file that is still exactly the 0.1 template (whole, or above its table).
+
+    The lab's name and description come from its lab.json, so `opts` is not needed to key a file. A file that differs
+    is kept: with a warning in a 0.1-layout migration, silently in a lab with the new layout."""
+    files = template_files()
+    refreshes: list[str] = []
+    for rel, (kind, _) in OLD_TEMPLATE_KEYS.items():
+        source = files.get(rel)
+        if source is None or not source.is_file():
+            continue
+        text = _read_text(project_root / _before_renames(rel, plan.migration_renames))
+        if text is None:
+            continue
+        if kind == "preamble" and preamble_of(text) is None:
+            continue
+        if _old_template_values(project_root, rel, text) is not None:
+            refreshes.append(_refresh_line(rel, kind))
+            plan.migration_refresh.append(rel)
+        elif plan.migration_old_layout and rel not in GROWING_RECORDS:
+            plan.warn.append(
+                f"{rel} was edited after setup and was kept; it may still use 0.1 names: "
+                "compare it with the current template"
+            )
+    plan.migration += refreshes
 
 
 def _plan_added_columns(project_root: Path, plan: Plan) -> None:
@@ -1399,9 +1561,58 @@ def _rewrite_failed(rel: str, exc: OSError, warn: list[str]) -> None:
     warn.append(f"rewrite failed for {rel}: {_reason(exc)}; the file is unchanged: close it and edit it by hand")
 
 
-def apply_migration(project_root: Path, plan: Plan, warn: list[str]) -> list[str]:
-    """Run the planned migration; returns the plan lines that were carried out."""
+def _apply_template_refresh(
+    project_root: Path, plan: Plan, warn: list[str], done: list[str], opts: Options | None
+) -> None:
+    """Replace each planned file with the current template, or only its text above the table; the file's line
+    endings stay as they are and a file that changed since the plan is left alone."""
+    files = template_files()
+    subs = substitutions(project_root, opts if opts is not None else Options(name=""))
+    for rel in plan.migration_refresh:
+        if any(rel == blocked or rel.startswith(blocked + "/") for blocked in plan.migration_blocked):
+            continue
+        kind = OLD_TEMPLATE_KEYS[rel][0]
+        path = project_root / rel
+        raw = read_bytes_or_none(path)
+        text = _read_text(path)
+        if raw is None or text is None:
+            continue
+        values = _old_template_values(project_root, rel, text)
+        if values is None:
+            continue
+        current = read_template(files[rel], {**subs, **values})
+        if kind == "whole":
+            new_raw = current.encode("utf-8")
+            eol = b"\r\n" if b"\r\n" in raw else b"\n"
+        else:
+            above = preamble_of(current)
+            old_above = preamble_of(text)
+            if above is None or old_above is None:
+                continue
+            offset = 0
+            for _ in range(old_above.count("\n")):
+                offset = raw.index(b"\n", offset) + 1
+            eol = b"\r\n" if b"\r\n" in raw[:offset] else b"\n"
+            new_raw = above.encode("utf-8")
+        new_raw = new_raw.replace(b"\n", eol) + (raw[offset:] if kind == "preamble" else b"")
+        try:
+            path.write_bytes(new_raw)
+        except OSError as exc:
+            _rewrite_failed(rel, exc, warn)
+            continue
+        done.append(_refresh_line(rel, kind))
+
+
+def apply_migration(project_root: Path, plan: Plan, warn: list[str], opts: Options | None = None) -> list[str]:
+    """Run the planned migration, then the template refreshes; returns the plan lines that were carried out."""
     project_root = Path(project_root)
+    done = _apply_migration_steps(project_root, plan, warn)
+    _apply_template_refresh(project_root, plan, warn, done, opts)
+    return done
+
+
+def _apply_migration_steps(project_root: Path, plan: Plan, warn: list[str]) -> list[str]:
+    """The renames, header and token rewrites and column additions."""
     done: list[str] = []
     if not plan.migration:
         return done
@@ -1525,7 +1736,7 @@ def build_plan(project_root: Path, opts: Options) -> Plan:
     plan = Plan()
 
     # 0: a 0.1 lab is migrated first; what the migration moves counts as present below.
-    plan_migration(project_root, plan)
+    plan_migration(project_root, plan, opts)
 
     def present(rel: str) -> bool:
         return os.path.lexists(project_root / rel)
@@ -1821,7 +2032,7 @@ def apply_plan(plan: Plan, project_root: Path, opts: Options) -> dict:
         "outputStyle": dict(plan.output_style),
         "tracks": list(plan.tracks),
     }
-    report["migration"] = apply_migration(project_root, plan, report["warn"])
+    report["migration"] = apply_migration(project_root, plan, report["warn"], opts)
     if plan.section_refresh and apply_section_refresh(project_root, opts, plan.section_refresh):
         report["migration"].append(f"rewrite {plan.section_refresh}: the lab section between the markers -> the current template")
     permissions_written = False
@@ -2044,6 +2255,7 @@ def main(argv: list[str] | None = None) -> int:
             "migration_blocked",
             "lab_json_migrated",
             "migration_old_layout",
+            "migration_refresh",
         )
         out = {**{k: v for k, v in plan.__dict__.items() if k not in internal}, "projectRoot": root.as_posix()}
         if not opts.json_output:

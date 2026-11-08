@@ -1,0 +1,3 @@
+# Findings ledger
+
+`FINDINGS.md` holds one append-only row per finding, `CANONICAL_NUMBERS.md` lists the numbers every document quotes, and `LAB_NOTEBOOK.md` keeps the dated, append-only record of each working session, failures and dead ends included. Every number in any lab document is quoted from here, never retyped from memory; the schema is in `science-ultrapowers:recording-findings`. The Findings & Records Curator maintains the ledger and re-verifies each row; the Data & Evaluation Researcher, the Literature Researcher and the Lab & Experiments Lead propose findings and write their own notebook entries.

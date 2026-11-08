@@ -1,0 +1,3 @@
+# Access requests
+
+`ACCESS_REQUESTS.md` is the queue for your human partner, the References & Resources Specialist: requests for a paywalled full text, for a candidate DOI to be confirmed, and for approval of a DOI-less (Tier B) source. Roles cannot ask directly, so they file a row and put an `ACCESS REQUEST` or `APPROVAL NEEDED` block at the top of their report; the procedure is in `science-ultrapowers:requesting-reference-access`. Any role may file a request, the Research Project Manager keeps the queue current, and your human partner fulfils it and delivers files to `references/` at the project root.

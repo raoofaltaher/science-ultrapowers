@@ -41,5 +41,5 @@ PASS. Four parts of the pass line were checked in the report file itself (`resea
 
 ## Observations
 
-- The session's two notes carry the headings "Session kickoff" and "Session stand-up". Those headings came from older migrated notes in the lab, not from the 0.2.0 templates, whose headings are "Session opening" and "Session close". The fix pass added to `science-ultrapowers:holding-lab-meetings` that every note is written from its template.
+- The session's two notes carry the 0.1 headings of the session opening and close. The cause is the lab's migrated session templates: migration had renamed them but kept their 0.1 text. The fix pass made init refresh every template, folder guide and record preamble that is still exactly the 0.1 text (`test_init_refresh.py`), and a re-run of init on the acceptance lab refreshed them. `science-ultrapowers:holding-lab-meetings` also says to write every note from its template.
 - The run cost more than the idea-track run in transcript 04, because two roles ran in parallel and each re-read the templates.
