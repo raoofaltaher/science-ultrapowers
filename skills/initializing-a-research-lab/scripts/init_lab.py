@@ -301,15 +301,25 @@ def gitignore_lines() -> list[str]:
     return [line.strip() for line in text.splitlines() if line.strip()]
 
 
-def missing_gitignore_lines(raw: bytes) -> list[str]:
-    """The template lines the .gitignore bytes lack; a line counts as present with or without its leading slash."""
+REFERENCES_IGNORE_LINE = "/references/"
+
+
+def missing_gitignore_lines(raw: bytes, references_tracked: bool = False) -> list[str]:
+    """The template lines the .gitignore bytes lack; a line counts as present with or without its leading slash.
+    A project that tracks its references/ folder in git keeps it tracked: that line is never added to it."""
 
     def bare(line: str) -> str:
         line = line.strip()
         return line[1:] if line.startswith("/") else line
 
     have = {bare(line) for line in raw.decode("utf-8", errors="replace").splitlines()}
-    return [line for line in gitignore_lines() if bare(line) not in have]
+    wanted = [line for line in gitignore_lines() if not (references_tracked and line == REFERENCES_IGNORE_LINE)]
+    return [line for line in wanted if bare(line) not in have]
+
+
+def references_tracked(project_root: Path) -> bool:
+    """True when git tracks at least one file under references/ (the project keeps its full texts in the repository)."""
+    return _git_tracked(project_root, "references")
 
 
 def read_bytes_or_none(path: Path) -> bytes | None:
@@ -1424,6 +1434,39 @@ def _plan_added_columns(project_root: Path, plan: Plan) -> None:
     plan.migration += headers + rewrites
 
 
+ARCHIVE_RECORDS = ("research_lab/artifacts/versions.jsonl", "research_lab/artifacts/artifacts.jsonl")
+
+
+def transform_archive_lines(text: str, renames: list[tuple[str, str]]):
+    """Re-point the archive's records at the renamed files: (new text, [(n rows, old, new)] per rename that changed a
+    row). A JSON string value that is a renamed path, or starts with it, follows the rename (`link:` targets included);
+    the `storage_path` of a copy stays, because the archive reads `store/` through its own map."""
+    lines = text.split("\n")
+    counts: list[tuple[int, str, str]] = []
+    for old, new in renames:
+        n = 0
+        patterns = [(f'"{old}"', f'"{new}"'), (f'"{old}/', f'"{new}/'), (f'"link:{old}"', f'"link:{new}"'), (f'"link:{old}/', f'"link:{new}/')]
+        for i, line in enumerate(lines):
+            changed = line
+            for a, b in patterns:
+                changed = changed.replace(a, b)
+            if changed != line:
+                lines[i] = changed
+                n += 1
+        if n:
+            counts.append((n, old, new))
+    return "\n".join(lines), counts
+
+
+def _plan_archive_records(project_root: Path, plan: Plan, renames: list[tuple[str, str]]) -> None:
+    for rel in ARCHIVE_RECORDS:
+        text = _read_text(project_root / _before_renames(rel, renames))
+        if text is None:
+            continue
+        _, counts = transform_archive_lines(text, renames)
+        plan.migration += [f"rewrite {rel}: paths, {n} rows: {old} -> {new}" for n, old, new in counts]
+
+
 def _plan_old_layout(project_root: Path, plan: Plan) -> None:
     lab = project_root / "research_lab"
     renames: list[tuple[str, str]] = []  # project-relative (old, new), in the order they run
@@ -1501,6 +1544,7 @@ def _plan_old_layout(project_root: Path, plan: Plan) -> None:
             _, changes = transform_frontmatter(text)
             rel = path.relative_to(project_root).as_posix()
             plan.migration += [f"rewrite {rel}: {column}, {n} rows: {old} -> {new}" for column, n, old, new in changes]
+    _plan_archive_records(project_root, plan, renames)
 
     lab_json = lab / "lab.json"
     if lab_json.is_file() and not is_symlink(lab_json):
@@ -1688,6 +1732,19 @@ def _apply_migration_steps(project_root: Path, plan: Plan, warn: list[str]) -> l
                     _rewrite_failed(rel, exc, warn)
                     continue
             done += [f"rewrite {rel}: {column}, {n} rows: {old} -> {new}" for column, n, old, new in changes]
+    for rel in ARCHIVE_RECORDS:
+        path = project_root / rel
+        text = _read_text(path)
+        if text is None:
+            continue
+        new_text, counts = transform_archive_lines(text, plan.migration_renames)
+        if new_text != text:
+            try:
+                _write_text(path, new_text)
+            except OSError as exc:
+                _rewrite_failed(rel, exc, warn)
+                continue
+        done += [f"rewrite {rel}: paths, {n} rows: {old} -> {new}" for n, old, new in counts]
     lab_json = project_root / LAB_JSON_REL
     if plan.lab_json_migrated is not None and lab_json.is_file():
         raw = read_bytes_or_none(lab_json)
@@ -1832,8 +1889,11 @@ def build_plan(project_root: Path, opts: Options) -> Plan:
         if raw is None:
             plan.warn.append("cannot read .gitignore; left alone")
         else:
-            missing = missing_gitignore_lines(raw)
+            tracked = references_tracked(project_root)
+            missing = missing_gitignore_lines(raw, tracked)
             (plan.append if missing else plan.skip).append(".gitignore")
+            if tracked and REFERENCES_IGNORE_LINE in missing_gitignore_lines(raw):
+                plan.warn.append("references/ is tracked in git, so the ignore line for it was not added; the full texts stay tracked")
 
     # 6: references/.
     (plan.skip if present("references") else plan.create).append(REFERENCES_REL)
@@ -1934,7 +1994,7 @@ def apply_section_refresh(project_root: Path, opts: Options, rel: str) -> bool:
 def apply_gitignore(project_root: Path) -> bool:
     dest = project_root / ".gitignore"
     raw = dest.read_bytes() if os.path.lexists(dest) else b""
-    missing = missing_gitignore_lines(raw)
+    missing = missing_gitignore_lines(raw, references_tracked(project_root))
     if not missing:
         return False
     lead = b"\n" if raw and not raw.endswith(b"\n") else b""

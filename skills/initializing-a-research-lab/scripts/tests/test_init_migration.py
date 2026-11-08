@@ -119,6 +119,14 @@ EXPECTED_PLAN = [
     "rewrite research_lab/memory/project/a-pitfall.md: type, 1 rows: gotcha -> pitfall",  # legacy
     "rewrite research_lab/memory/project/another-pitfall.md: evidence, 1 rows: evidence -> basis",  # legacy
     "rewrite research_lab/memory/project/another-pitfall.md: type, 1 rows: gotcha -> pitfall",  # legacy
+    "rewrite research_lab/artifacts/versions.jsonl: paths, 1 rows: research_lab/01_reference_registry -> research_lab/literature",  # legacy
+    "rewrite research_lab/artifacts/versions.jsonl: paths, 1 rows: research_lab/03_experiments -> research_lab/experiments",  # legacy
+    "rewrite research_lab/artifacts/versions.jsonl: paths, 1 rows: research_lab/literature/REGISTRY.csv -> research_lab/literature/SOURCES.csv",  # legacy
+    "rewrite research_lab/artifacts/versions.jsonl: paths, 1 rows: research_lab/experiments/protocols -> research_lab/experiments/preregistrations",  # legacy
+    "rewrite research_lab/artifacts/artifacts.jsonl: paths, 1 rows: research_lab/01_reference_registry -> research_lab/literature",  # legacy
+    "rewrite research_lab/artifacts/artifacts.jsonl: paths, 1 rows: research_lab/03_experiments -> research_lab/experiments",  # legacy
+    "rewrite research_lab/artifacts/artifacts.jsonl: paths, 1 rows: research_lab/literature/REGISTRY.csv -> research_lab/literature/SOURCES.csv",  # legacy
+    "rewrite research_lab/artifacts/artifacts.jsonl: paths, 1 rows: research_lab/experiments/protocols -> research_lab/experiments/preregistrations",  # legacy
     "rewrite research_lab/lab.json: jev.blockedPaths, 1 rows: jev.blockedPaths -> scope.restrictedFolders",  # legacy
     "rewrite research_lab/lab.json: roles, 1 rows: citation-auditor -> citation-reference-auditor",  # legacy
     "rewrite research_lab/lab.json: roles, 1 rows: experiments-lead -> lab-experiments-lead",  # legacy
@@ -208,6 +216,19 @@ class MigrationCase(unittest.TestCase):
             report["warn"],
         )
         self.assertIn("| F-0003 | A third statement | code inspection | exploratory |", self.read("findings/FINDINGS_LOG.md"))
+
+    def test_the_archives_link_rows_point_at_the_renamed_files(self):
+        self.report()
+        versions = self.read("artifacts/versions.jsonl")
+        self.assertIn('"storage_path": "link:research_lab/literature/SOURCES.csv"', versions)
+        self.assertIn('"storage_path": "link:research_lab/experiments/preregistrations/P-1.md"', versions)
+        self.assertIn('"storage_path": "artifacts/store/art-1/v001_result.csv"', versions)  # legacy: a copy row is read through the store map and stays
+        self.assertNotIn("01_reference_registry", versions)  # legacy
+        artifacts = self.read("artifacts/artifacts.jsonl")
+        self.assertIn('"filename": "research_lab/literature/SOURCES.csv"', artifacts)
+        self.assertIn('{"id": "art-1", "filename": "result.csv"}', artifacts)
+        second = self.report(yes=False)
+        self.assertEqual([l for l in second["migration"] if "artifacts/" in l and ".jsonl" in l], [])
 
     def test_migration_rewrites_headers_and_tokens_only(self):
         self.report()
