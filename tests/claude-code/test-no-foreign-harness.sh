@@ -28,7 +28,7 @@ report "removed skill named" "$(scan -i 'subagent-driven|writing-plans|executing
 # Generic private patterns: a path on any drive but C: (C: system paths such as
 # Program Files, Windows and a user profile are legitimate; a profile name is an
 # owner-specific string for the private file), host-object calls, decision ids.
-private='(^|[^A-Za-z0-9_<>])[A-BD-Zabd-z]:[\\/]|host\.(skills|artifacts|lineage|agents|query|mcp)|D-00[0-9][0-9]'
+private='(^|[^A-Za-z0-9_<>])[A-BD-Zabd-z]:[\\/]|host\.(skills|artifacts|lineage|agents|query|mcp)|(^|[^A-Za-z])D-00[0-9][0-9]'
 planted_private=('S:\x' 'D:/x' 'host.skills.read' 'D-0011')
 # Owner-specific strings (project, dataset, funder, ids, profile paths) live in
 # tests/private-strings.txt, git-ignored, one extended-regex alternative per line
