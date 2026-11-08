@@ -17,7 +17,32 @@ COMMON=(
   "science-ultrapowers:remembering-for-the-lab"
 )
 COLORS=" red blue green yellow purple orange pink cyan "
-TOOLKIT_ROLES=" academic-supervisor methods-researcher data-evaluation-researcher experiments-lead documentation-writer paper-author academic-reviewer scientific-reviewer research-engineer "
+TOOLKIT_ROLES=" academic-supervisor methods-innovation-researcher data-evaluation-researcher lab-experiments-lead documentation-writer academic-paper-author academic-reviewer scientific-peer-reviewer research-engineer "
+NEW_IDS=(research-project-manager academic-supervisor literature-researcher methods-innovation-researcher data-evaluation-researcher lab-experiments-lead findings-records-curator documentation-writer academic-paper-author academic-reviewer scientific-peer-reviewer citation-reference-auditor research-engineer decision-systems-specialist)
+OLD_IDS=(lab-project-manager methods-researcher experiments-lead findings-curator paper-author scientific-reviewer citation-auditor)
+# Words an agent must not use (the terminology standard, D2 to D10): old names and software metaphors. Stage codes are checked separately.
+VOCAB_STEMS=(ledger hand-off handoff kickoff stand-up standup orchestrat dispatch subagent devil "red team" red-team pre-regist freez frozen registry "evidence card" canonical "task board" "task brief" "iron law" lineage "verification record" "your human partner")
+VOCAB_CASE=(CRITICAL VERIFIED PASS FAIL)
+# The CRediT roles each agent performs (ANSI/NISO Z39.104-2022); the en dash is part of two role names.
+credit_roles() {
+  case "$1" in
+    research-project-manager) echo "Project administration, Resources" ;;
+    academic-supervisor) echo "Supervision, Conceptualization, Validation" ;;
+    literature-researcher) echo "Investigation, Data curation, Conceptualization" ;;
+    methods-innovation-researcher) echo "Methodology, Conceptualization, Formal analysis" ;;
+    data-evaluation-researcher) echo "Formal analysis, Methodology, Data curation, Validation" ;;
+    lab-experiments-lead) echo "Investigation, Resources, Data curation, Validation" ;;
+    findings-records-curator) echo "Data curation, Validation" ;;
+    documentation-writer) echo "Writing – original draft, Visualization, Data curation" ;;
+    academic-paper-author) echo "Writing – original draft, Writing – review & editing, Visualization" ;;
+    academic-reviewer) echo "Writing – review & editing, Validation" ;;
+    scientific-peer-reviewer) echo "Validation, Writing – review & editing" ;;
+    citation-reference-auditor) echo "Validation, Data curation" ;;
+    research-engineer) echo "Software, Methodology" ;;
+    decision-systems-specialist) echo "Methodology, Formal analysis, Software, Validation" ;;
+    *) echo "" ;;
+  esac
+}
 FORBIDDEN_WORDS=(DistilBERT BERT ViT UPF GFU CIFM ACT TIK Springer Optuna ruff mypy bandit config_validator)
 # Owner-specific words come from tests/private-strings.txt (git-ignored; see tests/private-strings.example).
 if [ -f tests/private-strings.txt ]; then
@@ -119,7 +144,7 @@ check_file() {
   local dt want
   dt=$(printf '%s\n' "$fm" | sed -n 's/^disallowedTools:[ ]*//p')
   case "$base" in
-    lab-project-manager|scientific-reviewer) want='[]' ;;
+    research-project-manager|scientific-peer-reviewer) want='[]' ;;
     *) want='[Agent]' ;;
   esac
   [ "$dt" = "$want" ] || err "disallowedTools is '$dt', expected $want"
@@ -216,44 +241,85 @@ check_file() {
   # 17. every Role toolkit points at the vendored skills' PROVENANCE.md records
   case "$TOOLKIT_ROLES" in
     *" $base "*)
-      printf '%s\n' "$body" | grep -qF 'its PROVENANCE.md records the source, version, licence and the vetting summary' \
+      printf '%s\n' "$body" | grep -qF 'its PROVENANCE.md records the source, version, license and the vetting summary' \
         || err "the Role toolkit does not point at the skills' PROVENANCE.md"
       ;;
   esac
+
+  # 18. the vocabulary: no old name, no stage code, no software metaphor
+  local stem
+  hit=$({ tr -d '\r' < "$f" | grep -n -E -m1 '\bG[0-6]\b' || true; } | head -n 1)
+  [ -z "$hit" ] || err "stage code at line ${hit%%:*}; write the stage name"
+  for stem in "${VOCAB_STEMS[@]}"; do
+    hit=$({ tr -d '\r' < "$f" | grep -n -i -F -m1 -- "$stem" || true; } | head -n 1)
+    [ -z "$hit" ] || err "not-approved term '$stem' at line ${hit%%:*}"
+  done
+  for stem in "${VOCAB_CASE[@]}"; do
+    hit=$({ tr -d '\r' < "$f" | grep -n -w -m1 -- "$stem" || true; } | head -n 1)
+    [ -z "$hit" ] || err "not-approved term '$stem' at line ${hit%%:*}"
+  done
+  hit=$({ tr -d '\r' < "$f" | grep -n -i -w -E -m1 'gates?|gated' || true; } | head -n 1)
+  [ -z "$hit" ] || err "not-approved term 'gate' at line ${hit%%:*}; write stage approval"
+
+  # 19. one '## Contributor Roles Taxonomy (CRediT)' section, after 'When to invoke' and before the toolkit, with the exact line
+  local ccount cline roles want_line
+  ccount=$(printf '%s\n' "$body" | { grep -c -x -- '## Contributor Roles Taxonomy (CRediT)' || true; })
+  [ "$ccount" = 1 ] || err "body has $ccount '## Contributor Roles Taxonomy (CRediT)' headings, expected 1"
+  cline=$(printf '%s\n' "$body" | grep -n -x -m1 -- '## Contributor Roles Taxonomy (CRediT)' | cut -d: -f1)
+  [ "$cline" -gt "$wline" ] || err "'## Contributor Roles Taxonomy (CRediT)' must come after '## When to invoke'"
+  if [ -n "$tline" ] && [ "$cline" -gt "$tline" ]; then
+    err "'## Contributor Roles Taxonomy (CRediT)' must come before '## Role toolkit'"
+  fi
+  roles=$(credit_roles "$base")
+  [ -n "$roles" ] || err "no CRediT roles are pinned for $base"
+  want_line="CRediT (ANSI/NISO Z39.104-2022) roles this role performs: $roles. AI roles are not authors; the researcher's contribution statement lists the researcher's own CRediT roles and discloses AI assistance."
+  printf '%s\n' "$body" | grep -qxF -- "$want_line" || err "the CRediT section lacks the exact line for $base"
 }
 
-# 18. running-the-lab's main-session line names the roles that keep the Agent tool, and only those
-check_main_session_line() {
+# 20. running-the-lab's lead-session line names the roles that keep the Agent tool, and only those
+check_lead_session_line() {
   local skill=skills/running-the-lab/SKILL.md af role dt msl
   local all=(agents/*.md)
   serr() { echo "agents: $skill: $1"; exit 1; }
   msl=
   if [ -f "$skill" ]; then
-    msl=$({ tr -d '\r' < "$skill" | grep -F -m1 -- 'run as the main session' || true; } | head -n 1)
+    msl=$({ tr -d '\r' < "$skill" | grep -F -m1 -- 'run as the lead session' || true; } | head -n 1)
   fi
-  [ -n "$msl" ] || serr "running-the-lab has no main-session line"
+  [ -n "$msl" ] || serr "running-the-lab has no lead-session line"
   for af in "${all[@]}"; do
     role=$(basename "$af" .md)
     dt=$(tr -d '\r' < "$af" | awk 'NR == 1 { next } /^---$/ { exit } /^disallowedTools:/ { sub(/^disallowedTools:[ ]*/, ""); print; exit }')
     case "$dt" in
       '[]')
         printf '%s\n' "$msl" | grep -qF -- "\`$role\`" \
-          || serr "running-the-lab's main-session line does not name $role, which keeps the Agent tool"
+          || serr "running-the-lab's lead-session line does not name $role, which keeps the Agent tool"
         ;;
       '[Agent]')
         if printf '%s\n' "$msl" | grep -qF -- "\`$role\`"; then
-          serr "running-the-lab's main-session line names $role, which cannot dispatch"
+          serr "running-the-lab's lead-session line names $role, which cannot assign"
         fi
         ;;
     esac
   done
 }
 
+if [ "$with_manifest" = 1 ]; then
+  for id in "${NEW_IDS[@]}"; do
+    [ -f "agents/$id.md" ] || fail "agents/$id.md does not exist"
+    jq -e --arg p "./agents/$id.md" '.agents | index($p) != null' .claude-plugin/plugin.json >/dev/null 2>&1 \
+      || fail "plugin.json agents does not list ./agents/$id.md"
+  done
+  for id in "${OLD_IDS[@]}"; do
+    [ ! -e "agents/$id.md" ] || fail "agents/$id.md still exists; the id is now one of the fourteen new ids"
+  done
+  [ "${#files[@]}" -eq 14 ] || fail "${#files[@]} agent files, expected 14"
+fi
+
 for f in "${files[@]}"; do
   check_file "$f"
 done
 
-check_main_session_line
+check_lead_session_line
 
 if [ "$with_manifest" = 1 ]; then
   manifest=.claude-plugin/plugin.json

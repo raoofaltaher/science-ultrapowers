@@ -19,19 +19,19 @@
     "workflows"
   ],
   "agents": [
+    "./agents/academic-paper-author.md",
     "./agents/academic-reviewer.md",
     "./agents/academic-supervisor.md",
-    "./agents/citation-auditor.md",
+    "./agents/citation-reference-auditor.md",
     "./agents/data-evaluation-researcher.md",
     "./agents/decision-systems-specialist.md",
     "./agents/documentation-writer.md",
-    "./agents/experiments-lead.md",
-    "./agents/findings-curator.md",
-    "./agents/lab-project-manager.md",
+    "./agents/findings-records-curator.md",
+    "./agents/lab-experiments-lead.md",
     "./agents/literature-researcher.md",
-    "./agents/methods-researcher.md",
-    "./agents/paper-author.md",
+    "./agents/methods-innovation-researcher.md",
     "./agents/research-engineer.md",
-    "./agents/scientific-reviewer.md"
+    "./agents/research-project-manager.md",
+    "./agents/scientific-peer-reviewer.md"
   ]
 }
