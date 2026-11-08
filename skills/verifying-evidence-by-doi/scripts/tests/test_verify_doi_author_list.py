@@ -195,7 +195,8 @@ class AuthorListCheckTests(FakeCrossrefTestCase):
 
 class UserAgentTests(unittest.TestCase):
     def test_user_agent_names_the_plugin(self):
-        self.assertEqual(verify_doi.DOI_USER_AGENT, "science-ultrapowers-doi-verifier/0.1")
+        # The version is the plugin version; tests/claude-code/test-version-sync.sh checks it against the manifests.
+        self.assertRegex(verify_doi.DOI_USER_AGENT, r"^science-ultrapowers-doi-verifier/[0-9]+\.[0-9]+\.[0-9]+$")
 
 
 class EarlyExitTests(unittest.TestCase):

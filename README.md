@@ -60,6 +60,15 @@ claude plugin install science-ultrapowers@science-ultrapowers --scope project
 
 Inside a session, `/plugin marketplace add raoofaltaher/science-ultrapowers` and then `/plugin install science-ultrapowers@science-ultrapowers` do the same. Project scope records the plugin in the project, so everyone who opens it gets the lab.
 
+To move an existing install to a new release, update the marketplace and then the plugin, and restart Claude Code:
+
+```
+claude plugin marketplace update science-ultrapowers
+claude plugin update science-ultrapowers@science-ultrapowers
+```
+
+Inside a session, `/plugin marketplace update science-ultrapowers` and `/plugin update science-ultrapowers@science-ultrapowers` do the same. After an update, run `science-ultrapowers:initializing-a-research-lab` once in each lab: it shows what the new release adds or migrates, and applies it with `--yes`.
+
 If your access to the repository comes through your own credentials, run `gh auth setup-git` once. Claude Code then updates the plugin in the background with those credentials.
 
 Requirements:

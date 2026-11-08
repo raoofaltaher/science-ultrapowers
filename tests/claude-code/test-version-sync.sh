@@ -15,4 +15,9 @@ m=$(jq -r '.plugins[0].version' .claude-plugin/marketplace.json)
 [ "$m" = "$expected" ] || { echo "marketplace.json version is $m, RELEASE-NOTES.md top release is $expected"; exit 1; }
 [ "$(jq -r '.files | length' .version-bump.json)" = "2" ] || { echo ".version-bump.json must declare exactly the two Claude Code manifests"; exit 1; }
 scripts/bump-version.sh --check >/dev/null || { echo "bump-version.sh --check reports drift"; exit 1; }
+# The two scripts that call a web service identify the plugin by name and version.
+for f in skills/verifying-evidence-by-doi/scripts/verify_doi.py skills/searching-the-literature/scripts/search_openalex.py; do
+  grep -qE "USER_AGENT = \"science-ultrapowers-[a-z-]+/$expected\"" "$f" \
+    || { echo "$f: the user-agent string does not carry the version $expected"; exit 1; }
+done
 echo "version-sync: ok"

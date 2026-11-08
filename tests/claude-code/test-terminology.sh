@@ -253,7 +253,8 @@ reworded=" investigating-anomalous-results establishing-feasibility-first "
   if [ -d skills/initializing-a-research-lab/templates ]; then
     find skills/initializing-a-research-lab/templates -type f | sort | sed 's/^/plain\t/'
   fi
-  for f in README.md CONTRIBUTING.md AGENTS.md docs/testing.md \
+  for f in README.md CONTRIBUTING.md AGENTS.md docs/testing.md RELEASE-NOTES.md \
+    .claude-plugin/plugin.json .claude-plugin/marketplace.json \
     hooks/session-start hooks/memory-nudge hooks/memory-postcompact; do
     if [ -f "$f" ]; then printf 'plain\t%s\n' "$f"; fi
   done

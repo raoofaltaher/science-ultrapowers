@@ -36,6 +36,7 @@ science-ultrapowers is a research-lab methodology for Claude Code: fourteen rese
 - `scripts/bump-version.sh <version>` updates both manifests.
 - Add a `## <version>` heading at the top of RELEASE-NOTES.md; `tests/claude-code/test-version-sync.sh` checks the manifests against it.
 - `scripts/bump-version.sh --check` reports drift.
+- The `User-Agent` strings of `verify_doi.py` and `search_openalex.py` carry the version; `tests/claude-code/test-version-sync.sh` checks them, and the bump script does not change them.
 
 ## Changes
 
