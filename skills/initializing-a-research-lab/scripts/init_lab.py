@@ -72,6 +72,7 @@ class Options:
     permissions: bool = False
     allow_domains: list[str] = field(default_factory=list)  # lowercased, validated hosts
     out_of_scope: list[str] = field(default_factory=list)  # cleaned folders no role may open
+    tracks: list[str] = field(default_factory=list)  # --track values, in the order given; empty means the whole lab
 
 
 @dataclass
@@ -92,8 +93,12 @@ class Plan:
     migration_renames: list = field(default_factory=list)
     migration_skip_folders: list[str] = field(default_factory=list)
     lab_json_migrated: bytes | None = None
+    # False for a lab with the new layout: only the column additions run, no rename, header rename or token rewrite.
+    migration_old_layout: bool = False
     # {"file", "action": "create" | "skip", "setting"}; empty when the plugin lacks the style file.
     output_style: dict = field(default_factory=dict)
+    # The tracks lab.json holds after the run: the ones it holds now, then the ones asked for.
+    tracks: list[str] = field(default_factory=list)
 
 
 # --- helpers -----------------------------------------------------------------------------------------
@@ -222,6 +227,57 @@ def template_files() -> dict[str, Path]:
     return items
 
 
+TRACKS = ("idea", "literature", "review", "writing", "dissemination")
+
+
+def _under(items: dict[str, Path], *prefixes: str) -> list[str]:
+    """Every template destination that starts with one of the folder prefixes."""
+    return sorted(rel for rel in items if rel.startswith(prefixes))
+
+
+def _track_files() -> dict[str, list[str]]:
+    """Track -> the template destinations its minimal lab holds (every set has the shared files)."""
+    items = template_files()
+    shared = [
+        "research_lab/literature/README.md",
+        "research_lab/literature/SOURCES.csv",
+        "research_lab/literature/EXCEPTIONS.md",
+        "research_lab/literature/evidence_records/.gitkeep",
+        "research_lab/literature/search_logs/.gitkeep",
+        "research_lab/literature/citation_audits/.gitkeep",
+        "research_lab/reviews/README.md",
+        "research_lab/reviews/REVIEW_LOG.md",
+        "research_lab/reviews/reports/.gitkeep",
+        "research_lab/artifacts/archive/.gitkeep",
+        "research_lab/memory/MEMORY.md",
+        "research_lab/memory/README.md",
+        "research_lab/memory/project/.gitkeep",
+        "research_lab/memory/artifact/.gitkeep",
+        "research_lab/README.md",
+        "research_lab/project/README.md",
+        "research_lab/project/PROJECT_BRIEF.md",
+        LAB_JSON_REL,
+    ]
+    t = "research_lab/templates/"
+    extra = {
+        "idea": _under(items, "research_lab/project/", "research_lab/decisions/")
+        + [t + "HYPOTHESIS_RECORD.md", t + "EVIDENCE_RECORD.md"],
+        "literature": [t + "EVIDENCE_RECORD.md", t + "SYNTHESIS_MATRIX.md", t + "CITATION_AUDIT.md"],
+        "review": [
+            t + "REFEREE_REPORT.md",
+            t + "CITATION_AUDIT.md",
+            t + "RESPONSE_MATRIX.md",
+            t + "ADVERSARIAL_REVIEW.md",
+        ],
+        "writing": _under(items, "research_lab/findings/", "research_lab/planning/") + [t + "INTERNAL_REVIEW.md"],
+        "dissemination": _under(items, "research_lab/findings/") + [t + "EVIDENCE_RECORD.md"],
+    }
+    return {track: sorted(set(shared + extra[track])) for track in TRACKS}
+
+
+TRACK_FILES: dict[str, list[str]] = _track_files()
+
+
 def gitignore_lines() -> list[str]:
     text = (TEMPLATE_ROOT / "gitignore_lines.txt").read_text(encoding="utf-8")
     return [line.strip() for line in text.splitlines() if line.strip()]
@@ -260,6 +316,7 @@ def build_lab_json(
     chosen = set(configured or [])
     data["connectors"] = [e["id"] for e in load_catalog() if e["id"] in chosen and e["kind"] == "mcp"]
     data["scope"]["restrictedFolders"] = list(opts.out_of_scope)
+    data["tracks"] = list(opts.tracks)
     return json.dumps(data, indent=2, ensure_ascii=False) + "\n"
 
 
@@ -278,7 +335,8 @@ def merge_lab_json(data: dict, opts: Options, configured: list[str], permissions
     """Bring an existing lab.json's own values up to date in place; True when something changed.
 
     Only these change: the plugin version, the connectors list (union with the ones configured now, catalog
-    order), permissions.written (only ever to true) and scope.restrictedFolders (union with --out-of-scope)."""
+    order), permissions.written (only ever to true), scope.restrictedFolders (union with --out-of-scope), tracks
+    (union with --track, order of first appearance) and the preregistration block (added when absent)."""
     changed = False
     version = plugin_version()
     if version != "unknown" and data.get("pluginVersion") != version:
@@ -309,6 +367,15 @@ def merge_lab_json(data: dict, opts: Options, configured: list[str], permissions
         if merged_paths != scope.get("restrictedFolders"):
             scope["restrictedFolders"] = merged_paths
             changed = True
+    have_tracks = data.get("tracks") if isinstance(data.get("tracks"), list) else []
+    merged_tracks = list(have_tracks) + [t for t in opts.tracks if t not in have_tracks]
+    if merged_tracks != data.get("tracks"):
+        data["tracks"] = merged_tracks
+        changed = True
+    if "preregistration" not in data:
+        template = json.loads((TEMPLATE_ROOT / "lab.json").read_text(encoding="utf-8"))
+        data["preregistration"] = template["preregistration"]
+        changed = True
     return changed
 
 
@@ -710,6 +777,8 @@ class TableSpec:
     kind: str  # "md" or "csv"
     headers: dict  # old column name -> new column name
     tokens: dict  # new column name -> a function from an old token to a new token
+    # (after_column, new_column, value_for_existing_rows): a column added when the table lacks it.
+    added: tuple = ()
 
 
 TABLES = (
@@ -718,6 +787,7 @@ TABLES = (
         "md",
         {"F-id": "FND-id (finding)", "Scope / caveats": "Scope and caveats"},  # legacy
         {"Status": finding_status},
+        (("Type", "Basis", "exploratory"),),
     ),
     TableSpec("findings/KEY_RESULTS.md", "md", {"F-id": "FND-id (finding)"}, {}),  # legacy
     TableSpec(
@@ -745,7 +815,8 @@ TABLES = (
             "Code / config": "Code and config",  # legacy
             "Seeds / splits (where applicable)": "Seeds and partitions",  # legacy
         },
-        {"Status": lowercase_of("planned", "registered", "running", "completed", "failed", "aborted")},
+        {"Status": lowercase_of("planned", "feasibility", "registered", "running", "completed", "failed", "aborted")},
+        (("Environment", "Input checksums", ""),),
     ),
     TableSpec(
         "reviews/REVIEW_LOG.md",
@@ -803,8 +874,47 @@ def _tally(counts: dict, column: str, old: str, new: str) -> None:
     counts[(column, old, new)] = counts.get((column, old, new), 0) + 1
 
 
-def transform_md_table(text: str, spec: TableSpec):
-    """Rewrite the first table of a Markdown file: (new text, [(old, new) header changes], [(column, n, old, new)])."""
+def _add_md_column(lines: list[str], start: int, after: str, new: str, value: str):
+    """Insert the column `new` after `after` in the table at `start`: (header change or None, rewrite or None, skipped).
+
+    The header cell, the separator cell and one cell in every data row are added; rows with another cell count are
+    left alone. Nothing is changed (skipped is the reason) when the anchor is absent."""
+    body, eol = _split_eol(lines[start])
+    cells = _CELL_SPLIT.split(body)
+    names = [cell.strip() for cell in cells]
+    if new in names:
+        return None, None, None
+    if after not in names:
+        return None, None, f"no {after} column"
+    index = names.index(after) + 1
+    sep_body, sep_eol = _split_eol(lines[start + 1])
+    sep_cells = _CELL_SPLIT.split(sep_body)
+    if len(sep_cells) != len(cells):
+        return None, None, "the separator row does not match the header"
+    width = len(cells)
+    cells.insert(index, f" {new} ")
+    lines[start] = "|".join(cells) + eol
+    sep_cells.insert(index, "---")
+    lines[start + 1] = "|".join(sep_cells) + sep_eol
+    rows = 0
+    row = start + 2
+    while row < len(lines) and lines[row].lstrip().startswith("|"):
+        row_body, row_eol = _split_eol(lines[row])
+        row_cells = _CELL_SPLIT.split(row_body)
+        if len(row_cells) == width:
+            row_cells.insert(index, f" {value} ")
+            lines[row] = "|".join(row_cells) + row_eol
+            rows += 1
+        row += 1
+    rewrite = (new, rows, "(empty)", value) if value and rows else None
+    return ("(none)", new), rewrite, None
+
+
+def transform_md_table(text: str, spec: TableSpec, warnings: list[str] | None = None):
+    """Rewrite the first table of a Markdown file: (new text, [(old, new) header changes], [(column, n, old, new)]).
+
+    A column the spec adds shows as the header change ("(none)", column) and, when its value for the existing rows
+    is not empty, the rewrite (column, n, "(empty)", value). A reason an addition was skipped goes to `warnings`."""
     lines = text.splitlines(keepends=True)
     start = next(
         (
@@ -846,6 +956,14 @@ def transform_md_table(text: str, spec: TableSpec):
         row += 1
     rewrites = [(column, counts[(column, old, new)], old, new) for column, old, new in order]
     rewrites.sort(key=lambda item: names.index(item[0]))
+    for after, column, value in spec.added:
+        header_change, rewrite, skipped = _add_md_column(lines, start, after, column, value)
+        if header_change is not None:
+            header_changes.append(header_change)
+        if rewrite is not None:
+            rewrites.append(rewrite)
+        if skipped is not None and warnings is not None:
+            warnings.append(f"{spec.path}: {skipped}; the {column} column was not added")
     return "".join(lines), header_changes, rewrites
 
 
@@ -935,8 +1053,15 @@ def transform_csv_table(text: str, spec: TableSpec):
     return "".join(",".join(fields) + end for fields, end in records), header_changes, rewrites
 
 
-def transform_table(text: str, spec: TableSpec):
-    return (transform_csv_table if spec.kind == "csv" else transform_md_table)(text, spec)
+def transform_table(text: str, spec: TableSpec, warnings: list[str] | None = None):
+    if spec.kind == "csv":
+        return transform_csv_table(text, spec)
+    return transform_md_table(text, spec, warnings)
+
+
+def added_only(spec: TableSpec) -> TableSpec:
+    """The spec without its renames and token rewrites: for a lab that already has the new layout."""
+    return TableSpec(spec.path, spec.kind, {}, {}, spec.added)
 
 
 def transform_frontmatter(text: str):
@@ -1030,10 +1155,36 @@ def _before_renames(rel: str, renames: list[tuple[str, str]]) -> str:
 
 
 def plan_migration(project_root: Path, plan: Plan) -> None:
-    """Plan the migration of a 0.1 lab: fills plan.migration (the shown lines) and the steps apply_migration runs."""
+    """Plan the migration: fills plan.migration (the shown lines) and the steps apply_migration runs.
+
+    A lab in the 0.1 layout gets the renames and rewrites and the column additions; a lab with the new layout only
+    the column additions."""
     project_root = Path(project_root)
-    if not detect_old_layout(project_root):
-        return
+    if detect_old_layout(project_root):
+        plan.migration_old_layout = True
+        _plan_old_layout(project_root, plan)
+    else:
+        _plan_added_columns(project_root, plan)
+
+
+def _plan_added_columns(project_root: Path, plan: Plan) -> None:
+    """The column additions alone, for a lab that already has the new layout (nothing else in a table changes)."""
+    headers: list[str] = []
+    rewrites: list[str] = []
+    for spec in TABLES:
+        if not spec.added:
+            continue
+        rel = f"research_lab/{spec.path}"
+        text = _read_text(project_root / rel)
+        if text is None:
+            continue
+        _, header_changes, token_changes = transform_table(text, added_only(spec), plan.warn)
+        headers += [f"header {rel}: {old} -> {new}" for old, new in header_changes]
+        rewrites += [f"rewrite {rel}: {column}, {n} rows: {old} -> {new}" for column, n, old, new in token_changes]
+    plan.migration += headers + rewrites
+
+
+def _plan_old_layout(project_root: Path, plan: Plan) -> None:
     lab = project_root / "research_lab"
     renames: list[tuple[str, str]] = []  # project-relative (old, new), in the order they run
 
@@ -1096,7 +1247,7 @@ def plan_migration(project_root: Path, plan: Plan) -> None:
         text = _read_text(path)
         if text is None:
             continue
-        _, header_changes, token_changes = transform_table(text, spec)
+        _, header_changes, token_changes = transform_table(text, spec, plan.warn)
         headers += [f"header {rel}: {old} -> {new}" for old, new in header_changes]
         rewrites += [f"rewrite {rel}: {column}, {n} rows: {old} -> {new}" for column, n, old, new in token_changes]
     plan.migration += headers + rewrites
@@ -1194,7 +1345,12 @@ def apply_migration(project_root: Path, plan: Plan, warn: list[str]) -> list[str
     rewrites: list[str] = []
     for spec in TABLES:
         rel = f"research_lab/{spec.path}"
-        if spec.path.split("/")[0] in plan.migration_skip_folders:
+        if plan.migration_old_layout:
+            if spec.path.split("/")[0] in plan.migration_skip_folders:
+                continue
+        elif spec.added:
+            spec = added_only(spec)
+        else:
             continue
         path = project_root / rel
         text = _read_text(path)
@@ -1206,6 +1362,8 @@ def apply_migration(project_root: Path, plan: Plan, warn: list[str]) -> list[str
         headers += [f"header {rel}: {old} -> {new}" for old, new in header_changes]
         rewrites += [f"rewrite {rel}: {column}, {n} rows: {old} -> {new}" for column, n, old, new in token_changes]
     done += headers + rewrites
+    if not plan.migration_old_layout:
+        return done
     memory = project_root / "research_lab" / "memory"
     if memory.is_dir():
         for path in sorted(memory.rglob("*.md")):
@@ -1261,6 +1419,20 @@ def apply_output_style(project_root: Path) -> bool:
 # --- plan --------------------------------------------------------------------------------------------
 
 
+def tracks_after(project_root: Path, opts: Options) -> list[str]:
+    """The tracks in the lab's lab.json now, then the ones asked for (order of first appearance)."""
+    raw = read_bytes_or_none(Path(project_root) / LAB_JSON_REL)
+    have: list[str] = []
+    if raw is not None:
+        try:
+            listed = parse_lab_json(raw).get("tracks")
+        except ValueError:
+            listed = None
+        if isinstance(listed, list):
+            have = [t for t in listed if isinstance(t, str)]
+    return have + [t for t in opts.tracks if t not in have]
+
+
 def build_plan(project_root: Path, opts: Options) -> Plan:
     project_root = Path(project_root)
     plan = Plan()
@@ -1274,8 +1446,11 @@ def build_plan(project_root: Path, opts: Options) -> Plan:
     def present_after_migration(rel: str) -> bool:
         return present(rel) or os.path.lexists(project_root / _before_renames(rel, plan.migration_renames))
 
-    # 1 and 2: template files and the files copied from other skills.
+    # 1 and 2: template files and the files copied from other skills; --track limits them to the tracks' sets.
+    track_set = {rel for track in opts.tracks for rel in TRACK_FILES[track]}
     for rel, source in template_files().items():
+        if opts.tracks and rel not in track_set:
+            continue
         if rel == LAB_JSON_REL and present(rel):
             continue  # merged below, once the connectors and permissions are planned
         if present(rel):
@@ -1353,6 +1528,8 @@ def build_plan(project_root: Path, opts: Options) -> Plan:
             "git-lfs is not installed; the artifact archive needs it for files at or above "
             f"lfs.thresholdMB ({opts.lfs_threshold_mb} MB): install it before saving large artifacts"
         )
+    # 8b: the tracks lab.json holds after the run.
+    plan.tracks = tracks_after(project_root, opts)
     # 9: duplicates of plugin agents and skills: reported, never touched.
     plan.duplicates = find_duplicates(project_root)
     if plan.duplicates:
@@ -1533,6 +1710,7 @@ def apply_plan(plan: Plan, project_root: Path, opts: Options) -> dict:
         "written": [],
         "migration": [],
         "outputStyle": dict(plan.output_style),
+        "tracks": list(plan.tracks),
     }
     report["migration"] = apply_migration(project_root, plan, report["warn"])
     permissions_written = False
@@ -1627,6 +1805,14 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
         metavar="FOLDER",
         help="a folder no role may open; written to the brief and to lab.json (repeatable)",
     )
+    parser.add_argument(
+        "--track",
+        action="append",
+        default=[],
+        choices=TRACKS,
+        metavar="{" + ",".join(TRACKS) + "}",
+        help="set up only the minimal lab for one track (repeatable); without it, the whole lab",
+    )
     parser.add_argument("--yes", action="store_true", help="apply the plan (without it nothing is written)")
     parser.add_argument("--json", action="store_true", dest="json_output", help="print the report as JSON")
     return parser.parse_args(argv)
@@ -1698,6 +1884,10 @@ def main(argv: list[str] | None = None) -> int:
         for cid in exc.args[0]:
             print(f"init_lab.py: error: unknown connector id: {cid}", file=sys.stderr)
         raise SystemExit(2)
+    tracks: list[str] = []
+    for track in args.track:
+        if track not in tracks:
+            tracks.append(track)
     root = resolve_root(args.project_root, fail)
     opts = Options(
         name=args.name,
@@ -1712,10 +1902,11 @@ def main(argv: list[str] | None = None) -> int:
         permissions=args.permissions,
         allow_domains=allow_domains,
         out_of_scope=out_of_scope,
+        tracks=tracks,
     )
     plan = build_plan(root, opts)
     if not opts.yes:
-        internal = ("migration_renames", "migration_skip_folders", "lab_json_migrated")
+        internal = ("migration_renames", "migration_skip_folders", "lab_json_migrated", "migration_old_layout")
         out = {**{k: v for k, v in plan.__dict__.items() if k not in internal}, "projectRoot": root.as_posix()}
         if not opts.json_output:
             # the order the applied report lists them in

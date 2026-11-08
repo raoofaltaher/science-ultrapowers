@@ -71,6 +71,7 @@ EXPECTED_PLAN = [
     "rename research_lab/decisions/lab_meetings/2026-01-05_kickoff.md -> research_lab/decisions/lab_meetings/2026-01-05_opening.md",  # legacy
     "header research_lab/findings/FINDINGS_LOG.md: F-id -> FND-id (finding)",  # legacy
     "header research_lab/findings/FINDINGS_LOG.md: Scope / caveats -> Scope and caveats",  # legacy
+    "header research_lab/findings/FINDINGS_LOG.md: (none) -> Basis",
     "header research_lab/findings/KEY_RESULTS.md: F-id -> FND-id (finding)",  # legacy
     "header research_lab/literature/SOURCES.csv: ref_id -> source_id",  # legacy
     "header research_lab/literature/SOURCES.csv: lab_status -> status",  # legacy
@@ -81,6 +82,7 @@ EXPECTED_PLAN = [
     "header research_lab/experiments/EXPERIMENT_REGISTER.md: Protocol -> Preregistration",  # legacy
     "header research_lab/experiments/EXPERIMENT_REGISTER.md: Code / config -> Code and config",  # legacy
     "header research_lab/experiments/EXPERIMENT_REGISTER.md: Seeds / splits (where applicable) -> Seeds and partitions",  # legacy
+    "header research_lab/experiments/EXPERIMENT_REGISTER.md: (none) -> Input checksums",
     "header research_lab/reviews/REVIEW_LOG.md: RV-id -> REV-id (review)",  # legacy
     "header research_lab/reviews/REVIEW_LOG.md: Artifact (path / version) -> Artifact",  # legacy
     "header research_lab/reviews/REVIEW_LOG.md: Gate -> Stage",  # legacy
@@ -92,6 +94,7 @@ EXPECTED_PLAN = [
     "header research_lab/planning/WORK_PLAN.md: Task -> TASK-id (task)",  # legacy
     "header research_lab/planning/WORK_PLAN.md: Gate -> Stage",  # legacy
     "header research_lab/planning/RISK_REGISTER.md: R-id -> RSK-id (risk)",  # legacy
+    "rewrite research_lab/findings/FINDINGS_LOG.md: Basis, 2 rows: (empty) -> exploratory",
     "rewrite research_lab/literature/SOURCES.csv: status, 1 rows: ADMITTED -> citable",  # legacy
     "rewrite research_lab/literature/SOURCES.csv: status, 1 rows: PENDING_FULLTEXT -> awaiting full text",  # legacy
     "rewrite research_lab/literature/SOURCES.csv: source_class, 1 rows: A -> peer-reviewed matched doi",  # legacy
@@ -190,7 +193,10 @@ class MigrationCase(unittest.TestCase):
             self.read("findings/FINDINGS_LOG.md"),
             self.original("02_findings_ledger/FINDINGS.md")  # legacy
             .replace("| F-id |", "| FND-id (finding) |")  # legacy
-            .replace("| Scope / caveats |", "| Scope and caveats |"),  # legacy
+            .replace("| Scope / caveats |", "| Scope and caveats |")  # legacy
+            .replace("| Type | Evidence |", "| Type | Basis | Evidence |")
+            .replace("|---|---|---|---|---|---|---|---|\n", "|---|---|---|---|---|---|---|---|---|\n")
+            .replace("| measured | EC-0001 |", "| measured | exploratory | EC-0001 |"),  # legacy
         )
         self.assertEqual(
             self.read("findings/KEY_RESULTS.md"),
@@ -254,7 +260,10 @@ class MigrationCase(unittest.TestCase):
             .replace("| Experiment id |", "| EXP-id (experiment) |")  # legacy
             .replace("| Protocol |", "| Preregistration |")  # legacy
             .replace("| Code / config |", "| Code and config |")  # legacy
-            .replace("| Seeds / splits (where applicable) |", "| Seeds and partitions |"),  # legacy
+            .replace("| Seeds / splits (where applicable) |", "| Seeds and partitions |")  # legacy
+            .replace("| Environment | Status |", "| Environment | Input checksums | Status |")
+            .replace("|---|---|---|---|---|---|---|---|---|---|\n", "|---|---|---|---|---|---|---|---|---|---|---|\n")
+            .replace("| env one | planned |", "| env one |  | planned |"),
         )
         for name in ("a-pitfall", "another-pitfall"):
             entry = self.read(f"memory/project/{name}.md")
