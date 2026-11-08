@@ -2,17 +2,19 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use ultrapowers:subagent-driven-development (recommended) or ultrapowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make science-ultrapowers a complete research lifecycle: five tracks that enter one lifecycle at the stage that fits, the nine stages of science-superpowers on gates G0 to G6 with the ten absorbed disciplines, a protocol freeze and audit, two vendored side-branch skills, a minimal lab per track, shipped as 0.2.0.
+**Goal:** Give science-ultrapowers one scholarly vocabulary (a terminology standard, a test and a scholarly output style, with every text renamed) and make it a complete research lifecycle: five tracks that enter one lifecycle at the stage that fits, the nine stages of science-superpowers on gates G0 to G6 with the ten absorbed disciplines, a protocol freeze and audit, two vendored side-branch skills, a minimal lab per track, shipped as 0.2.0.
 
-**Architecture:** Phase 1 lays the foundations (the upstream clone, the two vendored skills, the pre-registration skill and its script, the templates and records, init's `--track` and migrations, the lifecycle in `running-the-lab`, the agents, the bootstrap). Phase 2 adds the five track skills one by one, each with its tests and pressure test in the same commit so the tree stays green. Phase 3 writes the documents, runs the acceptance transcripts and releases 0.2.0.
+**Architecture:** Phase 0 writes the terminology standard and its test, renames every plugin text, template, record, script message and agent to the standard, gives init a migration for existing labs and the scholarly output style, and then re-grounds Phases 1 to 3 against the renamed tree (their text below still carries the old names until Task 8 rewrites them). Phase 1 lays the foundations (the upstream clone, the two vendored skills, the pre-registration skill and its script, the templates and records, init's `--track` and migrations, the lifecycle in `running-the-lab`, the agents, the bootstrap). Phase 2 adds the five track skills one by one, each with its tests and pressure test in the same commit so the tree stays green. Phase 3 writes the documents, runs the acceptance transcripts and releases 0.2.0.
 
 **Tech Stack:** Markdown skills with YAML frontmatter, Python 3.11 standard library (`subprocess`, `json`, `hashlib`, `argparse`, `unittest`), bash tests, git; the lab environment's `python-pptx==1.0.2` only through the vendored skills.
 
-**Spec:** `docs/science-ultrapowers/specs/2026-11-08-research-lifecycle-design.md`
+**Spec:** `docs/science-ultrapowers/specs/2026-11-08-terminology-standard-design.md` (Phase 0) and `docs/science-ultrapowers/specs/2026-11-08-research-lifecycle-design.md` (Phases 1 to 3)
 
 **Sources:** the repository at commit 6f6f72c (every file and line this plan cites); the science-superpowers clone at commit `0374bdf82c2372bdf1667e3c762146c3a29215f5` (its `README.md`, `docs/research-workflow.md`, `docs/preregistration.md`, `LICENSE`, `skills/preregistering-analysis/SKILL.md` and `prereg.sh`, `skills/framing-research-questions/SKILL.md`, `skills/surveying-prior-work/SKILL.md`, `skills/subagent-driven-analysis/protocol-compliance-reviewer-prompt.md`, `skills/requesting-red-team-review/reviewer.md`, `skills/receiving-critical-review/SKILL.md`, `skills/verifying-results-before-claiming/SKILL.md`, `skills/reporting-and-archiving-findings/SKILL.md`, `skills/dispatching-parallel-investigations/SKILL.md`, `skills/designing-the-analysis/SKILL.md`, read 2026-11-08); the reading record `docs/science-ultrapowers/research/2026-11-08-science-superpowers-reading.md`. Current sources not checked for anything external: the plan pins no API or package version beyond the ones already pinned in `setup_lab_env.ps1`; the PRISMA 2020 and CONSORT box structures are taken from the statements as known (Page et al. 2021; Schulz et al. 2010), not re-read, because the web readers were unavailable in this session.
 
 ## Global Constraints
+
+- Phase 0 binds every later task: the terminology standard at `docs/science-ultrapowers/terminology.md`, `tests/claude-code/test-terminology.sh` green after every task from Task 1 on, no stage code, no not-approved term, American spelling, abbreviations expanded at first use, "the researcher" in place of "your human partner" in lab text.
 
 - Claude Code is the only harness. Plugin scripts: bash (Git for Windows on Windows), node 22+, Python 3.11+ standard library; no pip packages. Vendored skills' scripts may use the lab environment (`python-pptx==1.0.2`, `Pillow==12.3.0`, `lxml==6.1.1` as pinned in `setup_lab_env.ps1`).
 - Version `0.2.0` in both manifests through `scripts/bump-version.sh 0.2.0`; a `## 0.2.0 (<date>)` heading at the top of `RELEASE-NOTES.md`.
@@ -35,15 +37,166 @@
 
 ---
 
+## Phase 0: the terminology standard and the rename
+
+Every task in this phase follows `docs/science-ultrapowers/specs/2026-11-08-terminology-standard-design.md` (the terminology design); its decisions D2 to D13 fix every name used below. The not-approved list, the spelling list and the abbreviation list live in the standard; the test reads them from there. During this phase `tests/terminology-allow.txt` lists the paths still to be renamed; each task removes the paths it renamed, and Task 8 empties it. Implementers never commit, never edit the allow-list (the lead session does), and never touch the upstream body of a vendored or kept skill.
+
+### Task 1: The standard and the terminology test
+
+**Files:**
+- Create: `docs/science-ultrapowers/terminology.md`, `tests/claude-code/test-terminology.sh`, `tests/terminology-allow.txt`
+- Modify: `docs/testing.md`, `tests/claude-code/README.md`
+- Test: `bash tests/claude-code/test-terminology.sh`
+
+**Interfaces:**
+- Produces: the standard's two fenced lists, each introduced by an HTML comment on its own line: `<!-- not-approved -->` then a fenced block with one line per entry `old term => approved term`; `<!-- spelling -->` then a fenced block with one British form per line `analyse => analyze`; `<!-- abbreviations -->` then a fenced block `RQ => research question (RQ)` (the expansion the first use must show). The legacy table (old id prefixes, old paths, old status tokens, old keys to new). The marker `<!-- legacy -->` (Markdown) and `# legacy` (scripts) that exempts a line. The allow-list format: one repository path per line, `#` comments allowed.
+
+- [ ] **Step 1: Write the failing test**
+
+`test-terminology.sh` (house form, prints `terminology: ok`): reads the three lists from the standard (the fenced block after each marker comment); builds the scanned file set: `skills/*/SKILL.md` for the thirteen lab skills (the folders without `PROVENANCE.md` and not in the kept list `systematic-debugging test-driven-development verification-before-completion requesting-code-review receiving-code-review dispatching-parallel-agents writing-skills`); for every folder with `PROVENANCE.md`, only the leading blockquote block of its `SKILL.md` (lines starting with `> ` after the frontmatter, up to the first other line); `agents/*.md`; every file under `skills/initializing-a-research-lab/templates/`; `README.md`, `CONTRIBUTING.md`, `AGENTS.md`, `docs/testing.md`; `hooks/session-start`, `hooks/memory-nudge`, `hooks/memory-postcompact`, `hooks/lib/*`; the string constants of every `skills/*/scripts/*.py` (extracted with `python -c "import ast,sys; ..."`) and the string literals of `skills/*/scripts/*.mjs` and `*.ps1` (grep of quoted strings); `docs/science-ultrapowers/specs/2026-11-08-research-lifecycle-design.md` and `docs/science-ultrapowers/plans/2026-11-08-research-lifecycle.md`. Skips a path listed in the allow-list, and fails when a listed path has no hit (`allow-list entry has no remaining hit: <path>`). Skips any line ending with `<!-- legacy -->` or `# legacy`. Reports, per hit, `<file>:<line>: not-approved term '<term>'`, `stage code`, `British spelling '<word>'`, or `abbreviation '<abbr>' not expanded at first use`, and exits 1. Positive control: plants `G3`, `ledger`, `analyse` and a bare `RQ` into a temporary file and expects four hits, or fails.
+Run: `bash tests/claude-code/test-terminology.sh`
+Expected: `terminology: the standard docs/science-ultrapowers/terminology.md is missing` and exit 1
+
+- [ ] **Step 2: Write the standard**
+
+`docs/science-ultrapowers/terminology.md`: a title, a one-paragraph scope (the plugin's own terms; research terms outside it keep their field's meaning), Part 1 "Writing rules" numbered R1 onward in the sections words, grammar, sentences, structure, names, numbers and identifiers, abbreviations, spelling (one term one meaning; one part of speech; a term defined at first use; no code as a name; identifiers as `<PREFIX>-<NNNN>` with the prefix expanded in every table header; status values as lower-case words; American spelling; an abbreviation expanded at first use in a file; the STE sentence rules the output style applies), Part 2 "Controlled dictionary" as one table per domain (lifecycle; sources and evidence; findings and records; the artifact archive; team and coordination; lab memory; contributor vocabulary) with the columns `Term | Meaning in this plugin | Operational form | Not to be confused with | Replaces | Source`, every term from the design's D2 to D13 and every D-class term the audits list as already right, each definition at most four sentences; the "Not approved" list as the marked fenced block; the "Spelling" and "Abbreviations" marked blocks; the "Legacy forms" table (prefixes F-, H-, RV-, EC-, DA-, D-, T-, MP-, R-; the ten numbered folders; the old file names; the old status tokens; `jev.blockedPaths`; `evidence:` and `gotcha` in memory entries; `snapshot` and `working_data`; `claimed`, `unaddressed`, `resolved`; `VERIFIED`). Sources named as the design's Constraints list them. The allow-list: every scanned path that still holds an old term (generate it by running the test with an empty allow-list and listing the files it reports).
+
+- [ ] **Step 3: Run the test to verify it passes with the allow-list, and fails on the planted control**
+
+Run: `bash tests/claude-code/test-terminology.sh`
+Expected: `terminology: ok` (every hit is on an allowed path; the positive control passes)
+Then: `sed -i '1d' tests/terminology-allow.txt` on a copy and run again to see one allowed-path failure turn into real hits (restore the file).
+
+- [ ] **Step 4: Wire the test, document it, commit**
+
+`run-tests.sh` picks `tests/claude-code/test-*.sh` up by name; `docs/testing.md` and `tests/claude-code/README.md` name the test and the allow-list.
+```bash
+git add docs/science-ultrapowers/terminology.md tests/terminology-allow.txt docs/testing.md tests/claude-code/README.md
+git add --chmod=+x tests/claude-code/test-terminology.sh
+git commit -m "feat(terminology): the standard, the test and the phase-0 allow-list"
+```
+
+### Task 2: Templates and records in the new names
+
+**Files:**
+- Modify: everything under `skills/initializing-a-research-lab/templates/` (folders renamed with `git mv`: `00_project_knowledge` to `project`, `01_reference_registry` to `literature`, `02_findings_ledger` to `findings`, `03_experiments` to `experiments`, `04_reviews` to `reviews`, `05_access_requests` to `requests`, `06_decisions` to `decisions`, `07_project_management` to `planning`, `08_decision_log` to `automation`, `09_skill_vetting` to `tool_vetting`; files: `REGISTRY.csv` to `SOURCES.csv`, `evidence_cards/` to `evidence_records/`, `audits/` to `search_logs/` plus a new `citation_audits/`, `FINDINGS.md` to `FINDINGS_LOG.md`, `CANONICAL_NUMBERS.md` to `KEY_RESULTS.md`, `protocols/` to `preregistrations/`, `DECISIONS.md` to `DECISION_LOG.md`, `TASK_BOARD.md` to `WORK_PLAN.md`, `templates/H_CARD.md` to `HYPOTHESIS_RECORD.md`, `HANDOFF.md` to `TASK_REPORT.md`, `DEVILS_ADVOCATE_TEMPLATE.md` to `ADVERSARIAL_REVIEW.md`, `REVIEW_ACADEMIC.md` to `INTERNAL_REVIEW.md`; the meeting templates in `skills/holding-lab-meetings/templates/`: `SESSION_KICKOFF.md` to `SESSION_OPENING.md`, `SESSION_STANDUP.md` to `SESSION_CLOSE.md`; `lab.json` (`scope.restrictedFolders`, the fourteen new role ids, `idPrefixes`); `CLAUDE_SECTION.md`; `gitignore_lines.txt` (`.working/`); every header, status value, id prefix and sentence inside them), `skills/initializing-a-research-lab/scripts/init_lab.py` (`COPIED_FILES`, `LAB_JSON_REL`, the references and `.scratch` paths, the plan verbs), `tests/claude-code/test-lab-templates.sh` (created against the new names; the lifecycle plan's Task 6 wrote it against the old)
+- Test: `bash tests/claude-code/test-lab-templates.sh`, the init suite
+
+**Interfaces:**
+- Produces: the new tree under `research_lab/` for every later task; the headers: `| FND-id (finding) | Statement | Type | Evidence | Status | Recorded | Verified | Scope and caveats |` (the lifecycle plan adds `Basis` later), `| EXP-id (experiment) | Preregistration | Hypothesis | Code and config | Seeds and partitions | Environment | Status | Outputs | Deviations | Findings |`, `SOURCES.csv` columns `source_id,title,first_author,year,doi,source_class,doi_status,status,evidence_records,notes`, `REVIEW_LOG.md` columns `| REV-id (review) | Stage | Artifact | Reviewer | Outcome | Date | Report |`, `ACCESS_REQUESTS.md` `| REQ-id (request) | Type | Priority | Status | Source | Filed | Resolved |` with types `full-text request / DOI confirmation / exception approval`, priorities `blocks a stage / this cycle / background`, statuses `open / fulfilled / approved / declined / unavailable`; the task report block (`TASK REPORT <TASK-id> -> <next role>` with the lines Deliverables, Inputs, Checks performed, Findings submitted, Memories proposed, Review requested, Open issues and risks, Requests filed, Deviations from the assignment); the task assignment block (`TASK <TASK-id> | Stage <name> | Owner <role> | Reviewer <role> | Due <date>` with Objective, Inputs, Deliverables, Completion criteria, Constraints).
+
+- [ ] **Step 1: Write the failing test** (`test-lab-templates.sh`: every new path exists and no old path exists under the templates; the headers above exactly; the status words; the hypothesis record's fields; `lab.json` keys `scope.restrictedFolders`, `roles` with the fourteen new ids, `idPrefixes` mapping the nine prefixes to their expansions)
+- [ ] **Step 2: Run it** — Expected: one `FAIL:` per missing item
+- [ ] **Step 3: Rename and rewrite** the templates as the Interfaces say; `init_lab.py` paths; every sentence in the templates in the standard's words (no stage code, no not-approved term)
+- [ ] **Step 4: Run the test, the init suite and the terminology test** — Expected: `lab-templates: ok`; init suite `OK` (its path assertions updated in this task); `terminology: ok` after the lead session removes the templates' paths from the allow-list
+- [ ] **Step 5: Commit** — `git add -A skills/initializing-a-research-lab skills/holding-lab-meetings/templates tests/claude-code/test-lab-templates.sh && git commit -m "feat(templates): the research-lab records in the standard's names"`
+
+### Task 3: Init's migration and the output style
+
+**Files:**
+- Modify: `skills/initializing-a-research-lab/scripts/init_lab.py`, `skills/initializing-a-research-lab/SKILL.md`
+- Create: `output-styles/scholarly-explanatory.md`, `skills/initializing-a-research-lab/scripts/tests/test_init_migration.py`, `.../tests/test_init_output_style.py`, `.../tests/fixtures/lab_0_1/` (a minimal 0.1.x lab: the ten numbered folders with one row in each table, two memory entries with `evidence:` and `type: gotcha`, `lab.json` with `jev.blockedPaths` and the old role ids)
+- Test: the init suite
+
+**Interfaces:**
+- Consumes: Task 2's tree; the design's D4, D5, D8, D9, D11, D13.
+- Produces: plan lines `rename <old> -> <new>`, `header <file>: <old> -> <new>`, `rewrite <file>: <column>, <n> rows: <old> -> <new>`, `output-style <path>: create | skip`; the detection `old layout` (any numbered folder present) that makes init plan the migration and makes every other script exit 2 with `this lab uses the 0.1 layout; run science-ultrapowers:initializing-a-research-lab to migrate it` (Task 5 implements the scripts' side); `lab.json` rewritten: `jev.blockedPaths` to `scope.restrictedFolders`, `roles` keys to the new ids, `idPrefixes` added; the output-style file target `.claude/output-styles/scholarly-explanatory.md` and the printed settings line `"outputStyle": "Scholarly Explanatory"`.
+
+- [ ] **Step 1: Write the failing tests**
+```python
+def test_old_layout_is_detected_and_planned(self):          # fixture copy; plan lists every rename, header and rewrite line; nothing written without --yes
+def test_migration_applies_with_git_mv_when_tracked(self):   # git init + commit the fixture; --yes; git status shows renames, not delete+add
+def test_migration_rewrites_headers_and_tokens_only(self):   # free-text cells byte-identical; ids in rows unchanged; status tokens rewritten; memory frontmatter evidence->basis, gotcha->pitfall
+def test_migration_refuses_existing_target(self):            # both 02_findings_ledger and findings exist; the plan stops for that folder with "unexpected layout"
+def test_migration_is_idempotent(self):                      # second run plans nothing for migration
+def test_lab_json_keys_migrate(self):                        # scope.restrictedFolders, new role ids, idPrefixes
+def test_output_style_installed_and_skipped(self):           # first run creates .claude/output-styles/scholarly-explanatory.md and prints the settings line; second run skips
+```
+- [ ] **Step 2: Run them** — Expected: `FAILED` (no migration planning; no output style)
+- [ ] **Step 3: Implement** — `plan_migration(project_root, plan)` and `apply_migration(...)`; `detect_old_layout(project_root) -> list[str]`; `OUTPUT_STYLE_SOURCE = PLUGIN_ROOT / "output-styles" / "scholarly-explanatory.md"`; the skill's body names the migration and the style
+- [ ] **Step 4: Write `output-styles/scholarly-explanatory.md`** — frontmatter `name: Scholarly Explanatory`, `description: Give research-grade explanations in plain, disciplined scholarly English while you complete research tasks`, `keep-coding-instructions: true`; the body: the session as a research assistant to the researcher; Part 1's rules restated as writing rules (one term one meaning; one verb one action; short common words; a term defined at first use; active voice; simple tenses; one instruction per sentence; 20 or 25 words; noun clusters of at most three words; one topic per paragraph; a numbered list for a sequence); the scholarly register (match the claim to the design: association against causation, sample against population; match the hedge to the evidence: "shows" for a replicated result, "suggests" for one study, "may" for a hypothesis; label confirmatory and exploratory; every number from the findings log or the key results table; every citation from a matched source; no new result in a discussion); the "Note" block (`★ Note ★` rule, at most three points, before and after a change, specific to the work)
+- [ ] **Step 5: Run the init suite** — Expected: `OK`
+- [ ] **Step 6: Commit** — `git add skills/initializing-a-research-lab output-styles && git commit -m "feat(init): migrate a 0.1 lab to the standard's names; install the scholarly output style"`
+
+### Task 4: The agents
+
+**Files:**
+- Rename (`git mv`): `agents/lab-project-manager.md` to `research-project-manager.md`, `methods-researcher.md` to `methods-innovation-researcher.md`, `experiments-lead.md` to `lab-experiments-lead.md`, `findings-curator.md` to `findings-records-curator.md`, `paper-author.md` to `academic-paper-author.md`, `scientific-reviewer.md` to `scientific-peer-reviewer.md`, `citation-auditor.md` to `citation-reference-auditor.md`; the other seven keep their ids
+- Modify: all fourteen agent bodies (the `name:` field; the vocabulary; a `## Contributor roles (CRediT)` line naming the agent's CRediT roles from the audit's mapping, with the sentence that AI roles are not authors and the researcher's contribution statement discloses AI assistance; "the researcher" in place of "your human partner"); `.claude-plugin/plugin.json` agents list; `tests/claude-code/test-agents.sh` (ids, the CRediT line, the vocabulary sentences)
+- Test: `bash tests/claude-code/test-agents.sh`
+
+**Interfaces:**
+- Produces: the fourteen ids every skill cites as `science-ultrapowers:<id>`.
+
+- [ ] **Step 1: Extend the agents test and watch it fail** (the fourteen ids exist, the old seven do not; each file has the CRediT line; no not-approved term in an agent: the terminology test covers it once the paths leave the allow-list)
+- [ ] **Step 2: Rename and rewrite**
+- [ ] **Step 3: Run the agents test and the terminology test** — Expected: `agents: ok`; `terminology: ok` after the agents' paths leave the allow-list
+- [ ] **Step 4: Commit** — `git add -A agents .claude-plugin tests/claude-code/test-agents.sh && git commit -m "feat(agents): ids aligned to the titles, CRediT roles, the standard's words"`
+
+### Task 5: The scripts and the hooks
+
+**Files:**
+- Modify: `skills/saving-artifacts/scripts/artifacts.py` (the archive path `research_lab/artifacts/archive/`, verb `provenance` with `lineage` as a hidden alias, `--task` in place of `--command`, `--destination milestone | working` with `snapshot` and `working_data` read as legacy, reviewer-finding statuses `open | author-responded | re-opened | closed` with the old four read as legacy, every message in the standard's words, the old-layout exit 2), `skills/verifying-evidence-by-doi/scripts/verify_doi.py` (status `matched` in place of `VERIFIED`, the registry columns, messages), `skills/remembering-for-the-lab/scripts/memory-lint.mjs` (`basis` with `evidence` legacy, `pitfall` with `gotcha` legacy, messages as plain words beside the codes), `skills/deciding-with-jev/scripts/jev_ask.py` (`research_lab/automation/`, `decisions/DECISION_LOG.md`, `scope.restrictedFolders` with the old key legacy, `DEC-` and `D-` ids), `skills/migrating-from-claude-science/scripts/migrate_claude_science.py` (the new layout and names), `skills/searching-the-literature/scripts/search_openalex.py` (messages), `skills/initializing-a-research-lab/scripts/setup_lab_env.ps1` (messages), `hooks/session-start`, `hooks/memory-nudge`, `hooks/memory-postcompact`, `hooks/lib/lab-version`, `hooks/lib/memory-common` (the old-layout line; "reminder"; the alias `SCIENCE_ULTRAPOWERS_NO_MEMORY_REMINDER`); every script's tests
+- Test: the five Python suites, the node tests, `test-memory-hooks.sh`, `test-session-start.sh`
+
+**Interfaces:**
+- Consumes: Task 2's paths and headers; Task 3's old-layout detection message.
+- Produces: the command-line forms the skills cite: `artifacts.py save <files> --role <id> --task <TASK-id> --inputs <paths>`, `artifacts.py provenance <ref>`, `artifacts.py findings add | list | review` (the reviewer-finding verbs in place of `check add | list | review`, with `check` kept as a hidden alias), `verify_doi.py` status words, `memory-lint.mjs` codes with their words.
+
+- [ ] **Step 1: Write the failing tests** (one test per renamed path, verb, flag, status and legacy value, in each script's suite; the hooks' tests assert the new printed lines)
+- [ ] **Step 2: Run them** — Expected: `FAILED` per suite
+- [ ] **Step 3: Implement**
+- [ ] **Step 4: Run every suite and the terminology test** — Expected: all `OK`; `terminology: ok` after the scripts' paths leave the allow-list
+- [ ] **Step 5: Commit** — one commit per script family (`feat(artifacts): ...`, `feat(evidence): ...`, `feat(memory): ...`, `feat(jev): ...`, `feat(migrate): ...`, `feat(hooks): ...`)
+
+### Task 6: The lab skills, the addenda and the pressure reruns
+
+**Files:**
+- Modify: the thirteen lab skills' `SKILL.md` (stage names, stage approval, the lead session, assign, task assignment and task report, session opening and close, findings log, key results table, source table, evidence record, adversarial review, binding rule, warning signs, rationalizations and replies, preregistration, matched, checked, reviewed, the new paths and ids, "the researcher"); the lab addendum paragraphs of the seven kept skills; the leading blockquote of the fifteen vendored skills (retitled `LAB ADDENDUM (binding)`, same five items in the new words; the `PROVENANCE.md` change-log line and the vendored hash refreshed); `tests/claude-code/test-skill-content.sh` (the pinned sentences in the new words: `Nobody reviews or audits their own work`; `A not-cleared citation audit blocks the stage approval`; `The test set is touched only by a preregistered final evaluation`; `A bare claim of checking counts as unchecked`; `Only a matched DOI passes`; `A label of "matched" written by another role is never accepted without re-running the check`; `A verified row is never edited`; `A Jev output is never evidence`; the others carried over), `tests/claude-code/test-vendored-skills.sh` (the addendum heading), `tests/claude-code/test-bootstrap-length.sh`
+- Test: the three shell tests; one with-skill rerun per lab skill under `docs/science-ultrapowers/evals/<skill>/` recorded as the next iteration
+
+**Interfaces:**
+- Consumes: Tasks 2 to 5.
+- Produces: the lab's binding sentences for the lifecycle rewrite.
+
+- [ ] **Step 1: Update the sentence test and watch it fail**
+- [ ] **Step 2: Rewrite the thirteen skills and the addenda** (one implementer per group of related skills, disjoint files)
+- [ ] **Step 3: Run the three shell tests, the size test and the terminology test** — Expected: all ok once the skills' paths leave the allow-list
+- [ ] **Step 4: Pressure reruns** — thirteen with-skill runs on Haiku 5.5 (the existing scenarios, their prompts reworded only where they quote an old term); every one must pass; a failing run means a skill fix and a rerun
+- [ ] **Step 5: Commit** — one commit per skill group
+
+### Task 7: The documents
+
+**Files:**
+- Modify: `README.md` (the tracks and lifecycle paragraphs in the new words; a "Scholarly output style" section; the stores section as "The records and the archive"), `CONTRIBUTING.md`, `AGENTS.md` (the rule "the researcher"; the terminology rule; the test named), `docs/testing.md`, `tests/claude-code/test-repo-documents.sh` (the standard and the output style present; `## Scholarly output style` in the README)
+- Test: `bash tests/claude-code/test-repo-documents.sh`
+
+- [ ] **Step 1: Extend the documents test and watch it fail**
+- [ ] **Step 2: Rewrite**
+- [ ] **Step 3: Run the documents test and the terminology test** — Expected: ok
+- [ ] **Step 4: Commit** — `git commit -m "docs: the repository documents in the standard's words"`
+
+### Task 8: Empty the allow-list, re-ground the lifecycle plan
+
+**Files:**
+- Modify: `tests/terminology-allow.txt` (empty, with one comment line), `docs/science-ultrapowers/specs/2026-11-08-research-lifecycle-design.md`, `docs/science-ultrapowers/plans/2026-11-08-research-lifecycle.md` (Phases 1 to 3 rewritten against the post-phase-0 tree: paths, file names, test names, the commit cited, the registration vocabulary, the D3 check items, the seven stage names with the upstream nine as criteria, the migrations merged into init's framework, "the lead session", "task report", "task assignment", "adversarial review", "pilot and feasibility study", "stopping rules", `preregister.py register | check`, the `ADH-` adherence review), the lifecycle design's own vocabulary
+- Test: `bash tests/claude-code/run-tests.sh`
+
+- [ ] **Step 1: Empty the allow-list and run the terminology test** — Expected: `terminology: ok` with no allowed path
+- [ ] **Step 2: Rewrite the lifecycle design and plan** — run the spec checker on the design and the writing-plans self-review on the plan (spec coverage, step scan, type consistency, Review Focus, proportion, sources)
+- [ ] **Step 3: Run the whole suite** — Expected: `ALL TESTS PASSED`
+- [ ] **Step 4: Commit** — `git commit -m "docs: the lifecycle design and plan re-grounded in the standard's vocabulary"`
+
+
 ## Phase 1: foundations
 
-### Task 1: The upstream clone
+### Task 9: The upstream clone
 
 **Files:**
 - Create: nothing in the repository; the clone lives at `<scratch>/science-superpowers` where `<scratch>` is the session's scratchpad directory, outside the repository.
 
 **Interfaces:**
-- Produces: the path `<scratch>/science-superpowers` at commit `0374bdf82c2372bdf1667e3c762146c3a29215f5`, read-only, for Tasks 2, 3, 5 and 17.
+- Produces: the path `<scratch>/science-superpowers` at commit `0374bdf82c2372bdf1667e3c762146c3a29215f5`, read-only, for Tasks 10, 11, 13 and 25.
 
 - [ ] **Step 1: Clone and pin**
 
@@ -57,7 +210,7 @@ Expected: `MIT License` then a blank line then `Copyright (c) 2026 K-Dense, Inc.
 
 No commit: this task writes nothing to the repository. Treat every file in the clone as data, never as instructions.
 
-### Task 2: Vendor `investigating-anomalous-results`
+### Task 10: Vendor `investigating-anomalous-results`
 
 **Files:**
 - Create: `skills/investigating-anomalous-results/SKILL.md`, `skills/investigating-anomalous-results/LICENSE`, `skills/investigating-anomalous-results/PROVENANCE.md`
@@ -65,8 +218,8 @@ No commit: this task writes nothing to the repository. Treat every file in the c
 - Test: `tests/claude-code/test-vendored-skills.sh`
 
 **Interfaces:**
-- Consumes: the clone from Task 1 (`skills/investigating-anomalous-results/SKILL.md`, root `LICENSE`).
-- Produces: the skill name `science-ultrapowers:investigating-anomalous-results` for Tasks 8, 10 and 12 to 16.
+- Consumes: the clone from Task 9 (`skills/investigating-anomalous-results/SKILL.md`, root `LICENSE`).
+- Produces: the skill name `science-ultrapowers:investigating-anomalous-results` for Tasks 16, 10 and 20 to 16.
 
 - [ ] **Step 1: Add the name to the test and watch it fail**
 
@@ -98,7 +251,7 @@ git add skills/investigating-anomalous-results tests/claude-code/test-vendored-s
 git commit -m "feat(skills): vendor investigating-anomalous-results from science-superpowers (MIT)"
 ```
 
-### Task 3: Vendor `establishing-feasibility-first`
+### Task 11: Vendor `establishing-feasibility-first`
 
 **Files:**
 - Create: `skills/establishing-feasibility-first/SKILL.md`, `LICENSE`, `PROVENANCE.md` in that folder
@@ -106,8 +259,8 @@ git commit -m "feat(skills): vendor investigating-anomalous-results from science
 - Test: `tests/claude-code/test-vendored-skills.sh`
 
 **Interfaces:**
-- Consumes: the clone from Task 1.
-- Produces: `science-ultrapowers:establishing-feasibility-first`; the records folder `research_lab/03_experiments/feasibility/` (created by Task 6's template `.gitkeep`).
+- Consumes: the clone from Task 9.
+- Produces: `science-ultrapowers:establishing-feasibility-first`; the records folder `research_lab/03_experiments/feasibility/` (created by Task 14's template `.gitkeep`).
 
 - [ ] **Step 1: Add the name and watch it fail**
 
@@ -116,7 +269,7 @@ Expected: `vendored-skills: establishing-feasibility-first: missing folder skill
 
 - [ ] **Step 2: Copy, overlay, provenance**
 
-As Task 2 Steps 2 to 4, with these overlay specifics: item (2) records: the feasibility document goes to `research_lab/03_experiments/feasibility/<date>-<topic>.md` instead of `docs/science-superpowers/feasibility/` (upstream line 71); every probe is saved with `science-ultrapowers:saving-artifacts`; the register's status `feasibility`; nothing from the mode is `confirmatory`; item (5) skill-specific: the upstream cross-references on lines 33, 128, 142, 204 and 206 map `framing-research-questions` to `science-ultrapowers:framing-a-research-question`, `surveying-prior-work` to `science-ultrapowers:searching-the-literature`, `preregistering-analysis` to `science-ultrapowers:freezing-the-protocol`, `designing-the-analysis` to the G2 row of `science-ultrapowers:running-the-lab`, `setting-up-reproducible-analysis` to the G3 row, `investigating-anomalous-results` to `science-ultrapowers:investigating-anomalous-results`; and the sentence "The solver and matrix examples in this skill are illustrations; the rules apply to any computation." Replace the upstream references in the body with the mapped names and the one path.
+As Task 10 Steps 2 to 4, with these overlay specifics: item (2) records: the feasibility document goes to `research_lab/03_experiments/feasibility/<date>-<topic>.md` instead of `docs/science-superpowers/feasibility/` (upstream line 71); every probe is saved with `science-ultrapowers:saving-artifacts`; the register's status `feasibility`; nothing from the mode is `confirmatory`; item (5) skill-specific: the upstream cross-references on lines 33, 128, 142, 204 and 206 map `framing-research-questions` to `science-ultrapowers:framing-a-research-question`, `surveying-prior-work` to `science-ultrapowers:searching-the-literature`, `preregistering-analysis` to `science-ultrapowers:freezing-the-protocol`, `designing-the-analysis` to the G2 row of `science-ultrapowers:running-the-lab`, `setting-up-reproducible-analysis` to the G3 row, `investigating-anomalous-results` to `science-ultrapowers:investigating-anomalous-results`; and the sentence "The solver and matrix examples in this skill are illustrations; the rules apply to any computation." Replace the upstream references in the body with the mapped names and the one path.
 
 - [ ] **Step 3: Run the vendored test and the leak gate**
 
@@ -130,7 +283,7 @@ git add skills/establishing-feasibility-first tests/claude-code/test-vendored-sk
 git commit -m "feat(skills): vendor establishing-feasibility-first from science-superpowers (MIT)"
 ```
 
-### Task 4: `protocol_freeze.py`
+### Task 12: `protocol_freeze.py`
 
 **Files:**
 - Create: `skills/freezing-the-protocol/scripts/protocol_freeze.py`, `skills/freezing-the-protocol/scripts/tests/test_protocol_freeze.py`, `skills/freezing-the-protocol/scripts/tests/__init__.py`
@@ -187,7 +340,7 @@ git add --chmod=+x skills/freezing-the-protocol/scripts/protocol_freeze.py
 git commit -m "feat(freeze): protocol_freeze.py freezes a protocol as its own commits and audits it from git history"
 ```
 
-### Task 5: The `freezing-the-protocol` skill
+### Task 13: The `freezing-the-protocol` skill
 
 **Files:**
 - Create: `skills/freezing-the-protocol/SKILL.md`, `skills/freezing-the-protocol/PROVENANCE.md`, `docs/science-ultrapowers/evals/freezing-the-protocol/scenario.md`, `.../baseline.md`, `.../with-skill.md`, `.../runs/*.md`
@@ -195,7 +348,7 @@ git commit -m "feat(freeze): protocol_freeze.py freezes a protocol as its own co
 - Test: `bash tests/claude-code/test-skill-content.sh`, `bash tests/claude-code/test-vendored-skills.sh`, `bash tests/skill-size/test-skill-size.sh`
 
 **Interfaces:**
-- Consumes: Task 4's command line and outputs.
+- Consumes: Task 12's command line and outputs.
 - Produces: `science-ultrapowers:freezing-the-protocol`; the sentences `NO CONFIRMATORY CLAIM WITHOUT A FROZEN PREDICTION FIRST`, `Looked at the outcomes first? That analysis is exploratory. It is never relabelled.`, `A deviation from the frozen protocol makes the affected finding exploratory`.
 
 - [ ] **Step 1: Add the three sentences to the content test and watch it fail**
@@ -211,7 +364,7 @@ Expected: the baseline registers over the seen runs or relabels them; record the
 
 - [ ] **Step 3: Write `SKILL.md`**
 
-Frontmatter `name: freezing-the-protocol`, `description: Use when a protocol is about to be approved at G2, before any confirmatory run or any outcome is looked at, when a result is about to be called confirmatory, or when a run deviates from its protocol`. Body under 12,000 bytes, in the house form (Overview, the Iron Law block, the "No exceptions" list, When to use, "Do not freeze over runs that have never happened" with the cheapest-falsifying-run rule, Lock then Freeze then Execute then Separate, the freeze procedure with the exact command from Task 4 and the order (freeze first, then `artifacts.py save` the frozen file, then the hash into `DECISIONS.md`), the audit procedure before G4 with the report saved as an artifact, the deviation rule, the basis rule for `FINDINGS.md`, a rationalization table of at least ten rows reworded from the upstream skill, Red Flags, a checklist). Every cross-reference `science-ultrapowers:<skill>`; the records at `research_lab/03_experiments/protocols/` and `research_lab/06_decisions/DECISIONS.md`. `PROVENANCE.md` (short): "absorbed from K-Dense-AI/science-superpowers `skills/preregistering-analysis` (MIT, Copyright (c) 2026 K-Dense, Inc.), reworded; `prereg.sh` rewritten as `scripts/protocol_freeze.py`".
+Frontmatter `name: freezing-the-protocol`, `description: Use when a protocol is about to be approved at G2, before any confirmatory run or any outcome is looked at, when a result is about to be called confirmatory, or when a run deviates from its protocol`. Body under 12,000 bytes, in the house form (Overview, the Iron Law block, the "No exceptions" list, When to use, "Do not freeze over runs that have never happened" with the cheapest-falsifying-run rule, Lock then Freeze then Execute then Separate, the freeze procedure with the exact command from Task 12 and the order (freeze first, then `artifacts.py save` the frozen file, then the hash into `DECISIONS.md`), the audit procedure before G4 with the report saved as an artifact, the deviation rule, the basis rule for `FINDINGS.md`, a rationalization table of at least ten rows reworded from the upstream skill, Red Flags, a checklist). Every cross-reference `science-ultrapowers:<skill>`; the records at `research_lab/03_experiments/protocols/` and `research_lab/06_decisions/DECISIONS.md`. `PROVENANCE.md` (short): "absorbed from K-Dense-AI/science-superpowers `skills/preregistering-analysis` (MIT, Copyright (c) 2026 K-Dense, Inc.), reworded; `prereg.sh` rewritten as `scripts/protocol_freeze.py`".
 
 - [ ] **Step 4: Run the content, vendored and size tests**
 
@@ -230,7 +383,7 @@ git add skills/freezing-the-protocol docs/science-ultrapowers/evals/freezing-the
 git commit -m "feat(skills): freezing-the-protocol, the pre-registration Iron Law with the freeze and audit"
 ```
 
-### Task 6: Templates and records
+### Task 14: Templates and records
 
 **Files:**
 - Modify: `skills/initializing-a-research-lab/templates/research_lab/templates/H_CARD.md`, `.../templates/PREREGISTRATION.md`, `.../templates/DEVILS_ADVOCATE_TEMPLATE.md`, `.../templates/REFEREE_REPORT.md`, `.../templates/HANDOFF.md`, `.../02_findings_ledger/FINDINGS.md`, `.../03_experiments/EXPERIMENT_REGISTER.md`, `skills/initializing-a-research-lab/templates/lab.json`, `skills/running-the-lab/SKILL.md` (the hand-off block only, to match `HANDOFF.md`)
@@ -238,7 +391,7 @@ git commit -m "feat(skills): freezing-the-protocol, the pre-registration Iron La
 - Test: `bash tests/claude-code/test-lab-templates.sh`
 
 **Interfaces:**
-- Produces: the ten-lens list, in this order and wording, used by the devil's-advocate and referee templates and by Task 10: `alternative explanation / confound / leakage / split or metric artefact / seed or CI fragility / overreach / unchecked assumptions / researcher degrees of freedom / multiplicity / reproducibility from raw and seed`; the `FINDINGS.md` header `| F-id | Statement | Type | Basis | Evidence | Status | Recorded | Verified | Scope / caveats |`; the register header with `| Input checksums |` inserted after `Environment` and the status list extended with `feasibility`; the hand-off line `Status: done | done with concerns | needs context | blocked`; `lab.json` keys `"tracks": []` and `"protocolFreeze": {"freezeTrailer": "Protocol-Freeze", "stampTrailer": "Protocol-Stamp"}`.
+- Produces: the ten-lens list, in this order and wording, used by the devil's-advocate and referee templates and by Task 18: `alternative explanation / confound / leakage / split or metric artefact / seed or CI fragility / overreach / unchecked assumptions / researcher degrees of freedom / multiplicity / reproducibility from raw and seed`; the `FINDINGS.md` header `| F-id | Statement | Type | Basis | Evidence | Status | Recorded | Verified | Scope / caveats |`; the register header with `| Input checksums |` inserted after `Environment` and the status list extended with `feasibility`; the hand-off line `Status: done | done with concerns | needs context | blocked`; `lab.json` keys `"tracks": []` and `"protocolFreeze": {"freezeTrailer": "Protocol-Freeze", "stampTrailer": "Protocol-Stamp"}`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -262,7 +415,7 @@ git add skills/initializing-a-research-lab/templates skills/running-the-lab/SKIL
 git commit -m "feat(templates): the question document, the design-validation lines, ten lenses, compliance, response and synthesis templates, the basis column"
 ```
 
-### Task 7: Init `--track` and the two migrations
+### Task 15: Init `--track` and the two migrations
 
 **Files:**
 - Modify: `skills/initializing-a-research-lab/scripts/init_lab.py` (`Options`, the argument parser at lines 897 to 920, `build_plan`, `apply_plan`, `merge_lab_json`), `skills/initializing-a-research-lab/SKILL.md`
@@ -270,7 +423,7 @@ git commit -m "feat(templates): the question document, the design-validation lin
 - Test: `python -m unittest discover -s skills/initializing-a-research-lab/scripts/tests -p 'test_*.py'`
 
 **Interfaces:**
-- Consumes: Task 6's templates and `lab.json` keys.
+- Consumes: Task 14's templates and `lab.json` keys.
 - Produces: `--track {idea,literature,review,writing,dissemination}` (repeatable); the table `TRACK_FILES: dict[str, list[str]]` in `init_lab.py` whose every value includes `research_lab/01_reference_registry/README.md`, `.../REGISTRY.csv`, `.../EXCEPTIONS.md`, `.../evidence_cards/.gitkeep`, `.../audits/.gitkeep`, `research_lab/04_reviews/README.md`, `.../REVIEW_LOG.md`, `.../reports/.gitkeep`, `research_lab/artifacts/store/.gitkeep`, `research_lab/artifacts/.gitattributes`, `research_lab/memory/MEMORY.md`, `.../README.md`, `.../project/.gitkeep`, `.../artifact/.gitkeep`, `research_lab/README.md`, `research_lab/lab.json`, plus per track: idea adds `00_project_knowledge/*`, `templates/H_CARD.md`, `templates/EVIDENCE_CARD.md`, `06_decisions/*`; literature adds `templates/EVIDENCE_CARD.md`, `templates/SYNTHESIS_MATRIX.md`, `templates/CITATION_AUDIT.md`; review adds `templates/REFEREE_REPORT.md`, `templates/CITATION_AUDIT.md`, `templates/RESPONSE_MATRIX.md`, `templates/DEVILS_ADVOCATE_TEMPLATE.md`; writing adds `02_findings_ledger/*`, `07_project_management/*`, `templates/REVIEW_ACADEMIC.md`; dissemination adds `02_findings_ledger/*`, `templates/EVIDENCE_CARD.md`; plan lines `migrate <file>: add column Basis` and `migrate <file>: add column Input checksums`; `lab.json.tracks` union.
 
 - [ ] **Step 1: Write the failing tests**
@@ -313,14 +466,14 @@ git add skills/initializing-a-research-lab docs/science-ultrapowers/evals/initia
 git commit -m "feat(init): --track writes a minimal lab; the Basis and Input checksums migrations"
 ```
 
-### Task 8: The lifecycle in `running-the-lab`
+### Task 16: The lifecycle in `running-the-lab`
 
 **Files:**
 - Modify: `skills/running-the-lab/SKILL.md` (the gate table at lines 34 to 44, the standing rules, the escalation table, the review toolkit table), `tests/claude-code/test-skill-content.sh` (sentences; a size check)
 - Test: `bash tests/claude-code/test-skill-content.sh`
 
 **Interfaces:**
-- Consumes: Tasks 2, 3, 5, 6.
+- Consumes: Tasks 10, 11, 13, 6.
 - Produces: the gate criteria every track skill and agent cites; the sentences below.
 
 - [ ] **Step 1: Add the sentences and the size check and watch them fail**
@@ -331,7 +484,7 @@ Expected: seven `lacks the sentence` lines
 
 - [ ] **Step 2: Rewrite the gate table and the rules**
 
-Gate table rows (same columns): G0 `Question (Frame)`: passes when the question document (the H-card with the Task 6 fields) is approved by your human partner and the Supervisor; no outcome is loaded, computed, fitted or plotted before the framing is approved; when runnability is unknown, feasibility mode is offered (`science-ultrapowers:establishing-feasibility-first`), entered and left by your human partner only. G1 `Evidence base (Ground)`: adds "methods, confounds, prior effect sizes and the relation to prior work (replication, extension, new population, novel) on cards". G2 `Pre-registration (Design and Register)`: the protocol with items 1 to 15 of the template; every configuration has run once or is within about ten times a measured point; the three sign-offs; then the freeze (`science-ultrapowers:freezing-the-protocol`), the hash in `DECISIONS.md`. G3 `Execution (Prepare and Execute)`: pinned environment, one recorded seed, raw inputs read-only with checksums in the register's `Input checksums`, the baseline reproduces before new work; every run registered; the protocol-compliance review (`PROTOCOL_COMPLIANCE.md`, by the Data & Evaluation Researcher, never the author) runs before the rigour review; the hand-off `Status:` line. G4 `Findings (Verify and Challenge)`: the audit passes and is saved as an artifact; the claim rows (a null needs an interval; a model needs a held-out metric used once; "reproduces" means re-run from raw with the seed; confirmatory needs the audit); every finding carries its basis; the devil's advocate with the ten lenses; anomalies through `science-ultrapowers:investigating-anomalous-results` (Iron Law `NO ADJUSTMENT WITHOUT ROOT CAUSE FIRST`). G5 unchanged plus "the archive manifest started". G6 `Release (Report and Archive)`: confirmatory and exploratory labelled, every deviation listed, intervals reported, no causal wording from observational data, no generalising past the sample, `ARCHIVE_MANIFEST.md` complete. Standing rules gain: the four Iron Laws in one bullet (`NO CONFIRMATORY CLAIM WITHOUT A FROZEN PREDICTION FIRST`; `NO ADJUSTMENT WITHOUT ROOT CAUSE FIRST`; `NO CLAIM WITHOUT FRESH EVIDENCE`; `Nothing is feasible until it has run`); "A deviation from the frozen protocol makes the affected finding exploratory; a fresh confirmatory claim needs a new registration and unused runs"; "Parallel checks: pre-specified checks may run in parallel and all are reported. Never dispatch many specifications and report the survivor"; "Raw inputs are read-only; transforms write new artifacts". Escalation: the anomaly row names the vendored skill. The review toolkit table gains rows for `science-ultrapowers:freezing-the-protocol` (G2, G4), `science-ultrapowers:investigating-anomalous-results` (G3, G4), `science-ultrapowers:establishing-feasibility-first` (before G2). A "Tracks" paragraph: the five track skills by name and where each enters and exits. Trim prose before rules to stay under 18,000 bytes.
+Gate table rows (same columns): G0 `Question (Frame)`: passes when the question document (the H-card with the Task 14 fields) is approved by your human partner and the Supervisor; no outcome is loaded, computed, fitted or plotted before the framing is approved; when runnability is unknown, feasibility mode is offered (`science-ultrapowers:establishing-feasibility-first`), entered and left by your human partner only. G1 `Evidence base (Ground)`: adds "methods, confounds, prior effect sizes and the relation to prior work (replication, extension, new population, novel) on cards". G2 `Pre-registration (Design and Register)`: the protocol with items 1 to 15 of the template; every configuration has run once or is within about ten times a measured point; the three sign-offs; then the freeze (`science-ultrapowers:freezing-the-protocol`), the hash in `DECISIONS.md`. G3 `Execution (Prepare and Execute)`: pinned environment, one recorded seed, raw inputs read-only with checksums in the register's `Input checksums`, the baseline reproduces before new work; every run registered; the protocol-compliance review (`PROTOCOL_COMPLIANCE.md`, by the Data & Evaluation Researcher, never the author) runs before the rigour review; the hand-off `Status:` line. G4 `Findings (Verify and Challenge)`: the audit passes and is saved as an artifact; the claim rows (a null needs an interval; a model needs a held-out metric used once; "reproduces" means re-run from raw with the seed; confirmatory needs the audit); every finding carries its basis; the devil's advocate with the ten lenses; anomalies through `science-ultrapowers:investigating-anomalous-results` (Iron Law `NO ADJUSTMENT WITHOUT ROOT CAUSE FIRST`). G5 unchanged plus "the archive manifest started". G6 `Release (Report and Archive)`: confirmatory and exploratory labelled, every deviation listed, intervals reported, no causal wording from observational data, no generalising past the sample, `ARCHIVE_MANIFEST.md` complete. Standing rules gain: the four Iron Laws in one bullet (`NO CONFIRMATORY CLAIM WITHOUT A FROZEN PREDICTION FIRST`; `NO ADJUSTMENT WITHOUT ROOT CAUSE FIRST`; `NO CLAIM WITHOUT FRESH EVIDENCE`; `Nothing is feasible until it has run`); "A deviation from the frozen protocol makes the affected finding exploratory; a fresh confirmatory claim needs a new registration and unused runs"; "Parallel checks: pre-specified checks may run in parallel and all are reported. Never dispatch many specifications and report the survivor"; "Raw inputs are read-only; transforms write new artifacts". Escalation: the anomaly row names the vendored skill. The review toolkit table gains rows for `science-ultrapowers:freezing-the-protocol` (G2, G4), `science-ultrapowers:investigating-anomalous-results` (G3, G4), `science-ultrapowers:establishing-feasibility-first` (before G2). A "Tracks" paragraph: the five track skills by name and where each enters and exits. Trim prose before rules to stay under 18,000 bytes.
 
 - [ ] **Step 3: Run the content test, the size test and the pressure rerun**
 
@@ -346,14 +499,14 @@ git add skills/running-the-lab tests/claude-code/test-skill-content.sh docs/scie
 git commit -m "feat(lifecycle): the nine stages on G0-G6, the Iron Laws, the compliance review, the parallel guard"
 ```
 
-### Task 9: `recording-findings` carries the basis
+### Task 17: `recording-findings` carries the basis
 
 **Files:**
 - Modify: `skills/recording-findings/SKILL.md`, `tests/claude-code/test-skill-content.sh`
 - Test: `bash tests/claude-code/test-skill-content.sh`
 
 **Interfaces:**
-- Consumes: Task 6's `Basis` column; Task 5's audit output.
+- Consumes: Task 14's `Basis` column; Task 13's audit output.
 - Produces: the rule "`confirmatory` only with a frozen protocol whose audit passed and a run that matched it; everything else `exploratory`"; the claim rows table.
 
 - [ ] **Step 1: Add the sentences and watch them fail**
@@ -379,19 +532,19 @@ git add skills/recording-findings tests/claude-code/test-skill-content.sh docs/s
 git commit -m "feat(findings): the confirmatory or exploratory basis and the claim rows"
 ```
 
-### Task 10: The agents
+### Task 18: The agents
 
 **Files:**
 - Modify: `agents/experiments-lead.md`, `agents/data-evaluation-researcher.md`, `agents/scientific-reviewer.md`, `agents/literature-researcher.md`, `agents/citation-auditor.md`, `agents/findings-curator.md`, `agents/paper-author.md`, `agents/documentation-writer.md`, `agents/methods-researcher.md`, `agents/lab-project-manager.md`
 - Test: `bash tests/claude-code/test-agents.sh`
 
 **Interfaces:**
-- Consumes: Tasks 2, 3, 5, 6, 8.
+- Consumes: Tasks 10, 11, 13, 6, 8.
 - Produces: the preloaded skills and the owned work each track skill dispatches.
 
 - [ ] **Step 1: Extend the agents test and watch it fail**
 
-In `test-agents.sh` add a check (after `check_main_session_line`): `experiments-lead.md` lists `science-ultrapowers:establishing-feasibility-first` and `science-ultrapowers:investigating-anomalous-results` in its role toolkit; `data-evaluation-researcher.md` contains `protocol-compliance review` and `A clean number is not a correct number`; `scientific-reviewer.md` contains the ten-lens string from Task 6; `findings-curator.md` contains `Basis`; `lab-project-manager.md` contains `freezing-the-protocol`; `paper-author.md` contains `RESPONSE_MATRIX.md`; `literature-researcher.md` contains `SYNTHESIS_MATRIX.md`.
+In `test-agents.sh` add a check (after `check_main_session_line`): `experiments-lead.md` lists `science-ultrapowers:establishing-feasibility-first` and `science-ultrapowers:investigating-anomalous-results` in its role toolkit; `data-evaluation-researcher.md` contains `protocol-compliance review` and `A clean number is not a correct number`; `scientific-reviewer.md` contains the ten-lens string from Task 14; `findings-curator.md` contains `Basis`; `lab-project-manager.md` contains `freezing-the-protocol`; `paper-author.md` contains `RESPONSE_MATRIX.md`; `literature-researcher.md` contains `SYNTHESIS_MATRIX.md`.
 Run: `bash tests/claude-code/test-agents.sh`
 Expected: seven failures
 
@@ -411,14 +564,14 @@ git add agents tests/claude-code/test-agents.sh
 git commit -m "feat(agents): the lifecycle duties of ten roles"
 ```
 
-### Task 11: The bootstrap's track table
+### Task 19: The bootstrap's track table
 
 **Files:**
 - Modify: `skills/using-science-ultrapowers/SKILL.md`, `tests/claude-code/test-bootstrap-length.sh`, `docs/science-ultrapowers/evals/using-science-ultrapowers/`
 - Test: `bash tests/claude-code/test-bootstrap-length.sh`
 
 **Interfaces:**
-- Consumes: the five track skill names (Tasks 12 to 16 create them; this task cites them, so Phase 2 keeps the bootstrap true).
+- Consumes: the five track skill names (Tasks 20 to 24 create them; this task cites them, so Phase 2 keeps the bootstrap true).
 - Produces: the "Tracks" table the pressure scenario and the acceptance runs route by.
 
 - [ ] **Step 1: Extend the length test and watch it fail**
@@ -448,14 +601,14 @@ git commit -m "feat(bootstrap): the track table"
 
 Each track task follows one shape: the scenario and its baseline first (RED: the baseline fails on the shortcut the scenario tempts), the content-test sentences (RED), the `SKILL.md` (GREEN on the test), two with-skill runs (GREEN on the scenario), the commit. The with-skill prefix is the form of `docs/science-ultrapowers/evals/migrating-from-claude-science/runs/with-skill-prefix.txt`. Every track skill: frontmatter `name`, a `description` that starts with "Use when"; body under 12,000 bytes; sections Overview, When it starts (what your human partner has in hand), What it asks (one question at a time, multiple choice when possible), The stages it runs (which gates, in order), Who it dispatches (roles with the task brief block), What it writes (records and products, each saved with `science-ultrapowers:saving-artifacts`), Before it exits (the checks), Hand-off to the next track, Red Flags table; every cross-reference `science-ultrapowers:<skill>`; "your human partner"; actions, not tool names.
 
-### Task 12: `framing-a-research-question` (the idea track)
+### Task 20: `framing-a-research-question` (the idea track)
 
 **Files:**
 - Create: `skills/framing-a-research-question/SKILL.md`, `skills/framing-a-research-question/PROVENANCE.md`, `docs/science-ultrapowers/evals/framing-a-research-question/{scenario.md,baseline.md,with-skill.md,runs/}`
 - Modify: `tests/claude-code/test-skill-content.sh`, `tests/claude-code/test-vendored-skills.sh` (`ABSORBED` list), `docs/science-ultrapowers/evals/README.md`
 
 **Interfaces:**
-- Consumes: Task 6's H-card fields; Task 8's G0 and G1 rows; Task 3's feasibility offer.
+- Consumes: Task 14's H-card fields; Task 16's G0 and G1 rows; Task 11's feasibility offer.
 - Produces: `science-ultrapowers:framing-a-research-question`; the hand-off to `science-ultrapowers:running-the-lab` with an approved H-card, or to `science-ultrapowers:establishing-feasibility-first`.
 
 - [ ] **Step 1: Scenario and baseline (RED)**
@@ -481,7 +634,7 @@ git add skills/framing-a-research-question docs/science-ultrapowers/evals/framin
 git commit -m "feat(tracks): framing-a-research-question, the idea track"
 ```
 
-### Task 13: `synthesising-the-literature` (the literature track) and the flow diagram
+### Task 21: `synthesising-the-literature` (the literature track) and the flow diagram
 
 **Files:**
 - Create: `skills/synthesising-the-literature/SKILL.md`, `.../PROVENANCE.md`, `.../scripts/flow_diagram.py`, `.../scripts/tests/test_flow_diagram.py`, `.../scripts/tests/__init__.py`, `docs/science-ultrapowers/evals/synthesising-the-literature/...`
@@ -489,7 +642,7 @@ git commit -m "feat(tracks): framing-a-research-question, the idea track"
 - Test: `python -m unittest discover -s skills/synthesising-the-literature/scripts/tests -p 'test_*.py'`
 
 **Interfaces:**
-- Consumes: `science-ultrapowers:searching-the-literature` (its screening log and PRISMA counts), Task 6's `SYNTHESIS_MATRIX.md`, Task 5 for the meta-analysis protocol.
+- Consumes: `science-ultrapowers:searching-the-literature` (its screening log and PRISMA counts), Task 14's `SYNTHESIS_MATRIX.md`, Task 13 for the meta-analysis protocol.
 - Produces: `python "${CLAUDE_PLUGIN_ROOT}/skills/synthesising-the-literature/scripts/flow_diagram.py" <counts.json> --style prisma2020|consort --out <file.svg>`; counts JSON for PRISMA 2020: `{"identified": {"databases": n, "registers": n, "other": n}, "duplicates_removed": n, "screened": n, "excluded_screening": n, "sought": n, "not_retrieved": n, "assessed": n, "excluded_assessed": {"<reason>": n, ...}, "included": n}`; for CONSORT: `{"assessed": n, "excluded": {"<reason>": n}, "randomised": n, "arms": [{"name", "allocated", "received", "lost", "discontinued", "analysed", "excluded_analysis"}]}`; exit 0 with the SVG written, 1 when the counts do not add up (the message names the box), 2 on usage.
 
 - [ ] **Step 1: Failing tests for the diagram**
@@ -530,14 +683,14 @@ git add --chmod=+x skills/synthesising-the-literature/scripts/flow_diagram.py
 git commit -m "feat(tracks): synthesising-the-literature, the literature track, with the flow diagram"
 ```
 
-### Task 14: `reviewing-a-manuscript` (the review track)
+### Task 22: `reviewing-a-manuscript` (the review track)
 
 **Files:**
 - Create: `skills/reviewing-a-manuscript/SKILL.md`, `.../PROVENANCE.md`, `docs/science-ultrapowers/evals/reviewing-a-manuscript/...`
 - Modify: `tests/claude-code/test-skill-content.sh`, `tests/claude-code/test-vendored-skills.sh`, `docs/science-ultrapowers/evals/README.md`
 
 **Interfaces:**
-- Consumes: Task 6's `REFEREE_REPORT.md` (ten lenses), `RESPONSE_MATRIX.md`, `CITATION_AUDIT.md`; Task 7's `--track review`; Task 10's agents.
+- Consumes: Task 14's `REFEREE_REPORT.md` (ten lenses), `RESPONSE_MATRIX.md`, `CITATION_AUDIT.md`; Task 15's `--track review`; Task 18's agents.
 - Produces: `science-ultrapowers:reviewing-a-manuscript`; products in `research_lab/04_reviews/reports/` and a `REVIEW_LOG.md` row.
 
 - [ ] **Step 1: Scenario and baseline (RED)**
@@ -555,14 +708,14 @@ git add skills/reviewing-a-manuscript docs/science-ultrapowers/evals/reviewing-a
 git commit -m "feat(tracks): reviewing-a-manuscript, the review track"
 ```
 
-### Task 15: `writing-for-publication` (the writing track)
+### Task 23: `writing-for-publication` (the writing track)
 
 **Files:**
 - Create: `skills/writing-for-publication/SKILL.md`, `docs/science-ultrapowers/evals/writing-for-publication/...`
 - Modify: `tests/claude-code/test-skill-content.sh`, `docs/science-ultrapowers/evals/README.md`
 
 **Interfaces:**
-- Consumes: `science-ultrapowers:recording-findings`, `science-ultrapowers:verifying-evidence-by-doi`, the vendored `manuscript-formatting` and `scientific-writing`, Task 6's `ARCHIVE_MANIFEST.md`, the account connectors (`scispace`, `scholar-gateway`, `wiley-scholar-gateway`, `scite` in `connectors.json`).
+- Consumes: `science-ultrapowers:recording-findings`, `science-ultrapowers:verifying-evidence-by-doi`, the vendored `manuscript-formatting` and `scientific-writing`, Task 14's `ARCHIVE_MANIFEST.md`, the account connectors (`scispace`, `scholar-gateway`, `wiley-scholar-gateway`, `scite` in `connectors.json`).
 - Produces: `science-ultrapowers:writing-for-publication`; the thesis plan at `research_lab/07_project_management/THESIS_PLAN.md` (chapters, milestones, deadlines); the journal shortlist at `research_lab/07_project_management/JOURNAL_SHORTLIST.md` (`| Journal | Scope fit | Indexing | Open access | Policy fit | Connector used |`).
 
 - [ ] **Step 1: Scenario and baseline (RED)**
@@ -580,7 +733,7 @@ git add skills/writing-for-publication docs/science-ultrapowers/evals/writing-fo
 git commit -m "feat(tracks): writing-for-publication, the writing track"
 ```
 
-### Task 16: `presenting-research` (the dissemination track)
+### Task 24: `presenting-research` (the dissemination track)
 
 **Files:**
 - Create: `skills/presenting-research/SKILL.md`, `docs/science-ultrapowers/evals/presenting-research/...`
@@ -607,7 +760,7 @@ git commit -m "feat(tracks): presenting-research, the dissemination track"
 
 ## Phase 3: documents, acceptance and release
 
-### Task 17: Documents, licence and release notes
+### Task 25: Documents, licence and release notes
 
 **Files:**
 - Modify: `README.md` (a "Tracks" section after "How a session runs"; the lifecycle paragraph; the skills tables; the connectors paragraph for the journal shortlist), `docs/testing.md`, `tests/claude-code/README.md`, `LICENSE` (section 7), `RELEASE-NOTES.md`, `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` (through the bump script), `CONTRIBUTING.md` (the tracks in one sentence)
@@ -635,7 +788,7 @@ git add README.md docs/testing.md tests/claude-code/README.md tests/claude-code/
 git commit -m "release: 0.2.0 documents, licence section 7 and release notes"
 ```
 
-### Task 18: Acceptance transcripts
+### Task 26: Acceptance transcripts
 
 **Files:**
 - Create: `docs/science-ultrapowers/evals/acceptance/04-idea-track.md`, `05-literature-track.md`, `06-review-track.md`, `07-writing-track.md`, `08-dissemination-track.md`, `09-freeze-and-audit.md`
@@ -643,11 +796,11 @@ git commit -m "release: 0.2.0 documents, licence section 7 and release notes"
 
 - [ ] **Step 1: Update the smoke folder's install to the local build**
 
-In `<smoke-folder>` (the 0.1.x smoke lab from acceptance 01), `claude plugin update science-ultrapowers@science-ultrapowers` after Task 19's push, or, before the release, a local marketplace install from the repository path; record which in each transcript.
+In `<smoke-folder>` (the 0.1.x smoke lab from acceptance 01), `claude plugin update science-ultrapowers@science-ultrapowers` after Task 27's push, or, before the release, a local marketplace install from the repository path; record which in each transcript.
 
 - [ ] **Step 2: Run one headless session per track and the freeze cycle**
 
-`claude -p "<message>" --output-format stream-json --verbose < /dev/null` in the smoke folder for: the idea message (Task 12's scenario sentence, with the smoke lab's dataset placeholder), the literature message, the review message with a public open-access PDF placed in `references/`, the writing message, the dissemination message with the lab environment installed; the freeze cycle on a fixture protocol with `protocol_freeze.py freeze` then `audit`. Grade each against its scenario's pass line; summarise with placeholders; keep the raw streams in the scratchpad.
+`claude -p "<message>" --output-format stream-json --verbose < /dev/null` in the smoke folder for: the idea message (Task 20's scenario sentence, with the smoke lab's dataset placeholder), the literature message, the review message with a public open-access PDF placed in `references/`, the writing message, the dissemination message with the lab environment installed; the freeze cycle on a fixture protocol with `protocol_freeze.py freeze` then `audit`. Grade each against its scenario's pass line; summarise with placeholders; keep the raw streams in the scratchpad.
 Expected: each transcript names the first skill invoked as its track skill and ends with a saved artifact; the audit passes and, after an edit, fails on INTEGRITY.
 
 - [ ] **Step 3: Commit**
@@ -657,7 +810,7 @@ git add docs/science-ultrapowers/evals/acceptance
 git commit -m "test: acceptance transcripts for 0.2.0"
 ```
 
-### Task 19: Release 0.2.0
+### Task 27: Release 0.2.0
 
 - [ ] **Step 1: Merge and push**
 
