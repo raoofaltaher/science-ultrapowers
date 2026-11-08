@@ -12,11 +12,12 @@
 
 ## Lab addenda applied
 - 2026-11-08 science-ultrapowers: LAB ADDENDUM (binding) inserted, upstream skill references renamed
+- 2026-11-08 science-ultrapowers: the body reworded into the plugin's terminology standard at the researcher's request; every rule kept (SKILL.md hash refreshed)
 
 ## File hashes (SHA-256, first 12 hex chars)
 | File | Status | Upstream | Vendored |
 |---|---|---|---|
 | `LICENSE` | added | `` | `ba6e60c42108` |
-| `SKILL.md` | modified | `9c9fb3cda944` | `9b5569e50156` |
+| `SKILL.md` | modified | `9c9fb3cda944` | `90b779ebb31b` |
 
 To re-verify: download `https://github.com/K-Dense-AI/science-superpowers/archive/0374bdf82c2372bdf1667e3c762146c3a29215f5.zip` and compare the `unchanged` rows.

@@ -5,7 +5,7 @@
 | Upstream repository | https://github.com/K-Dense-AI/claude-scientific-writer |
 | Pinned commit | `0c7260603be3de4dd5161565ab92e85b31c45eb5` |
 | Upstream path | `skills/hypothesis-generation` |
-| Licence | MIT (upstream `LICENSE` copied verbatim to this folder) |
+| License | MIT (upstream `LICENSE` copied verbatim to this folder) |
 | Retrieved / vendored | 2026-09-26, by the originating lab's setup |
 | Vetting | static security review (S1-S8) and quality rubric (Q1-Q6) by an independent reviewer track; Jev second opinion; review board (Academic Supervisor + Scientific Peer Reviewer profiles). Records: the originating lab's decision log, review records and skill-vetting folder (not shipped with the plugin) |
 | Approved by | the user (References & Resources Specialist), 2026-09-26: "Install all 14" |
@@ -13,10 +13,10 @@
 ## Lab addenda applied
 - annotated references/security_validation.md as unverified vendor narrative
 - inserted the LAB ADDENDUM block at the top of SKILL.md
-- added LICENSE (upstream repository licence, verbatim)
-- 2026-11-07 science-ultrapowers: Claude-Science-only overlay items removed (PDF-explorer, kernel paths, host skill-reader calls), Claude Code tool line added, skill cross-references renamed, project names and decision ids generalised
-- 2026-11-07 science-ultrapowers: references/security_validation.md: lab note generalised (project name and date removed)
-- 2026-11-08 science-ultrapowers: line endings normalised from CRLF to LF (no content change), vendored hashes refreshed: references/security_validation.md
+- added LICENSE (upstream repository license, verbatim)
+- 2026-11-07 science-ultrapowers: Claude-Science-only overlay items removed (PDF-explorer, kernel paths, host skill-reader calls), Claude Code tool line added, skill cross-references renamed, project names and decision ids generalized
+- 2026-11-07 science-ultrapowers: references/security_validation.md: lab note generalized (project name and date removed)
+- 2026-11-08 science-ultrapowers: line endings normalized from CRLF to LF (no content change), vendored hashes refreshed: references/security_validation.md
 - 2026-11-08 science-ultrapowers: overlay: `uv run` removed from the overlay (uv is not a plugin runtime dependency); SKILL.md hash refreshed
 - 2026-11-08 science-ultrapowers: overlay runs python with -B (SKILL.md hash refreshed)
 - 2026-11-08 science-ultrapowers: overlay retitled LAB ADDENDUM (binding), the standard's words (SKILL.md hash refreshed)

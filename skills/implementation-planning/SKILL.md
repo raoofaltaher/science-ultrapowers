@@ -21,7 +21,7 @@ your reasoning, with success criteria fixed before any result is seen.
 
 ## Model assignment (lab addendum)
 
-Use the strongest available model for problem framing, macro architecture, irreversible decisions and plan drafting. **Plan approval is a lab gate decision** (G0/G2, Academic Supervisor, recorded in the decision log), not a model choice. After approval, split the work into task briefs (see `science-ultrapowers:running-the-lab`) for the owning specialists, each dispatched as the role's subagent. Write each brief so a specialist can execute it without reconstructing design intent.
+Use the strongest available model for problem framing, macro architecture, irreversible decisions and plan drafting. **Plan approval is a stage approval decision** (the Question or Preregistration approval, Academic Supervisor, recorded in the decision log), not a model choice. After approval, split the work into task assignments (see `science-ultrapowers:running-the-lab`) for the owning specialists, each assigned to the role. Write each task assignment so a specialist can execute it without reconstructing design intent.
 
 ## Pick the register (by stakes, not size)
 

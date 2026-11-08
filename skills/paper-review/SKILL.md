@@ -37,7 +37,7 @@ Review validity depends on independence: a reviewer that shares the conversation
 Run the reviewer in a **fresh context** and pass only framing (file paths, target journal or venue, mode), never the authoring rationale. The reviewer reads `references/review-procedure.md` from this skill's folder before producing findings.
 
 - **Claude Code:** delegate to the scientific-reviewer (or academic-reviewer / data-evaluation-researcher) subagent with the same framing; for panel mode issue one Agent call per lens in a single message, then one synthesis call.
-- **Inline fallback:** only when the agent running it did not write the change or manuscript under review; otherwise delegate as above, because an author reviewing their own work breaks the lab's independence rule (G3/G6). Use it when delegation is unavailable or the user wants an in-thread check, following the procedure file directly.
+- **Inline fallback:** only when the agent running it did not write the change or manuscript under review; otherwise delegate as above, because an author reviewing their own work breaks the lab's independence rule (the Execution and Publication stage approvals). Use it when delegation is unavailable or the researcher wants an in-thread check, following the procedure file directly.
 
 Independence: nobody reviews their own work (`science-ultrapowers:running-the-lab`). Log the result in `research_lab/reviews/` (`REVIEW_LOG.md`).
 

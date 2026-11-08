@@ -74,6 +74,11 @@ for name in $NAMES $NAMES_0_2 $VERBATIM; do
     fail "$name" "SKILL.md still carries Claude-Science or project strings (lines above)"
   fi
 
+  # No stage code (G0 to G6) anywhere in an adopted SKILL.md; the stages have names.
+  if grep -n -E '\bG[0-6]\b' "$skill"; then
+    fail "$name" "SKILL.md names a stage code (lines above)"
+  fi
+
   prov="$dir/PROVENANCE.md"
   if [ "$overlaid" = 1 ]; then
     grep -qF '**Tools in Claude Code:**' "$skill" || fail "$name" "SKILL.md lacks the Tools in Claude Code item"
