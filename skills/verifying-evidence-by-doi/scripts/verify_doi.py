@@ -4,14 +4,19 @@
 Usage:
   python "${CLAUDE_PLUGIN_ROOT}/skills/verifying-evidence-by-doi/scripts/verify_doi.py" <doi> --title "<title>" --first-author <family-name> --year <year>
   python "${CLAUDE_PLUGIN_ROOT}/skills/verifying-evidence-by-doi/scripts/verify_doi.py" --search "<title>" --first-author <family-name> --year <year>
-  python "${CLAUDE_PLUGIN_ROOT}/skills/verifying-evidence-by-doi/scripts/verify_doi.py" --csv research_lab/01_reference_registry/REGISTRY.csv
+  python "${CLAUDE_PLUGIN_ROOT}/skills/verifying-evidence-by-doi/scripts/verify_doi.py" --csv research_lab/literature/SOURCES.csv
   python "${CLAUDE_PLUGIN_ROOT}/skills/verifying-evidence-by-doi/scripts/verify_doi.py" --extract-from <file>
   python "${CLAUDE_PLUGIN_ROOT}/skills/verifying-evidence-by-doi/scripts/verify_doi.py" <doi> --bibtex
-  python "${CLAUDE_PLUGIN_ROOT}/skills/verifying-evidence-by-doi/scripts/verify_doi.py" --registry-bib <registry.csv> --out <out.bib>
+  python "${CLAUDE_PLUGIN_ROOT}/skills/verifying-evidence-by-doi/scripts/verify_doi.py" --sources-bib research_lab/literature/SOURCES.csv --out <out.bib>
   python "${CLAUDE_PLUGIN_ROOT}/skills/verifying-evidence-by-doi/scripts/verify_doi.py" <doi> --title "<title>" --first-author <family-name> --year <year> --authors "Given Family; Given Family; ..."
-Exit code: 0 if all VERIFIED, 1 otherwise. With --extract-from, 1 only when a status is
-RETRACTED, CONCERN, UNRESOLVED, ERROR, PREPRINT or MISMATCH (RESOLVES_UNCHECKED alone exits 0).
+Status words (JSON `status`): matched, mismatch, resolves unchecked, unresolved, retracted,
+concern, preprint, no doi, error. The upper-case tokens of lab version 0.1 (VERIFIED,
+RESOLVES_UNCHECKED, ...) are still read wherever a status is read.
+Exit code: 0 if every result is matched, 1 otherwise. With --extract-from, 1 only when a status is
+retracted, concern, unresolved, error, preprint or mismatch (resolves unchecked alone exits 0).
 --search exits 1 when the Crossref search fails.
+A lab that still has the 0.1 layout makes --csv and --sources-bib exit 2 with a message that
+names the migration.
 """
 import csv
 import difflib
@@ -25,6 +30,7 @@ import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
+from pathlib import Path
 
 CROSSREF_API = "https://api.crossref.org"
 DOI_USER_AGENT = "science-ultrapowers-doi-verifier/0.1"
@@ -32,7 +38,36 @@ ALLOWED_URL_SCHEMES = ("https",)
 DOI_REGEX = r"10\.\d{4,9}/[^\s\"<>\]\[,;{}\\|`]+"
 RETRACTION_TYPES = ("retraction", "withdrawal", "removal", "retracted")
 CONCERN_TYPES = ("expression_of_concern", "expression-of-concern")
-EXTRACT_FAIL_STATUSES = ("RETRACTED", "CONCERN", "UNRESOLVED", "ERROR", "PREPRINT", "MISMATCH")
+DOI_STATUSES = ("matched", "mismatch", "resolves unchecked", "unresolved", "retracted", "concern", "preprint", "no doi", "error")
+LEGACY_DOI_STATUSES = {
+    "VERIFIED": "matched",
+    "MISMATCH": "mismatch",
+    "RESOLVES_UNCHECKED": "resolves unchecked",
+    "UNRESOLVED": "unresolved",
+    "RETRACTED": "retracted",
+    "CONCERN": "concern",
+    "PREPRINT": "preprint",
+    "NO_DOI": "no doi",
+    "ERROR": "error",
+}
+EXTRACT_FAIL_STATUSES = ("retracted", "concern", "unresolved", "error", "preprint", "mismatch")
+SOURCE_STATUSES = (
+    "citable", "citable by exception", "metadata matched", "awaiting full text", "awaiting approval",
+    "candidate", "excluded: preprint", "excluded: retracted", "rejected: mismatch",
+)
+LEGACY_SOURCE_STATUSES = {
+    "ADMITTED": "citable",  # legacy
+    "ADMITTED_EXCEPTION": "citable by exception",  # legacy
+    "DOI_VERIFIED": "metadata matched",  # legacy
+    "PENDING_FULLTEXT": "awaiting full text",  # legacy
+    "PENDING_APPROVAL": "awaiting approval",  # legacy
+    "CANDIDATE_DOI": "candidate",  # legacy
+    "EXCLUDED_PREPRINT": "excluded: preprint",  # legacy
+    "EXCLUDED_RETRACTED": "excluded: retracted",  # legacy
+    "REJECTED_MISMATCH": "rejected: mismatch",  # legacy
+}
+OLD_LAYOUT_MESSAGE = "this lab uses the 0.1 layout; run science-ultrapowers:initializing-a-research-lab to migrate it"
+NUMBERED_FOLDER = re.compile(r"^\d\d_")
 PREPRINT_PREFIXES = ("10.48550/", "10.2139/ssrn", "10.20944/preprints", "10.31219/", "10.36227/")
 
 
@@ -52,6 +87,40 @@ def doi_extract(text):
             seen.add(d)
             out.append(d)
     return out
+
+
+def _normalize_word(token, words, legacy):
+    text = str(token or "").strip()
+    if text.lower() in words:
+        return text.lower()
+    return legacy.get(re.sub(r"\s+", "_", text).upper(), text)
+
+
+def normalize_doi_status(token):
+    """A DOI status as the current lower-case word. The upper-case tokens of lab
+    version 0.1 (VERIFIED, RESOLVES_UNCHECKED, ...) are read as legacy; anything else is returned stripped."""
+    return _normalize_word(token, DOI_STATUSES, LEGACY_DOI_STATUSES)
+
+
+def normalize_source_status(token):
+    """A source-table status as the current lower-case words. the upper-case
+    tokens of lab version 0.1 are read as legacy; anything else is returned stripped."""
+    return _normalize_word(token, SOURCE_STATUSES, LEGACY_SOURCE_STATUSES)
+
+
+def lab_uses_old_layout(*paths):
+    """True when a `research_lab/` folder (the current directory's, or one that contains a given path) still has
+    a numbered folder such as `01_reference_registry/` and no `literature/` folder: the 0.1 layout."""
+    roots = [Path.cwd() / "research_lab"]
+    for given in paths:
+        resolved = Path(given).resolve()
+        roots.extend(parent for parent in (resolved, *resolved.parents) if parent.name == "research_lab")
+    for root in roots:
+        if not root.is_dir() or (root / "literature").is_dir():
+            continue
+        if any(child.is_dir() and NUMBERED_FOLDER.match(child.name) for child in root.iterdir()):
+            return True
+    return False
 
 
 def crossref_get(path, params=None, retries=3):
@@ -231,17 +300,17 @@ def _author_list_mismatches(supplied_authors, crossref_author_records):
 
 
 def verify_doi(doi, title=None, first_author=None, year=None, min_title_sim=0.85, authors=None):
-    """Verify one DOI against Crossref and against metadata taken FROM THE FULL TEXT IN HAND.
+    """Check one DOI against Crossref and against metadata taken FROM THE FULL TEXT IN HAND.
 
     Returns a dict with `status` in:
-      VERIFIED            resolves, not retracted, not a preprint, and title/first-author/year match what you supplied
-      RESOLVES_UNCHECKED  resolves, but you supplied no title/author/year from the PDF, so nothing was matched (NOT citable yet)
-      MISMATCH            resolves to a different work than the metadata you supplied (see `problems`)
-      PREPRINT            resolves to posted-content or a preprint server (Tier C: never evidence)
-      RETRACTED           a retraction/withdrawal/removal notice targets this DOI (Tier X)
-      CONCERN             an expression of concern targets this DOI (Tier X until resolved)
-      UNRESOLVED          Crossref returns 404 (not registered with Crossref: may be DataCite or fabricated)
-      ERROR               network/API failure, or the retraction check could not run; retry later (never a source)
+      matched             resolves, not retracted, not a preprint, and title/first-author/year match what you supplied
+      resolves unchecked  resolves, but you supplied no title/author/year from the PDF, so nothing was matched (not citable yet)
+      mismatch            resolves to a different work than the metadata you supplied (see `problems`)
+      preprint            resolves to posted-content or a preprint server (not peer-reviewed: never evidence)
+      retracted           a retraction/withdrawal/removal notice targets this DOI (retracted or withdrawn)
+      concern             an expression of concern targets this DOI (treated as retracted until resolved)
+      unresolved          Crossref returns 404 (not registered with Crossref: may be DataCite or fabricated)
+      error               network/API failure, or the retraction check could not run; retry later (never a source)
     `corrections` lists correction/erratum/addendum notices (the work stays citable; cite the corrected version).
 
     `authors`, if given, is the FULL ordered author list read from the PDF in hand
@@ -257,16 +326,16 @@ def verify_doi(doi, title=None, first_author=None, year=None, min_title_sim=0.85
     d = doi_normalize(doi)
     out = {"doi": d, "status": None, "problems": [], "corrections": [], "checked_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
     if d.startswith(PREPRINT_PREFIXES):
-        out["status"] = "PREPRINT"
-        out["problems"].append("Preprint-server DOI prefix (e.g. arXiv 10.48550, registered at DataCite): Tier C, never evidence; find the peer-reviewed version")
+        out["status"] = "preprint"
+        out["problems"].append("Preprint-server DOI prefix (e.g. arXiv 10.48550, registered at DataCite): not peer-reviewed, never evidence; find the peer-reviewed version")
         return out
     code, js = crossref_get("/works/" + urllib.parse.quote(d, safe="/"))
     if code == 404:
-        out["status"] = "UNRESOLVED"
+        out["status"] = "unresolved"
         out["problems"].append("DOI not found in Crossref (check doi.org / DataCite; may be fabricated or mistyped)")
         return out
     if not js:
-        out["status"] = "ERROR"
+        out["status"] = "error"
         out["problems"].append("Crossref request failed (HTTP %s)" % code)
         return out
     m = js["message"]
@@ -291,22 +360,22 @@ def verify_doi(doi, title=None, first_author=None, year=None, min_title_sim=0.85
     kinds = [n["type"] for n in notices]
     out["corrections"] = [n for n in notices if n["type"] not in RETRACTION_TYPES + CONCERN_TYPES]
     if any(k in RETRACTION_TYPES for k in kinds) or text_fold(out["crossref_title"]).startswith("retracted"):
-        out["status"] = "RETRACTED"
+        out["status"] = "retracted"
         return out
     if any(k in CONCERN_TYPES for k in kinds):
-        out["status"] = "CONCERN"
+        out["status"] = "concern"
         return out
     if update_code not in (200, 404):
-        out["status"] = "ERROR"
+        out["status"] = "error"
         out["problems"].append("retraction check could not run (HTTP %s)" % update_code)
         return out
     if out["type"] == "posted-content" or d.startswith(PREPRINT_PREFIXES):
-        out["status"] = "PREPRINT"
-        out["problems"].append("Preprint / posted content (Tier C): find the peer-reviewed published version")
+        out["status"] = "preprint"
+        out["problems"].append("Preprint / posted content (not peer-reviewed): find the peer-reviewed published version")
         return out
     if title is None and first_author is None and year is None:
-        out["status"] = "RESOLVES_UNCHECKED"
-        out["problems"].append("Supply title, first_author and year read from the PDF in hand to verify")
+        out["status"] = "resolves unchecked"
+        out["problems"].append("Supply title, first_author and year read from the PDF in hand, to match them against the Crossref record")
         return out
     if title is not None:
         sim = title_similarity(title, out["crossref_title"])
@@ -328,7 +397,7 @@ def verify_doi(doi, title=None, first_author=None, year=None, min_title_sim=0.85
                 out["problems"].append("year mismatch: supplied %s vs Crossref %s" % (year, out["crossref_year"]))
         except (TypeError, ValueError):
             out["problems"].append("year not comparable: %r" % (year,))
-    out["status"] = "MISMATCH" if out["problems"] else "VERIFIED"
+    out["status"] = "mismatch" if out["problems"] else "matched"
     return out
 
 
@@ -341,7 +410,7 @@ class CrossrefSearchError(RuntimeError):
 
 
 def crossref_search(title, first_author=None, year=None, rows=5):
-    """Find CANDIDATE DOIs for a work by bibliographic search. Candidates are NOT verified:
+    """Find candidate DOIs for a work by bibliographic search. Candidates are NOT matched:
     confirm each against the full text, then run verify_doi with the PDF's metadata.
     Raises CrossrefSearchError when Crossref does not answer 200."""
     q = " ".join(str(x) for x in (title, first_author, year) if x)
@@ -360,13 +429,13 @@ def crossref_search(title, first_author=None, year=None, rows=5):
             "venue": html.unescape((it.get("container-title") or [""])[0]),
             "type": it.get("type"),
             "title_similarity": title_similarity(title, candidate_title),
-            "label": "CANDIDATE - confirm against full text",
+            "label": "candidate: confirm against the full text",
         })
     return sorted(out, key=lambda r: -r["title_similarity"])
 
 
 def audit_dois(items, pause=0.2):
-    """Batch-verify. `items`: list of DOI strings or dicts with keys doi[, title, first_author, year]."""
+    """Batch-check. `items`: list of DOI strings or dicts with keys doi[, title, first_author, year]."""
     results = []
     for it in items:
         if isinstance(it, dict):
@@ -387,13 +456,13 @@ def audit_summary(results):
 
 
 def audit_csv(path, doi_col="doi", title_col="title", author_col="first_author", year_col="year"):
-    """Verify every row of a CSV (e.g. a registry). Rows without a DOI get status NO_DOI."""
+    """Check every row of a CSV (e.g. SOURCES.csv: source_id,title,first_author,year,doi,...). Rows without a DOI get status "no doi"."""
     out = []
     with open(path, newline="", encoding="utf-8") as fh:
         for row in csv.DictReader(fh):
             d = (row.get(doi_col) or "").strip()
             if not d:
-                out.append({"doi": "", "status": "NO_DOI", "title": row.get(title_col, "")})
+                out.append({"doi": "", "status": "no doi", "title": row.get(title_col, "")})
                 continue
             y = (row.get(year_col) or "").strip()
             out.append(verify_doi(d, (row.get(title_col) or "").strip() or None, (row.get(author_col) or "").strip() or None, y or None))
@@ -401,16 +470,22 @@ def audit_csv(path, doi_col="doi", title_col="title", author_col="first_author",
     return out
 
 
-def evidence_card_md(card_id, claim, quote, location, doi, citation, verify_result, extracted_by, verified_by="", notes=""):
-    """Render an evidence card (one claim from one source) as markdown for research_lab/01_reference_registry/evidence_cards/."""
+def evidence_record_md(record_id, claim, quote, location, doi, citation, verify_result, extracted_by, checked_by="", notes="", verified_by=""):
+    """Render an evidence record (one claim from one source) as markdown for research_lab/literature/evidence_records/.
+
+    `verified_by` is the 0.1 name of `checked_by` and is still accepted."""
     vr = verify_result or {}
+    status = normalize_doi_status(vr["status"]) if vr.get("status") else "not run"
     return (
         "### %s\n\n| Field | Value |\n|---|---|\n"
         "| Claim | %s |\n| Verbatim quote | \"%s\" |\n| Location (page/section/table) | %s |\n"
         "| Source | %s |\n| DOI | https://doi.org/%s |\n| DOI status | %s (checked %s) |\n"
-        "| Corrections/updates | %s |\n| Extracted by | %s |\n| Verified by | %s |\n| Notes | %s |\n"
-    ) % (card_id, claim, quote, location, citation, doi_normalize(doi), vr.get("status", "NOT RUN"), vr.get("checked_at", ""),
-         ", ".join(n["type"] for n in vr.get("updates", [])) or "none", extracted_by, verified_by or "PENDING", notes)
+        "| Corrections and updates | %s |\n| Extracted by | %s |\n| Checked by | %s |\n| Notes | %s |\n"
+    ) % (record_id, claim, quote, location, citation, doi_normalize(doi), status, vr.get("checked_at", ""),
+         ", ".join(n["type"] for n in vr.get("updates", [])) or "none", extracted_by, (checked_by or verified_by) or "PENDING", notes)
+
+
+evidence_card_md = evidence_record_md  # the 0.1 name
 
 
 BIBTEX_TRANSFORM = "/transform/application/x-bibtex"
@@ -438,8 +513,8 @@ def bibtex_pretty(bib):
 def doi_to_bibtex(doi, key=None, retries=3, pretty=True):
     """BibTeX for one DOI via Crossref content negotiation.
 
-    Use ONLY for sources that already passed the five checks (Tier A). `key`
-    replaces Crossref's citation key (the lab uses the registry ref_id).
+    Use ONLY for sources that already passed the five checks (peer-reviewed, matched DOI). `key`
+    replaces Crossref's citation key (the lab uses the source table's source_id).
     Raises ValueError when Crossref does not know the DOI.
     """
     d = doi_normalize(doi)
@@ -468,42 +543,49 @@ def doi_to_bibtex(doi, key=None, retries=3, pretty=True):
     raise RuntimeError("Crossref BibTeX request failed for %s: %s" % (d, last))
 
 
-def registry_to_bib(registry_csv, out_bib=None, statuses=("ADMITTED",), key_col="ref_id", reverify=True, pause=0.2):
-    """Bibliography generated from the lab registry only (never typed, never from memory or search hits).
+def sources_to_bib(sources_csv, out_bib=None, statuses=("citable",), key_col="source_id", reverify=True, pause=0.2):
+    """Bibliography generated from the lab's source table only (never typed, never from memory or search hits).
 
-    Emits one Crossref BibTeX record per row whose lab_status is in `statuses`, keyed by `key_col`.
+    Emits one Crossref BibTeX record per row whose `status` is in `statuses`, keyed by `key_col`.
     With reverify=True each DOI is re-checked with verify_doi (resolution, metadata match,
-    retraction/preprint screen) at build time; anything but VERIFIED is reported, not written.
-    Skipped: other statuses (e.g. PENDING_FULLTEXT, EXCLUDED_PREPRINT), rows without a DOI
-    (Tier B: write that entry by hand from the approved exception), preprint DOIs, and rows
-    whose retraction_status reports a retraction, withdrawal or expression of concern.
+    retraction/preprint screen) at build time; anything but matched is reported, not written.
+    Skipped: other statuses (e.g. awaiting full text, excluded: preprint), rows without a DOI
+    (peer-reviewed, no DOI: write that entry by hand from the approved exception), preprint DOIs,
+    and rows whose `doi_status` is retracted or concern.
+    Legacy 0.1 tables still read: the `ref_id`, `lab_status` and `retraction_status` columns and the
+    upper-case status tokens of lab version 0.1.
     Returns {"written": [ids], "skipped": [(id, reason)], "errors": [(id, reason)], "bib": text}.
     """
-    with open(registry_csv, encoding="utf-8-sig", newline="") as fh:
+    with open(sources_csv, encoding="utf-8-sig", newline="") as fh:
         rows = list(csv.DictReader(fh))
+    wanted = {normalize_source_status(s) for s in statuses}
     written, skipped, errors, entries = [], [], [], []
     for row in rows:
-        rid = (row.get(key_col) or "").strip()
-        status = (row.get("lab_status") or "").strip()
+        rid = (row.get(key_col) or row.get("ref_id") or "").strip()
+        status = normalize_source_status(row.get("status") or row.get("lab_status") or "")
         doi = doi_normalize(row.get("doi") or "") if (row.get("doi") or "").strip() else ""
+        doi_status = normalize_doi_status(row.get("doi_status") or "")
         retr = (row.get("retraction_status") or "").strip().lower()
-        if status not in statuses:
-            skipped.append((rid, "lab_status %s" % (status or "empty")))
+        if status not in wanted:
+            skipped.append((rid, "source status %s" % (status or "empty")))
             continue
         if not doi:
-            skipped.append((rid, "no DOI: write a hand entry from the approved Tier B exception"))
+            skipped.append((rid, "no DOI: write a hand entry from the approved exception"))
             continue
         if doi.startswith(PREPRINT_PREFIXES):
-            skipped.append((rid, "preprint DOI (Tier C)"))
+            skipped.append((rid, "preprint DOI (not peer-reviewed)"))
+            continue
+        if doi_status in ("retracted", "concern"):
+            skipped.append((rid, "doi status: %s" % doi_status))
             continue
         if retr and not retr.startswith(("no retraction", "n/a")) and re.search(r"retract|withdraw|remov|concern", retr):
-            skipped.append((rid, "retraction_status: %s" % row.get("retraction_status")))
+            skipped.append((rid, "doi status (0.1 retraction_status column): %s" % row.get("retraction_status")))
             continue
         if reverify:
             v = verify_doi(doi, (row.get("title") or "").strip() or None, (row.get("first_author") or "").strip() or None, (row.get("year") or "").strip() or None)
             time.sleep(pause)
-            if v.get("status") != "VERIFIED":
-                errors.append((rid, "re-verification %s: %s" % (v.get("status"), "; ".join(v.get("problems") or []))))
+            if v.get("status") != "matched":
+                errors.append((rid, "re-check %s: %s" % (v.get("status"), "; ".join(v.get("problems") or []))))
                 continue
         try:
             entries.append(doi_to_bibtex(doi, key=rid))
@@ -511,8 +593,8 @@ def registry_to_bib(registry_csv, out_bib=None, statuses=("ADMITTED",), key_col=
         except Exception as e:
             errors.append((rid, str(e)[:200]))
         time.sleep(pause)
-    header = ("% Generated by verify_doi.py registry_to_bib from " + os.path.basename(registry_csv)
-              + " on " + time.strftime("%Y-%m-%d") + ".\n% Tier A registry rows only, re-verified at build time. Do not edit by hand; regenerate.\n\n")
+    header = ("% Generated by verify_doi.py sources_to_bib from " + os.path.basename(sources_csv)
+              + " on " + time.strftime("%Y-%m-%d") + ".\n% Citable rows of the source table only, re-checked at build time. Do not edit by hand; regenerate.\n\n")
     text = header + "\n\n".join(entries) + ("\n" if entries else "")
     if out_bib:
         with open(out_bib, "w", encoding="utf-8", newline="\n") as fh:
@@ -520,23 +602,34 @@ def registry_to_bib(registry_csv, out_bib=None, statuses=("ADMITTED",), key_col=
     return {"written": written, "skipped": skipped, "errors": errors, "bib": text}
 
 
+registry_to_bib = sources_to_bib  # the 0.1 name
+
+
 def main():
     import argparse
-    ap = argparse.ArgumentParser(description="Verify DOIs against Crossref (retractions, preprints, metadata match).")
-    ap.add_argument("doi", nargs="*", help="DOI(s) to verify")
+    ap = argparse.ArgumentParser(
+        description="Check DOIs against Crossref (retractions, preprints, metadata match).",
+        epilog="Status words: " + ", ".join(DOI_STATUSES) + ".\nThe source table is research_lab/literature/SOURCES.csv.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    ap.add_argument("doi", nargs="*", help="DOI(s) to check")
     ap.add_argument("--title")
     ap.add_argument("--first-author")
     ap.add_argument("--year")
     ap.add_argument("--authors", help='the FULL ordered author list from the PDF, separated by semicolons: "Given Family; Given Family; ..."')
-    ap.add_argument("--search", help="bibliographic search for CANDIDATE DOIs (title)")
-    ap.add_argument("--csv", help="audit a CSV with columns doi,title,first_author,year")
+    ap.add_argument("--search", help="bibliographic search for candidate DOIs (title)")
+    ap.add_argument("--csv", help="check every row of the source table (SOURCES.csv: columns source_id,title,first_author,year,doi,...)")
     ap.add_argument("--extract-from", help="extract and check every DOI in a text/tex/md file (resolution + retraction only)")
-    ap.add_argument("--bibtex", action="store_true", help="print Crossref BibTeX for the given DOI(s); Tier A sources only")
-    ap.add_argument("--registry-bib", help="build a .bib from REGISTRY.csv (ADMITTED rows, re-verified at build time)")
-    ap.add_argument("--out", help="output .bib path for --registry-bib")
+    ap.add_argument("--bibtex", action="store_true", help="print Crossref BibTeX for the given DOI(s); matched, peer-reviewed sources only")
+    ap.add_argument("--sources-bib", dest="sources_bib", help="build a .bib from the source table (citable rows, re-checked at build time)")
+    ap.add_argument("--registry-bib", dest="sources_bib", help=argparse.SUPPRESS)  # the 0.1 name, hidden
+    ap.add_argument("--out", help="output .bib path for --sources-bib")
     a = ap.parse_args()
-    if a.registry_bib:
-        r = registry_to_bib(a.registry_bib, a.out)
+    if (a.sources_bib or a.csv) and lab_uses_old_layout(a.sources_bib or a.csv):
+        print(OLD_LAYOUT_MESSAGE, file=sys.stderr)
+        return 2
+    if a.sources_bib:
+        r = sources_to_bib(a.sources_bib, a.out)
         print(json.dumps({k: r[k] for k in ("written", "skipped", "errors")}, indent=2, ensure_ascii=False))
         if not a.out:
             print(r["bib"])
@@ -569,7 +662,7 @@ def main():
     print(json.dumps({"summary": audit_summary(res), "results": res}, indent=2, ensure_ascii=False))
     if a.extract_from:
         return 1 if any(r["status"] in EXTRACT_FAIL_STATUSES for r in res) else 0
-    return 0 if all(r["status"] == "VERIFIED" for r in res) else 1
+    return 0 if all(r["status"] == "matched" for r in res) else 1
 
 
 if __name__ == "__main__":

@@ -8,8 +8,10 @@ Usage:
 
 --cited-by lists the works that cite the given work (forward snowball); --references
 lists the works it cites (backward snowball). The output shape is the same as --query.
-The output is candidates, never sources: a role screens them, and a
-verification skill checks each one before anything cites it.
+The output is candidates, never sources: a role screens them, and
+science-ultrapowers:verifying-evidence-by-doi checks each one against Crossref before
+anything cites it. Record each query and its screening decisions in the screening log, a
+file in research_lab/literature/search_logs/.
 """
 
 import argparse
@@ -145,7 +147,8 @@ def _positive_limit(text):
 
 def build_parser():
     parser = argparse.ArgumentParser(
-        description="Find candidate works in OpenAlex. Results are candidates, never sources."
+        description="Find candidate works in OpenAlex. Results are candidates, never sources.",
+        epilog="Record each query and its screening decisions in the screening log, a file in research_lab/literature/search_logs/.",
     )
     parser.add_argument("--query", help="search text (required unless --json-in is given)")
     parser.add_argument("--limit", type=_positive_limit, default=25, help="works to return, 1-200 (default 25)")

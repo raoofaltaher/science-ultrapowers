@@ -295,5 +295,31 @@ class SnowballTest(unittest.TestCase):
         self.assertEqual(urls, [so.build_url("x", limit=25)])
 
 
+class MessageWordsTest(unittest.TestCase):
+    """The help and the module text speak the lab's words: candidates, the screening log, the search_logs folder."""
+
+    def help_text(self):
+        result = subprocess.run([sys.executable, str(SCRIPT), "--help"], capture_output=True, text=True,
+                                encoding="utf-8", timeout=60)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return result.stdout
+
+    def test_help_names_the_search_logs_folder_and_the_screening_log(self):
+        text = self.help_text()
+        self.assertIn("research_lab/literature/search_logs/", text)
+        self.assertIn("screening log", text)
+        self.assertIn("candidates", text)
+
+    def test_help_has_no_old_layout_path_or_old_words(self):
+        text = self.help_text()
+        for old in ("01_reference_registry", "audits/", "registry", "verification skill", "Tier "):
+            self.assertNotIn(old, text)
+
+    def test_the_module_text_has_no_old_layout_path(self):
+        self.assertNotIn("01_reference_registry", so.__doc__)
+        self.assertIn("research_lab/literature/search_logs/", so.__doc__)
+        self.assertIn("science-ultrapowers:verifying-evidence-by-doi", so.__doc__)
+
+
 if __name__ == "__main__":
     unittest.main()

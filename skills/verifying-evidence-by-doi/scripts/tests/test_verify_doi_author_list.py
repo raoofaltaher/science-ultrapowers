@@ -14,7 +14,7 @@ DOI/title/author names are fixture placeholders, not a live-fetched record.
 The original `first_author`-only contract is also pinned here: omitting
 `authors` (the default) must return a dict IDENTICAL in shape to the one
 `verify_doi` returned before the author-list check was added (no new keys),
-for both the VERIFIED and MISMATCH cases.
+for both the matched and mismatch cases.
 """
 
 from __future__ import annotations
@@ -76,17 +76,17 @@ class BackwardCompatibilityTests(FakeCrossrefTestCase):
     def test_omitting_authors_returns_identical_dict_to_pre_fix_behaviour(self):
         """The call shape used before the author-list check existed --
         doi/title/first_author/year, no `authors` -- must return a dict with NO
-        `author_list_problems` key and the same VERIFIED status as before."""
+        `author_list_problems` key and the same matched status as before."""
         result = verify_doi.verify_doi(TEST_DOI, title=TEST_TITLE, first_author="Alam", year=2018)
-        self.assertEqual(result["status"], "VERIFIED")
+        self.assertEqual(result["status"], "matched")
         self.assertNotIn("author_list_problems", result)
         self.assertEqual(result["problems"], [])
 
     def test_omitting_authors_still_catches_a_wrong_first_author(self):
         """The pre-existing `first_author` check itself is unchanged: a wrong
-        first author is still a MISMATCH when `authors` is not supplied."""
+        first author is still a mismatch when `authors` is not supplied."""
         result = verify_doi.verify_doi(TEST_DOI, title=TEST_TITLE, first_author="Nakamura", year=2018)
-        self.assertEqual(result["status"], "MISMATCH")
+        self.assertEqual(result["status"], "mismatch")
         self.assertNotIn("author_list_problems", result)
         self.assertTrue(any("first-author mismatch" in p for p in result["problems"]))
 
@@ -105,7 +105,7 @@ class AuthorListCheckTests(FakeCrossrefTestCase):
             year=2018,
             authors=["Firoj Alam", "Ferda Ofli", "Muhammad Imran"],
         )
-        self.assertEqual(result["status"], "VERIFIED")
+        self.assertEqual(result["status"], "matched")
         self.assertEqual(result["author_list_problems"], [])
 
     def test_wrong_co_author_is_caught_though_first_author_check_alone_would_miss_it(self):
@@ -118,7 +118,7 @@ class AuthorListCheckTests(FakeCrossrefTestCase):
             year=2018,
             authors=["Firoj Alam", "Someone Else", "Muhammad Imran"],
         )
-        self.assertEqual(result["status"], "MISMATCH")
+        self.assertEqual(result["status"], "mismatch")
         self.assertEqual(len(result["author_list_problems"]), 1)
         self.assertIn("author #2 family-name mismatch", result["author_list_problems"][0])
 
@@ -132,7 +132,7 @@ class AuthorListCheckTests(FakeCrossrefTestCase):
             year=2018,
             authors=["Zeynep Alam", "Ferda Ofli", "Muhammad Imran"],
         )
-        self.assertEqual(result["status"], "MISMATCH")
+        self.assertEqual(result["status"], "mismatch")
         self.assertEqual(len(result["author_list_problems"]), 1)
         self.assertIn("author #1 initials mismatch", result["author_list_problems"][0])
 
@@ -144,7 +144,7 @@ class AuthorListCheckTests(FakeCrossrefTestCase):
             year=2018,
             authors=["Firoj Alam", "Zeynep Ofli", "Muhammad Imran"],
         )
-        self.assertEqual(result["status"], "MISMATCH")
+        self.assertEqual(result["status"], "mismatch")
         self.assertEqual(len(result["author_list_problems"]), 1)
         self.assertIn("author #2 initials mismatch", result["author_list_problems"][0])
 
@@ -159,7 +159,7 @@ class AuthorListCheckTests(FakeCrossrefTestCase):
             year=2018,
             authors=["Firoj Alam", "Someone Else"],  # 2 supplied vs 3 in Crossref
         )
-        self.assertEqual(result["status"], "MISMATCH")
+        self.assertEqual(result["status"], "mismatch")
         problems = result["author_list_problems"]
         self.assertTrue(
             any("author count mismatch: supplied 2 author(s) vs Crossref 3 author(s)" in p for p in problems)
@@ -176,7 +176,7 @@ class AuthorListCheckTests(FakeCrossrefTestCase):
             year=2018,
             authors=["Alam, Firoj", "Ofli, Ferda", "Imran, Muhammad"],
         )
-        self.assertEqual(result["status"], "VERIFIED")
+        self.assertEqual(result["status"], "matched")
         self.assertEqual(result["author_list_problems"], [])
 
     def test_missing_given_name_on_supplied_side_does_not_fail_initials(self):
@@ -189,7 +189,7 @@ class AuthorListCheckTests(FakeCrossrefTestCase):
             year=2018,
             authors=["Alam", "Ofli", "Imran"],
         )
-        self.assertEqual(result["status"], "VERIFIED")
+        self.assertEqual(result["status"], "matched")
         self.assertEqual(result["author_list_problems"], [])
 
 
@@ -201,11 +201,11 @@ class UserAgentTests(unittest.TestCase):
 class EarlyExitTests(unittest.TestCase):
     def test_authors_check_is_skipped_for_an_early_exit_status(self):
         """`authors=` must never be evaluated once `verify_doi` has already
-        decided on an early-exit status (e.g. PREPRINT from the DOI prefix
+        decided on an early-exit status (e.g. preprint from the DOI prefix
         alone): `author_list_problems` must not appear, and passing `authors`
         must not raise even though no Crossref record was ever fetched."""
         result = verify_doi.verify_doi("10.48550/arxiv.9999.99999", authors=["Anybody At All"])
-        self.assertEqual(result["status"], "PREPRINT")
+        self.assertEqual(result["status"], "preprint")
         self.assertNotIn("author_list_problems", result)
 
 
@@ -270,12 +270,15 @@ class HelperFunctionTests(unittest.TestCase):
 # ---------------------------------------------------------------------------
 
 
-class RegistryToBibTests(unittest.TestCase):
-    def test_registry_to_bib_default_status_filter_is_admitted_not_doi_verified(self):
-        """A review confirmed the ADMITTED build is correct; the default must
-        select `ADMITTED` rows, not `DOI_VERIFIED`."""
-        signature = inspect.signature(verify_doi.registry_to_bib)
-        self.assertEqual(signature.parameters["statuses"].default, ("ADMITTED",))
+class SourcesToBibTests(unittest.TestCase):
+    def test_sources_to_bib_default_status_filter_is_citable(self):
+        """The default must select `citable` source rows (legacy `ADMITTED` is
+        read as the same word), not `metadata matched`."""
+        signature = inspect.signature(verify_doi.sources_to_bib)
+        self.assertEqual(signature.parameters["statuses"].default, ("citable",))
+
+    def test_the_old_function_name_is_kept_as_an_alias(self):
+        self.assertIs(verify_doi.registry_to_bib, verify_doi.sources_to_bib)
 
 
 if __name__ == "__main__":
